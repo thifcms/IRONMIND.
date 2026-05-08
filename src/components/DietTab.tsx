@@ -208,7 +208,7 @@ export default function DietTab({
             </div>
             <h3 className="text-slate-900 dark:text-slate-100 font-bold text-lg mb-2 uppercase italic tracking-tighter">Dieta Offline</h3>
             <p className="text-slate-500 dark:text-slate-400 text-xs mb-8 max-w-[240px] leading-relaxed">
-              Você ainda não tem um protocolo ativo. Peça ao <span className="text-blue-600 font-black">COACH</span> ou use o scanner acima para registrar o que come.
+              Você ainda não tem um protocolo ativo. Peça ao <span className="text-blue-600 font-black">TREINADOR</span> ou use o scanner acima para registrar o que come.
             </p>
             <button 
               onClick={onRequestNew}

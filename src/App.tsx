@@ -160,6 +160,7 @@ export default function App() {
   const [showConfirmClearDiet, setShowConfirmClearDiet] = useState(false);
   const [showConfirmClearChat, setShowConfirmClearChat] = useState(false);
   const [showConfirmClearHistory, setShowConfirmClearHistory] = useState(false);
+  const [isSplitSelectorOpen, setIsSplitSelectorOpen] = useState(false);
 
   const clearTrainingPlan = () => {
     setTrainingPlan(null);
@@ -205,20 +206,23 @@ export default function App() {
     setActiveTab(Tab.DIETA);
   };
 
-  const buildManualTraining = () => {
+  const buildManualTraining = (split: string) => {
+    const daysCount = split === 'AB' ? 2 : split === 'ABC' ? 3 : split === 'ABCD' ? 4 : 5;
+    const days = Array.from({ length: daysCount }, (_, i) => ({
+      label: `Treino ${String.fromCharCode(65 + i)}`,
+      exercises: []
+    }));
+
     const manualPlan: TrainingPlan = {
       id: crypto.randomUUID(),
-      name: 'Treino Manual',
-      description: 'Plano montado manualmente pelo usuário.',
+      name: `Treino Manual (${split})`,
+      description: `Plano ${split} montado manualmente pelo usuário.`,
       createdAt: Date.now(),
-      days: [
-        { label: 'Treino A', exercises: [] },
-        { label: 'Treino B', exercises: [] },
-        { label: 'Treino C', exercises: [] },
-      ]
+      days: days
     };
     updateTrainingPlan(manualPlan);
     setActiveTab(Tab.TREINO);
+    setIsSplitSelectorOpen(false);
   };
 
   const tabs = [
@@ -358,7 +362,7 @@ export default function App() {
                   }}
                   className="bg-white text-blue-600 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest"
                 >
-                  Falar com Coach
+                  Falar com Treinador
                 </button>
                 <button onClick={() => setShowRenewalAlert(false)} className="p-1 hover:bg-white/10 rounded-lg">
                   <X className="w-4 h-4" />
@@ -393,7 +397,7 @@ export default function App() {
                 setActiveTab={setActiveTab} 
                 onUpdatePlan={updateTrainingPlan} 
                 onClearPlan={() => setShowConfirmClearTraining(true)} 
-                buildManualTraining={buildManualTraining}
+                onOpenSplitSelector={() => setIsSplitSelectorOpen(true)}
               />
             )}
             {activeTab === Tab.VIDEOS && (
@@ -419,6 +423,71 @@ export default function App() {
           </AnimatePresence>
         </motion.div>
       </main>
+
+      {/* Split Selector Modal */}
+      <AnimatePresence>
+        {isSplitSelectorOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl border border-slate-200"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-xl font-[1000] text-slate-900 uppercase tracking-tighter italic leading-none">Divisão de Treino</h3>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2 leading-tight">Escolha como quer dividir sua semana</p>
+                </div>
+                <button 
+                  onClick={() => setIsSplitSelectorOpen(false)}
+                  className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:bg-red-50 hover:text-red-500 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                {['AB', 'ABC', 'ABCD', 'ABCDE'].map((split) => (
+                  <button
+                    key={split}
+                    onClick={() => buildManualTraining(split)}
+                    className="w-full p-4 bg-slate-50 hover:bg-blue-600 hover:text-white border border-slate-200 hover:border-blue-600 rounded-2xl flex items-center justify-between group transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center border border-slate-200 group-hover:border-blue-500">
+                        <Dumbbell className="w-6 h-6 text-slate-400 group-hover:text-blue-600" />
+                      </div>
+                      <div className="text-left">
+                        <h4 className="text-lg font-black tracking-tight">{split}</h4>
+                        <p className="text-[9px] font-bold uppercase tracking-widest opacity-60">
+                          {split === 'AB' && '2 Dias • Iniciante'}
+                          {split === 'ABC' && '3 Dias • Intermediário'}
+                          {split === 'ABCD' && '4 Dias • Avançado'}
+                          {split === 'ABCDE' && '5 Dias • Bodybuilder'}
+                        </p>
+                      </div>
+                    </div>
+                    <Flame className="w-5 h-5 opacity-20 group-hover:opacity-100 transition-all" />
+                  </button>
+                ))}
+              </div>
+
+              <button 
+                onClick={() => setIsSplitSelectorOpen(false)}
+                className="w-full mt-6 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-xl hover:bg-slate-800 transition-all"
+              >
+                Cancelar
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Confirmation Modals */}
       <AnimatePresence>
@@ -481,9 +550,9 @@ export default function App() {
   );
 }
 
-function TrainingPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan, buildManualTraining }: { plan: TrainingPlan | null, setActiveTab: (t: Tab) => void, onUpdatePlan: (p: TrainingPlan) => void, onClearPlan: () => void, buildManualTraining: () => void }) {
-  if (!plan) return <EmptyState type="treino" onClick={() => setActiveTab(Tab.TREINADOR)} onManualBuild={buildManualTraining} />;
-  return <TrainingTab plan={plan} onUpdatePlan={onUpdatePlan} onClearPlan={onClearPlan} onRequestNew={() => setActiveTab(Tab.TREINADOR)} />;
+function TrainingPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan, onOpenSplitSelector }: { plan: TrainingPlan | null, setActiveTab: (t: Tab) => void, onUpdatePlan: (p: TrainingPlan) => void, onClearPlan: () => void, onOpenSplitSelector: () => void }) {
+  if (!plan) return <EmptyState type="treino" onClick={() => setActiveTab(Tab.TREINADOR)} onManualBuild={onOpenSplitSelector} />;
+  return <TrainingTab plan={plan} onUpdatePlan={onUpdatePlan} onClearPlan={onClearPlan} onOpenSplitSelector={onOpenSplitSelector} />;
 }
 
 function DietPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan }: { plan: DietPlan | null, setActiveTab: (t: Tab) => void, onUpdatePlan: (p: DietPlan) => void, onClearPlan: () => void }) {
@@ -500,7 +569,7 @@ function EmptyState({ type, onClick, onManualBuild }: { type: string, onClick: (
       <p className="text-slate-500 mb-6 text-[11px] max-w-[200px]">
         {type === 'treino' 
           ? 'Escolha uma das opções abaixo para começar sua jornada.' 
-          : `Peça ao Coach para gerar seu ${type} agora.`}
+          : `Peça ao Treinador para gerar seu ${type} agora.`}
       </p>
       
       <div className="flex flex-col gap-3 w-full max-w-[200px]">
@@ -578,7 +647,7 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
             IRON<span className="text-blue-500">MIND</span>
           </h1>
           <p className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-500 mt-3">
-            EST. 2026 • ELITE COACH
+            EST. 2026 • ELITE TREINADOR
           </p>
         </motion.div>
 

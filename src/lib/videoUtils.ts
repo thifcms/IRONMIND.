@@ -23,27 +23,36 @@ export function formatVideoUrl(rawUrl: string | null) {
   if (!rawUrl) return null;
   
   let url = rawUrl;
-  // Handle YouTube Watch URLs
+  let videoId = '';
+
+  // Extract ID from different formats
   if (url.includes('youtube.com/watch?v=')) {
-    url = url.replace('watch?v=', 'embed/');
-  } 
-  // Handle YouTube Shorts
-  else if (url.includes('youtube.com/shorts/')) {
-    url = url.replace('shorts/', 'embed/');
-  }
-  // Handle youtu.be short URLs
-  else if (url.includes('youtu.be/')) {
-    const id = url.split('/').pop()?.split('?')[0];
-    url = `https://www.youtube.com/embed/${id}`;
+    const parts = url.split('v=');
+    if (parts[1]) {
+      videoId = parts[1].split('&')[0];
+    }
+  } else if (url.includes('youtube.com/shorts/')) {
+    const parts = url.split('shorts/');
+    if (parts[1]) {
+      videoId = parts[1].split('?')[0];
+    }
+  } else if (url.includes('youtu.be/')) {
+    const parts = url.split('youtu.be/');
+    if (parts[1]) {
+      videoId = parts[1].split('?')[0];
+    }
+  } else if (url.includes('youtube.com/embed/')) {
+    const parts = url.split('embed/');
+    if (parts[1]) {
+      videoId = parts[1].split('?')[0];
+    }
   }
 
-  // Clean up parameters
-  if (url.includes('&t=')) {
-    url = url.split('&t=')[0];
+  if (videoId) {
+    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&rel=0&modestbranding=1`;
   }
 
-  const connector = url.includes('?') ? '&' : '?';
-  return `${url}${connector}autoplay=1&mute=1&rel=0`;
+  return url;
 }
 
 export function getYouTubeSearchUrl(name: string) {

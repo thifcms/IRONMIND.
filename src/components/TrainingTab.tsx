@@ -3,18 +3,18 @@ import { TrainingPlan, Exercise } from '../types';
 import { Play, Dumbbell, Clock, Check, Plus, Trash2, StickyNote, X, TrendingUp, Target, Search, ChevronRight, Filter, AlertCircle, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { EXERCISE_LIBRARY, LibraryExercise, MUSCLE_GROUPS } from '../constants/exercises';
-import { resolveVideoUrl } from '../lib/videoUtils';
+import { resolveVideoUrl, getYouTubeSearchUrl } from '../lib/videoUtils';
 
 export default function TrainingTab({ 
   plan, 
   onUpdatePlan, 
   onClearPlan,
-  onRequestNew
+  onOpenSplitSelector
 }: { 
   plan: TrainingPlan; 
   onUpdatePlan: (p: TrainingPlan) => void;
   onClearPlan: () => void;
-  onRequestNew: () => void;
+  onOpenSplitSelector: () => void;
 }) {
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [completedSets, setCompletedSets] = useState<Record<string, boolean[]>>({});
@@ -245,10 +245,10 @@ export default function TrainingTab({
         
         <div className="grid grid-cols-3 gap-2 mt-1 w-full">
           <button 
-            onClick={onRequestNew}
+            onClick={onOpenSplitSelector}
             className="px-1 py-3 bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 rounded-xl text-[7px] font-black uppercase tracking-widest hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-colors border border-slate-200 dark:border-slate-800 leading-tight"
           >
-            Novo Protocolo
+            Adicionar Novo Treino
           </button>
           <button 
             onClick={resetTrainingProgress}
@@ -295,13 +295,13 @@ export default function TrainingTab({
             </div>
             <div className="flex-1">
               <p className="text-[10px] font-black text-amber-900 uppercase tracking-tight leading-none mb-0.5">Protocolo com +90 dias</p>
-              <p className="text-[9px] text-amber-700 font-medium leading-tight">Considere falar com o Coach para uma revisão técnica.</p>
+              <p className="text-[9px] text-amber-700 font-medium leading-tight">Considere falar com o Treinador para uma revisão técnica.</p>
             </div>
             <button 
-              onClick={onRequestNew}
+              onClick={onOpenSplitSelector}
               className="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-amber-700 transition-colors"
             >
-              Coach
+              Renovar
             </button>
           </motion.div>
         )}
@@ -351,7 +351,7 @@ export default function TrainingTab({
              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-colors shadow-sm"
            >
              <Plus className="w-3.5 h-3.5" />
-             Monte seu Treino
+             Adicionar Exercício
            </button>
         </div>
 
@@ -434,16 +434,19 @@ export default function TrainingTab({
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
-                    {videoUrl && (
-                      <a 
-                        href={videoUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="w-9 h-9 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center text-blue-600 hover:bg-white dark:hover:bg-slate-800 transition-colors"
-                      >
-                        <Play className="w-4 h-4 fill-current" />
-                      </a>
-                    )}
+                    <a 
+                      href={videoUrl || getYouTubeSearchUrl(ex.name)} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className={`w-9 h-9 border rounded-xl flex items-center justify-center transition-colors ${
+                        videoUrl 
+                          ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30 text-blue-600' 
+                          : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                      title={videoUrl ? "Ver demonstração oficial" : "Pesquisar execução no YouTube"}
+                    >
+                      <Play className={`w-4 h-4 ${videoUrl ? 'fill-current' : ''}`} />
+                    </a>
                   </div>
                 </div>
 

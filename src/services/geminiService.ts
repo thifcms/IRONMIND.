@@ -58,7 +58,7 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 3): P
 }
 
 /**
- * Função principal de Chat com o Coach IronMind
+ * Função principal de Chat com o Treinador IronMind
  */
 export async function chatWithCoach(history: ChatMessage[], message: string): Promise<ChatMessage> {
   // Salva o histórico atual antes do envio

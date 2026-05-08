@@ -60,13 +60,56 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
               <div className="aspect-video bg-slate-900 flex items-center justify-center relative">
                 {activeVideo === ex.name ? (
                   videoUrl ? (
-                    <iframe
-                      src={formatVideoUrl(videoUrl)}
-                      className="w-full h-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      referrerPolicy="no-referrer"
-                      allowFullScreen
-                    ></iframe>
+                    <div className="w-full h-full relative group/player">
+                      <iframe
+                        src={formatVideoUrl(videoUrl)}
+                        className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        referrerPolicy="no-referrer"
+                        allowFullScreen
+                      ></iframe>
+                      
+                      {/* Overlay controls for cases where embed fails or user wants external */}
+                      <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover/player:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => setActiveVideo(null)}
+                          className="p-2 bg-black/60 backdrop-blur rounded-lg text-white"
+                          title="Fechar"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 opacity-0 group-hover/player:opacity-100 transition-opacity whitespace-nowrap">
+                        <a 
+                          href={videoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-4 py-2 bg-red-600/90 backdrop-blur text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-xl flex items-center gap-2 hover:bg-red-700 transition-all"
+                        >
+                          <Play className="w-3 h-3 fill-current" />
+                          Ver no YouTube
+                        </a>
+                        <a 
+                          href={getYouTubeSearchUrl(ex.name)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-4 py-2 bg-slate-800/90 backdrop-blur text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-xl flex items-center gap-2 hover:bg-slate-900 transition-all border border-slate-700/30"
+                        >
+                          <Video className="w-3 h-3" />
+                          Outra Fonte
+                        </a>
+                        <a 
+                          href={`https://www.google.com/search?q=${encodeURIComponent(ex.name + ' execução correta musculação')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-4 py-2 bg-blue-600/90 backdrop-blur text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-xl flex items-center gap-2 hover:bg-blue-700 transition-all border border-blue-400/30"
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          Link Auxiliar
+                        </a>
+                      </div>
+                    </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center p-6 text-center gap-4">
                       <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center">
@@ -255,7 +298,7 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
                 <div className="bg-blue-600 text-white p-5 rounded-3xl shadow-lg ring-4 ring-blue-100">
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="w-4 h-4 text-blue-200" />
-                    <span className="font-black uppercase tracking-widest text-[10px]">Pro Tip (Coach IronMind)</span>
+                    <span className="font-black uppercase tracking-widest text-[10px]">Pro Tip (Treinador IronMind)</span>
                   </div>
                   <p className="text-sm font-medium italic leading-relaxed">
                     "{selectedGuide.proTip}"

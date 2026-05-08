@@ -90,7 +90,7 @@ const dietSchema = {
   required: ["id", "name", "description", "meals"]
 };
 
-const systemInstruction = `Você é o IronMind Coach, um treinador de elite especializado em alta performance, biomecânica e nutrição esportiva. 
+const systemInstruction = `Você é o IronMind Treinador, um treinador de elite especializado em alta performance, biomecânica e nutrição esportiva. 
 Seu estilo é direto, autoritário mas motivador, focado em resultados máximos.
 
 - Forneça explicações detalhadas sobre PORQUÊ certas técnicas ou alimentos são recomendados.
