@@ -137,7 +137,7 @@ async function startServer() {
   const genAI = new GoogleGenerativeAI(process.env.VITE_GEMINI_API_KEY as string);
   const model = genAI.getGenerativeModel(
     { 
-      model: "gemini-1.5-flash",
+      model: "gemini-1.5-flash-latest",
       systemInstruction: systemInstruction 
     },
     { apiVersion: "v1beta" }
@@ -148,42 +148,43 @@ async function startServer() {
     const { history, message } = req.body;
     try {
       // Garantir que as roles alternem (User -> Model -> User -> Model)
-      // O Gemini SDK exige alternância estrita.
-      let rawContents = history.map((m: any) => ({
+      // O Gemini SDK exige alternância estrita e que a última role seja 'user'.
+      const rawContents = history.map((m: any) => ({
         role: m.role === 'model' ? 'model' : 'user',
         parts: [{ text: m.text }]
       })).filter((c: any) => c.parts[0].text && c.parts[0].text.trim() !== "");
 
+      // Adiciona o comando atual ao histórico bruto para processamento unificado
+      rawContents.push({ 
+        role: 'user', 
+        parts: [{ text: `${message}\n\n(Prefira os nomes: ${EXERCISE_NAMES_HINT})` }] 
+      });
+
       const contents: any[] = [];
       if (rawContents.length > 0) {
-        let currentGroup = rawContents[0];
-        for (let i = 1; i < rawContents.length; i++) {
+        // Encontra a primeira mensagem 'user' para iniciar a conversa (Gemini prefere começar com user)
+        let startIndex = rawContents.findIndex(c => c.role === 'user');
+        if (startIndex === -1) startIndex = 0; // Fallback se não houver user (improvável)
+
+        let currentGroup = { ...rawContents[startIndex] };
+        for (let i = startIndex + 1; i < rawContents.length; i++) {
           if (rawContents[i].role === currentGroup.role) {
-            // Mesma role, concatena o texto
+            // Mesma role consecutiva, concatena o texto para manter alternância
             currentGroup.parts[0].text += "\n\n" + rawContents[i].parts[0].text;
           } else {
-            // Role diferente, fecha o grupo anterior e abre novo
+            // Nova role detectada, salva o grupo anterior e inicia um novo
             contents.push(currentGroup);
-            currentGroup = rawContents[i];
+            currentGroup = { ...rawContents[i] };
           }
         }
         contents.push(currentGroup);
       }
-
-      // Se o último for user, o Gemini se perde se enviarmos message separada.
-      // Vamos remover o último se for user e usar apenas a message final para evitar duplicidade ou conflito.
-      // Mas o correto é garantir que o último de 'contents' seja 'model' para o Gemini receber o próximo 'user'.
       
-      // Sanitização final: se o histórico termina em 'user', Gemini pode reclamar de ordem.
-      // Vamos garantir que limpamos mensagens vazias.
-      const sanitizedContents = contents.filter(c => c.parts[0].text.trim() !== "");
+      // O Gemini exige que a última mensagem seja do 'user'. 
+      // Como adicionamos a mensagem do usuário ao final, currentGroup/contents[last] será 'user'.
       
       const result = await withRetry(() => model.generateContent({
-        contents: [
-          { role: 'user', parts: [{ text: `Lembre-se de usar preferencialmente estes nomes de exercícios para que os vídeos funcionem: ${EXERCISE_NAMES_HINT}` }] },
-          ...sanitizedContents,
-          { role: 'user', parts: [{ text: message }] }
-        ],
+        contents: contents,
         generationConfig: {
           temperature: 0.7,
         }

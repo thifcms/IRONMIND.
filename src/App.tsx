@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Tab, TrainingPlan, DietPlan, ChatMessage, WeightEntry, UserProfile, MeasurementEntry, LoadEntry } from './types';
 import { loadChatHistory, saveChatHistory } from './services/geminiService';
-import CoachTab from './components/CoachTab';
+import TreinadorTab from './components/TreinadorTab';
 import TrainingTab from './components/TrainingTab';
 import CardioTab from './components/CardioTab';
 import DietTab from './components/DietTab';
@@ -382,7 +382,7 @@ export default function App() {
               className="h-full overflow-y-auto touch-pan-y"
             >
             {activeTab === Tab.TREINADOR && (
-              <CoachTab 
+              <TreinadorTab 
                 history={chatHistory} 
                 setHistory={setChatHistory} 
                 onAcceptTraining={saveTraining}

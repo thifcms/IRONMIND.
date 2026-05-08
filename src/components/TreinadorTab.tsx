@@ -3,7 +3,7 @@ import { Send, Check, Loader2, Trash2 } from 'lucide-react';
 import { ChatMessage, TrainingPlan, DietPlan } from '../types';
 import { chatWithCoach, generateProposal } from '../services/geminiService';
 
-interface CoachTabProps {
+interface TreinadorTabProps {
   history: ChatMessage[];
   setHistory: Dispatch<SetStateAction<ChatMessage[]>>;
   onAcceptTraining: (plan: TrainingPlan) => void;
@@ -11,7 +11,7 @@ interface CoachTabProps {
   onClearChat?: () => void;
 }
 
-export default function CoachTab({ history, setHistory, onAcceptTraining, onAcceptDiet, onClearChat }: CoachTabProps) {
+export default function TreinadorTab({ history, setHistory, onAcceptTraining, onAcceptDiet, onClearChat }: TreinadorTabProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -147,7 +147,13 @@ export default function CoachTab({ history, setHistory, onAcceptTraining, onAcce
       </div>
 
       <div className="p-3 bg-white dark:bg-[#121212] border-t border-slate-200 dark:border-slate-800">
-        <div className="flex gap-2 items-end">
+        <form 
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSend();
+          }}
+          className="flex gap-2 items-end"
+        >
           <textarea 
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -162,13 +168,13 @@ export default function CoachTab({ history, setHistory, onAcceptTraining, onAcce
             className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-300 transition-all text-slate-700 min-h-[48px] max-h-32 resize-none"
           />
           <button 
-            onClick={handleSend}
+            type="submit"
             disabled={isLoading}
             className="w-12 h-12 bg-blue-600 text-white rounded-xl flex-none flex items-center justify-center hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md active:scale-95"
           >
             <Send className="w-5 h-5 flex-none" />
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );
