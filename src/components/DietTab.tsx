@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { DietPlan } from '../types';
-import { Clock, CheckCircle2, Camera, Loader2, Info, AlertTriangle } from 'lucide-react';
+import { Clock, CheckCircle2, Camera, Loader2, Info, AlertTriangle, Utensils } from 'lucide-react';
 import { analyzeFoodImage } from '../services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -9,7 +9,7 @@ export default function DietTab({
   onClearPlan, 
   onRequestNew 
 }: { 
-  plan: DietPlan;
+  plan: DietPlan | null;
   onClearPlan: () => void;
   onRequestNew: () => void;
 }) {
@@ -72,7 +72,7 @@ export default function DietTab({
         <div className="flex justify-between items-center">
           <div>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">Diet Routine</p>
-            <h2 className="text-xl font-[1000] text-slate-900 dark:text-slate-100 tracking-tighter leading-none italic uppercase">{plan.name}</h2>
+            <h2 className="text-xl font-[1000] text-slate-900 dark:text-slate-100 tracking-tighter leading-none italic uppercase">{plan?.name || "Sem Protocolo Ativo"}</h2>
           </div>
           
           <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center">
@@ -86,7 +86,7 @@ export default function DietTab({
                onClick={onRequestNew}
                className="flex-1 px-3 py-3 bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-colors border border-slate-200 dark:border-slate-800"
              >
-               Novo Protocolo
+               {plan ? "Novo Protocolo" : "Gerar Protocolo"}
              </button>
              <button 
                onClick={() => {
@@ -94,15 +94,22 @@ export default function DietTab({
                }}
                className="flex-1 px-3 py-3 bg-blue-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-700 transition-colors shadow-md shadow-blue-100 dark:shadow-none flex items-center justify-center gap-2"
              >
-               <Camera className="w-3 h-3" /> Scan Refeição
+               {analyzing ? (
+                 <Loader2 className="w-3 h-3 animate-spin" />
+               ) : (
+                 <Camera className="w-3 h-3" />
+               )}
+               Scan Refeição
              </button>
           </div>
-          <button 
-            onClick={onClearPlan}
-            className="w-full py-2 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-slate-800 transition-colors border border-slate-900 shadow-sm"
-          >
-            Limpar Protocolo
-          </button>
+          {plan && (
+            <button 
+              onClick={onClearPlan}
+              className="w-full py-2 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-slate-800 transition-colors border border-slate-900 shadow-sm"
+            >
+              Limpar Protocolo
+            </button>
+          )}
         </div>
       </header>
 
@@ -146,42 +153,72 @@ export default function DietTab({
       {!analysis && !analyzing && (
         <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20 rounded-2xl p-4 flex gap-3 items-center">
           <div className="w-10 h-10 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center text-blue-600 shrink-0 border dark:border-slate-800">
-             <AlertTriangle className="w-5 h-5" />
+             <Camera className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[9px] font-black text-blue-900 dark:text-blue-400 uppercase tracking-widest leading-none mb-1">Controle de Ingestão Colorida</p>
-            <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-tight">Mande uma foto do seu prato para calcular calorias e ver se o alimento está no sinal verde.</p>
+            <p className="text-[9px] font-black text-blue-900 dark:text-blue-400 uppercase tracking-widest leading-none mb-1">Scanner de Alimentos</p>
+            <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-tight">Mande uma foto do seu prato para calcular calorias e macronutrientes instantaneamente.</p>
           </div>
         </div>
       )}
 
-      <div className="space-y-4 relative before:absolute before:left-[1rem] before:top-4 before:bottom-4 before:w-px before:bg-slate-200 dark:before:bg-slate-800 pt-4">
-        {plan.meals.map((meal, i) => (
-          <div key={i} className="relative pl-8">
-            <div className="absolute left-0 top-1 w-8 h-8 bg-blue-600 border-4 border-white dark:border-[#0a0a0a] rounded-full flex items-center justify-center z-10 text-white shadow-sm">
-              <Clock className="w-4 h-4" />
-            </div>
-            
-            <div className="bg-white dark:bg-[#121212] rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-blue-200 dark:hover:border-blue-900 transition-colors">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-black text-base text-slate-900 dark:text-slate-100 leading-tight uppercase italic">{meal.name}</h3>
-                <span className="text-[9px] font-black text-blue-600 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 px-2 py-0.5 rounded-md uppercase tracking-widest">
-                  {meal.time}
-                </span>
+      {analyzing && !analysis && (
+        <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-8 flex flex-col items-center justify-center text-center gap-4">
+           <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+           <div>
+             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Processando Imagem</p>
+             <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">O IronMind está analisando cada ingrediente...</p>
+           </div>
+        </div>
+      )}
+
+      {plan ? (
+        <div className="space-y-4 relative before:absolute before:left-[1rem] before:top-4 before:bottom-4 before:w-px before:bg-slate-200 dark:before:bg-slate-800 pt-4">
+          {plan.meals.map((meal, i) => (
+            <div key={i} className="relative pl-8">
+              <div className="absolute left-0 top-1 w-8 h-8 bg-blue-600 border-4 border-white dark:border-[#0a0a0a] rounded-full flex items-center justify-center z-10 text-white shadow-sm">
+                <Clock className="w-4 h-4" />
               </div>
               
-              <ul className="space-y-2">
-                {meal.items.map((item, j) => (
-                  <li key={j} className="text-[11px] text-slate-600 dark:text-slate-400 flex items-start gap-2 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                    <span className="font-semibold">{item}</span>
-                  </li>
-                ))}
-              </ul>
+              <div className="bg-white dark:bg-[#121212] rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-blue-200 dark:hover:border-blue-900 transition-colors">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="font-black text-base text-slate-900 dark:text-slate-100 leading-tight uppercase italic">{meal.name}</h3>
+                  <span className="text-[9px] font-black text-blue-600 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 px-2 py-0.5 rounded-md uppercase tracking-widest">
+                    {meal.time}
+                  </span>
+                </div>
+                
+                <ul className="space-y-2">
+                  {meal.items.map((item, j) => (
+                    <li key={j} className="text-[11px] text-slate-600 dark:text-slate-400 flex items-start gap-2 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                      <span className="font-semibold">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
+          ))}
+        </div>
+      ) : (
+        !analyzing && (
+          <div className="flex flex-col items-center justify-center py-12 text-center px-6">
+            <div className="w-20 h-20 bg-slate-100 dark:bg-slate-900 rounded-[2rem] flex items-center justify-center mb-6 border border-slate-200 dark:border-slate-800">
+              <Utensils className="w-10 h-10 text-slate-300 dark:text-slate-700" />
+            </div>
+            <h3 className="text-slate-900 dark:text-slate-100 font-bold text-lg mb-2 uppercase italic tracking-tighter">Dieta Offline</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-xs mb-8 max-w-[240px] leading-relaxed">
+              Você ainda não tem um protocolo ativo. Peça ao <span className="text-blue-600 font-black">COACH</span> ou use o scanner acima para registrar o que come.
+            </p>
+            <button 
+              onClick={onRequestNew}
+              className="px-8 py-3 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-slate-100 hover:border-blue-600 dark:hover:border-blue-600 transition-all active:scale-95"
+            >
+              Falar com o Treinador
+            </button>
           </div>
-        ))}
-      </div>
+        )
+      )}
 
       {/* Floating Camera Button - REMOVED per user request */}
       <input 

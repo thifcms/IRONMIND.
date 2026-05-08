@@ -221,6 +221,20 @@ export default function App() {
     { id: Tab.HISTORICO, label: 'Hist.', icon: TrendingUp },
   ];
 
+  const handleSwipe = (direction: 'left' | 'right') => {
+    // Para navegação por swipe, ignoramos o histórico se estivermos lá ou se for o destino,
+    // ou deixamos fluir naturalmente se for o último? 
+    // Vamos permitir navegar para fora de qualquer aba.
+    const currentIndex = tabs.findIndex(t => t.id === activeTab);
+    if (currentIndex === -1) return;
+
+    if (direction === 'left' && currentIndex < tabs.length - 1) {
+      setActiveTab(tabs[currentIndex + 1].id);
+    } else if (direction === 'right' && currentIndex > 0) {
+      setActiveTab(tabs[currentIndex - 1].id);
+    }
+  };
+
   const handleCloseSplash = useCallback(() => {
     setIsOpening(false);
   }, []);
@@ -235,20 +249,20 @@ export default function App() {
 
       {/* Header & Navigation */}
       <div className={`bg-white border-slate-200 border-b shadow-sm z-20`}>
-        <header className={`px-4 py-3 flex justify-between items-center bg-slate-100 border-slate-200 border-b`}>
-          <div className="flex items-center gap-4 flex-1">
-            {/* 3D Stone Block Logo Container - Increased size to fill space */}
-            <div className={`group relative flex items-center gap-4 from-slate-200 to-slate-400 shadow-[6px_6px_0px_#475569] bg-gradient-to-br p-2.5 px-6 rounded-sm transform transition-all hover:translate-y-0.5 hover:translate-x-0.5 border border-slate-300 overflow-hidden`}>
+        <header className={`px-4 py-2.5 flex justify-between items-center bg-slate-100 border-slate-200 border-b`}>
+          <div className="flex items-center gap-4">
+            {/* 3D Stone Block Logo Container - Refined size for better balance */}
+            <div className={`group relative flex items-center gap-3.5 from-slate-200 to-slate-400 shadow-[4px_4px_0px_#475569] bg-gradient-to-br p-2 px-6 rounded-sm transform transition-all hover:translate-y-0.5 hover:translate-x-0.5 border border-slate-300 overflow-hidden`}>
               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/concrete-wall.png')] opacity-20 pointer-events-none"></div>
-              <div className="relative w-8 h-8 bg-slate-900 rounded-px flex items-center justify-center shadow-inner">
-                 <Dumbbell className="w-5 h-5 text-white transform -rotate-12" />
+              <div className="relative w-8 h-8 bg-slate-900 rounded-px flex items-center justify-center shadow-inner text-white">
+                 <Dumbbell className="w-5 h-5 transform -rotate-12" />
               </div>
               <div className="flex flex-col leading-none">
                 <h1 className="font-[1000] text-2xl uppercase tracking-tighter flex items-center italic notranslate" translate="no">
                    <span className="text-slate-900 drop-shadow-sm">Iron</span>
                    <span className="text-blue-700 font-black drop-shadow-sm">Mind</span>
                 </h1>
-                <span className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-800 -mt-0.5">Strength • Resilience</span>
+                <span className="text-[8px] font-black uppercase tracking-[0.35em] text-slate-800 -mt-0.5">Strength • Resilience</span>
               </div>
             </div>
           </div>
@@ -268,7 +282,7 @@ export default function App() {
         </header>
 
         <nav className="flex justify-between items-center px-0.5 pb-1">
-          {tabs.map((tab) => {
+          {tabs.filter(t => t.id !== Tab.HISTORICO).map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
@@ -294,9 +308,22 @@ export default function App() {
       </div>
 
       {/* Main Content */}
-      <main className={`flex-1 overflow-y-auto relative bg-slate-50`}>
-        <AnimatePresence>
-          {showRenewalAlert && (
+      <main className={`flex-1 overflow-hidden relative bg-slate-50`}>
+        {/* Swipe Wrapper - Persistent container to avoid jumps during state change */}
+        <motion.div 
+          className="h-full w-full relative flex flex-col"
+          drag="x"
+          dragDirectionLock
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.1}
+          onDragEnd={(_, info) => {
+            const threshold = 60;
+            if (info.offset.x > threshold) handleSwipe('right');
+            if (info.offset.x < -threshold) handleSwipe('left');
+          }}
+        >
+          <AnimatePresence>
+            {showRenewalAlert && (
             <motion.div 
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -330,15 +357,15 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -10 }}
-            transition={{ duration: 0.15 }}
-            className="h-full"
-          >
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ type: "spring", stiffness: 350, damping: 35 }}
+              className="h-full overflow-y-auto touch-pan-y"
+            >
             {activeTab === Tab.TREINADOR && (
               <CoachTab 
                 history={chatHistory} 
@@ -365,19 +392,20 @@ export default function App() {
             {activeTab === Tab.DIETA && <DietPlanView plan={dietPlan} setActiveTab={setActiveTab} onUpdatePlan={updateDietPlan} onClearPlan={() => setShowConfirmClearDiet(true)} />}
             {activeTab === Tab.SOM && <MusicTab />}
             {activeTab === Tab.HISTORICO && (
-              <HistoryTab 
-                weightHistory={weightHistory} 
-                setWeightHistory={setWeightHistory} 
-                measurementHistory={measurementHistory}
-                setMeasurementHistory={setMeasurementHistory}
-                loadHistory={loadHistory}
-                setLoadHistory={setLoadHistory}
-                userProfile={userProfile}
-                setUserProfile={setUserProfile}
-              />
-            )}
-          </motion.div>
-        </AnimatePresence>
+                <HistoryTab 
+                  weightHistory={weightHistory} 
+                  setWeightHistory={setWeightHistory} 
+                  measurementHistory={measurementHistory}
+                  setMeasurementHistory={setMeasurementHistory}
+                  loadHistory={loadHistory}
+                  setLoadHistory={setLoadHistory}
+                  userProfile={userProfile}
+                  setUserProfile={setUserProfile}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </motion.div>
       </main>
 
       {/* Confirmation Modals */}
@@ -444,7 +472,6 @@ function TrainingPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan, build
 }
 
 function DietPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan }: { plan: DietPlan | null, setActiveTab: (t: Tab) => void, onUpdatePlan: (p: DietPlan) => void, onClearPlan: () => void }) {
-  if (!plan) return <EmptyState type="dieta" onClick={() => setActiveTab(Tab.TREINADOR)} />;
   return <DietTab plan={plan} onClearPlan={onClearPlan} onRequestNew={() => setActiveTab(Tab.TREINADOR)} />;
 }
 
@@ -486,11 +513,11 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
   const [showButton, setShowButton] = useState(false);
 
   useEffect(() => {
-    // Timer principal para fechar (2.2 segundos de impacto)
-    const timer = setTimeout(onComplete, 2200);
+    // Timer principal para fechar (impacto mais ágil)
+    const timer = setTimeout(onComplete, 1600);
     
-    // Fallback visual caso algo trave (mostra o botão de pular após 1.5s)
-    const fallbackTimer = setTimeout(() => setShowButton(true), 1500);
+    // Fallback visual caso algo trave
+    const fallbackTimer = setTimeout(() => setShowButton(true), 1000);
     
     return () => {
       clearTimeout(timer);

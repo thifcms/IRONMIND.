@@ -1,9 +1,9 @@
 import { TrainingPlan, Exercise } from '../types';
 import { Play, Video, Info, Sparkles, X, ChevronRight, AlertCircle, Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { EXERCISE_LIBRARY } from '../constants/exercises';
 import { getExerciseGuide } from '../services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
+import { resolveVideoUrl, formatVideoUrl, getYouTubeSearchUrl } from '../lib/videoUtils';
 
 interface AIExerciseGuide {
   name: string;
@@ -23,19 +23,6 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
   const [guideLoading, setGuideLoading] = useState<string | null>(null);
   const [selectedGuide, setSelectedGuide] = useState<AIExerciseGuide | null>(null);
 
-  const resolveVideoUrl = (ex: Exercise) => {
-    // 1. Prioridade: Vídeo já no objeto do exercício
-    if (ex.videoUrl) return ex.videoUrl;
-
-    // 2. Segunda opção: Buscar na biblioteca estática
-    const libraryMatch = EXERCISE_LIBRARY.find(
-      libEx => libEx.name.toLowerCase() === ex.name.toLowerCase()
-    );
-    if (libraryMatch?.videoUrl) return libraryMatch.videoUrl;
-
-    return null;
-  };
-
   const handleGenerateGuide = async (name: string) => {
     setGuideLoading(name);
     try {
@@ -46,24 +33,6 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
     } finally {
       setGuideLoading(null);
     }
-  };
-
-  const formatVideoUrl = (rawUrl: string | null) => {
-    if (!rawUrl) return null;
-    
-    let url = rawUrl;
-    if (url.includes('youtube.com/watch?v=')) {
-      url = url.replace('watch?v=', 'embed/');
-    } else if (url.includes('youtu.be/')) {
-      const id = url.split('/').pop()?.split('?')[0];
-      url = `https://www.youtube.com/embed/${id}`;
-    }
-    const connector = url.includes('?') ? '&' : '?';
-    return `${url}${connector}autoplay=1&mute=1`;
-  };
-
-  const getYouTubeSearchUrl = (name: string) => {
-    return `https://www.youtube.com/results?search_query=${encodeURIComponent('execução técnica ' + name)}`;
   };
 
   return (

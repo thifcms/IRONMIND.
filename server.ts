@@ -99,8 +99,20 @@ Seu estilo é direto, autoritário mas motivador, focado em resultados máximos.
 - Sem respostas genéricas. Cada conselho deve ser biomecanicamente fundamentado.
 
 1. Estruture treinos de AB a ABCDE conforme a necessidade. SEMPRE que sugerir um treino ou dieta, finalize com "EU ELABOREI ESTA PROPOSTA DE TREINO PARA VOCÊ" ou "AQUI ESTÁ SUA PROPOSTA DE DIETA ESTRUTURADA" para que o sistema reconheça e gere os botões de aceitação.
-2. Sugira vídeos de execução técnica precisa.
+2. Ao sugerir nomes de exercícios, prefira usar nomes padrão da nossa biblioteca (ex: Supino Reto (Barra), Agachamento Livre, Puxada Aberta) para garantir que o sistema localize os vídeos de execução.
 3. Responda em Português do Brasil.`;
+
+const EXERCISE_NAMES_HINT = [
+  'Supino Reto (Barra)', 'Supino Inclinado (Barra)', 'Supino Reto (Haltere)', 'Supino Inclinado (Haltere)', 
+  'Crucifixo Reto', 'Crossover (Polia Alta)', 'Fly (Máquina)', 'Flexão de Braços',
+  'Puxada Aberta (Pulley)', 'Remada Curvada (Barra)', 'Remada Unilateral (Serrote)', 'Puxada com Triângulo', 
+  'Remada Baixa (Triângulo)', 'Levantamento Terra', 'Pull Down (Corda)', 'Barra Fixa',
+  'Agachamento Livre', 'Leg Press 45', 'Extensora', 'Flexora Deitada', 'Flexora Sentada', 
+  'Afundo (Haltere)', 'Stiff (Barra)', 'Cadeira Abdutora', 'Cadeira Adutora', 'Gêmeos em Pé',
+  'Desenvolvimento (Barra)', 'Desenvolvimento (Haltere)', 'Elevação Lateral', 'Elevação Frontal', 'Posterior de Ombro (Corda)',
+  'Rosca Direta (Barra E-Z)', 'Rosca Alternada', 'Rosca Martelo',
+  'Tríceps Pulley (Barra)', 'Tríceps Corda', 'Tríceps Testa'
+].join(', ');
 
 async function startServer() {
   const app = express();
@@ -168,6 +180,7 @@ async function startServer() {
       
       const result = await withRetry(() => model.generateContent({
         contents: [
+          { role: 'user', parts: [{ text: `Lembre-se de usar preferencialmente estes nomes de exercícios para que os vídeos funcionem: ${EXERCISE_NAMES_HINT}` }] },
           ...sanitizedContents,
           { role: 'user', parts: [{ text: message }] }
         ],
@@ -191,7 +204,7 @@ async function startServer() {
 
     try {
       const result = await withRetry(() => model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: `Com base neste contexto: "${context}", gere uma proposta estruturada de ${isTraining ? 'treino dividido em dias' : 'dieta esportiva'} seguindo estritamente o schema JSON.` }] }],
+        contents: [{ role: 'user', parts: [{ text: `Com base neste contexto: "${context}", gere uma proposta estruturada de ${isTraining ? 'treino dividido em dias' : 'dieta esportiva'} seguindo estritamente o schema JSON. ${isTraining ? 'Para os exercícios, use preferencialmente estes nomes para garantir compatibilidade com vídeos: ' + EXERCISE_NAMES_HINT : ''}` }] }],
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: schema as any,

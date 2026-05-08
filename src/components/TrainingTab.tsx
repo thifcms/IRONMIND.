@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { TrainingPlan, Exercise } from '../types';
-import { Play, Dumbbell, Clock, Check, Plus, Trash2, StickyNote, X, TrendingUp, Target, Search, ChevronRight, Filter } from 'lucide-react';
+import { Play, Dumbbell, Clock, Check, Plus, Trash2, StickyNote, X, TrendingUp, Target, Search, ChevronRight, Filter, AlertCircle, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { EXERCISE_LIBRARY, LibraryExercise, MUSCLE_GROUPS } from '../constants/exercises';
+import { resolveVideoUrl } from '../lib/videoUtils';
 
 export default function TrainingTab({ 
   plan, 
@@ -17,6 +18,12 @@ export default function TrainingTab({
 }) {
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [completedSets, setCompletedSets] = useState<Record<string, boolean[]>>({});
+
+  const isExpired = useMemo(() => {
+    if (!plan.createdAt) return false;
+    const NINETY_DAYS = 90 * 24 * 60 * 60 * 1000;
+    return (Date.now() - plan.createdAt) > NINETY_DAYS;
+  }, [plan.createdAt]);
 
   // Reset and load progress based on plan
   useEffect(() => {
@@ -276,6 +283,29 @@ export default function TrainingTab({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+        {/* Expiration Banner */}
+        {isExpired && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center gap-3 shadow-sm"
+          >
+            <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center shrink-0">
+              <AlertCircle className="w-4 h-4 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-[10px] font-black text-amber-900 uppercase tracking-tight leading-none mb-0.5">Protocolo com +90 dias</p>
+              <p className="text-[9px] text-amber-700 font-medium leading-tight">Considere falar com o Coach para uma revisão técnica.</p>
+            </div>
+            <button 
+              onClick={onRequestNew}
+              className="px-3 py-1.5 bg-amber-600 text-white rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-amber-700 transition-colors"
+            >
+              Coach
+            </button>
+          </motion.div>
+        )}
+
         {/* Progress Tracker */}
         <div className="bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm overflow-hidden relative group">
           <div className="flex justify-between items-end mb-3">
@@ -329,6 +359,7 @@ export default function TrainingTab({
           {activeDay.exercises.map((ex) => {
             const sets = completedSets[ex.id] || new Array(ex.sets).fill(false);
             const isCurrentExerciseTimer = activeTimer?.exerciseId === ex.id;
+            const videoUrl = resolveVideoUrl(ex);
             
             return (
               <div key={ex.id} className="bg-white dark:bg-[#121212] rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-4 transition-all hover:border-blue-200 dark:hover:border-blue-900">
@@ -373,9 +404,9 @@ export default function TrainingTab({
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
-                    {ex.videoUrl && (
+                    {videoUrl && (
                       <a 
-                        href={ex.videoUrl} 
+                        href={videoUrl} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="w-9 h-9 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center text-blue-600 hover:bg-white dark:hover:bg-slate-800 transition-colors"

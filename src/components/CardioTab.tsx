@@ -65,59 +65,47 @@ export default function CardioTab() {
 
     const stats = getStats();
     
-    // Clear and draw background (Deep Black for contrast)
+    // Clear and draw background (Deep Black)
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 1. DADOS TÉCNICOS (TOPO)
-    ctx.fillStyle = '#1e293b'; 
-    ctx.fillRect(0, 0, canvas.width, 220);
-    
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'black 160px Inter, sans-serif'; 
-    ctx.textAlign = 'center';
-    ctx.fillText('IRONMIND TRAINING SYSTEM', canvas.width / 2, 150);
-
-    // 2. RELÓGIO (CENTRO)
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    ctx.font = 'black 1200px monospace'; 
-    ctx.fillText(formatTime(time), canvas.width / 2, 1100);
-    
-    ctx.font = 'bold 120px sans-serif';
-    ctx.fillStyle = '#3b82f6';
-    ctx.fillText('TEMPO DE TREINO', canvas.width / 2, 1250);
-
-    // 3. MÉTRICAS (LATERAIS)
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'black 600px monospace'; 
-    ctx.fillText(stats.distance, 150, 1750);
-    
-    ctx.font = 'bold 100px sans-serif';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText('DISTÂNCIA (KM)', 150, 1880);
-
-    // CALORIAS (DIREITA)
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'black 600px monospace';
-    ctx.fillText(stats.calories, canvas.width - 150, 1750);
-    
-    ctx.font = 'bold 100px sans-serif';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText('CALORIAS (KCAL)', canvas.width - 150, 1880);
-
-    // 4. BARRA DE STATUS
+    // Draw a rounded inner container for that "app" look
+    const padding = 100;
+    const cornerRadius = 250;
+    ctx.beginPath();
+    ctx.roundRect(padding, padding, canvas.width - (padding * 2), canvas.height - (padding * 2), cornerRadius);
     ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, 1950, canvas.width, 250);
+    ctx.fill();
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 15;
+    ctx.stroke();
 
-    ctx.fillStyle = '#ffffff'; 
-    ctx.font = 'black 180px monospace'; 
-    let variantLabel = mode === 'bicicleta' ? `RES:${load}` : `INC:${incline}%`;
-    let footerText = `${speed.toFixed(1)} KM/H  •  ${variantLabel}  •  ${heartRate} BPM`;
+    // 1. BRANDING
+    ctx.fillStyle = '#3b82f6';
+    ctx.font = 'black 120px Inter, sans-serif'; 
     ctx.textAlign = 'center';
-    ctx.fillText(footerText, canvas.width / 2, 2130);
+    ctx.fillText('IRONMIND CARDIO', canvas.width / 2, 350);
+
+    // 2. MAIN TIMER (MASSIVE & CENTERED)
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.font = 'black 1400px monospace'; 
+    ctx.fillText(formatTime(time), canvas.width / 2, 1400);
+
+    // 3. STATS BAR (PILL DESIGN)
+    const barY = 1600;
+    const barHeight = 400;
+    ctx.beginPath();
+    ctx.roundRect(400, barY, canvas.width - 800, barHeight, 200);
+    ctx.fillStyle = '#1e293b';
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'black 160px monospace';
+    ctx.textAlign = 'center';
+    let variantLabel = mode === 'bicicleta' ? `L:${load}` : `I:${incline}%`;
+    const liveStats = `${stats.distance}KM  •  ${speed.toFixed(1)}KM/H  •  ${variantLabel}  •  ${heartRate}BPM`;
+    ctx.fillText(liveStats, canvas.width / 2, barY + 260);
 
     // Indicador de Atividade
     if (isActive) {
