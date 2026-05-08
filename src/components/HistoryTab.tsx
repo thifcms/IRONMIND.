@@ -12,6 +12,7 @@ interface HistoryTabProps {
   setLoadHistory: React.Dispatch<React.SetStateAction<LoadEntry[]>>;
   userProfile: UserProfile;
   setUserProfile: React.Dispatch<React.SetStateAction<UserProfile>>;
+  onClearHistory: () => void;
 }
 
 export default function HistoryTab({ 
@@ -22,7 +23,8 @@ export default function HistoryTab({
   loadHistory,
   setLoadHistory,
   userProfile, 
-  setUserProfile 
+  setUserProfile,
+  onClearHistory
 }: HistoryTabProps) {
   const [newWeight, setNewWeight] = useState('');
   const [newHeight, setNewHeight] = useState(userProfile.height?.toString() || '');
@@ -85,14 +87,24 @@ export default function HistoryTab({
 
   return (
     <div className="p-4 pb-24 space-y-6 bg-slate-50 min-h-full overflow-x-hidden transition-colors duration-300">
-      <header className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-md shadow-blue-100">
-          <TrendingUp className="w-5 h-5 text-white" />
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-md shadow-blue-100">
+            <TrendingUp className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Performance</p>
+            <h2 className="text-2xl font-[1000] text-slate-900 tracking-tighter leading-none uppercase italic">Dashboard Histórico</h2>
+          </div>
         </div>
-        <div>
-          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Performance</p>
-          <h2 className="text-2xl font-[1000] text-slate-900 tracking-tighter leading-none uppercase italic">Dashboard Histórico</h2>
-        </div>
+        <button 
+          onClick={onClearHistory}
+          className="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-xl text-[8px] font-black uppercase tracking-widest border border-rose-100 hover:bg-rose-100 transition-colors flex items-center gap-1.5 shadow-sm active:scale-95"
+          title="Zerar Histórico"
+        >
+          <Activity className="w-3.5 h-3.5" />
+          Zerar Medidores
+        </button>
       </header>
 
       {/* Resumo de Frequência (Anteriormente existente) */}

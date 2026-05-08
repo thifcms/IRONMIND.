@@ -92,7 +92,7 @@ export default function CoachTab({ history, setHistory, onAcceptTraining, onAcce
         </button>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 touch-pan-y">
         {history.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[90%] rounded-2xl p-4 shadow-sm ${

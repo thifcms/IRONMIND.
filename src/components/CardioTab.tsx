@@ -69,52 +69,50 @@ export default function CardioTab() {
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw a rounded inner container for that "app" look
-    const padding = 100;
-    const cornerRadius = 250;
-    ctx.beginPath();
-    ctx.roundRect(padding, padding, canvas.width - (padding * 2), canvas.height - (padding * 2), cornerRadius);
-    ctx.fillStyle = '#0f172a';
-    ctx.fill();
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 15;
-    ctx.stroke();
+    // Draw circular main frame
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = (canvas.width / 2) - 10;
 
-    // 1. BRANDING
+    // Background circle
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#111827'; // Darker blue-gray
+    ctx.fill();
+    
+    // 1. BRANDING (Top, small but sharp)
     ctx.fillStyle = '#3b82f6';
-    ctx.font = 'black 120px Inter, sans-serif'; 
+    ctx.font = 'bold 30px Inter, sans-serif'; 
     ctx.textAlign = 'center';
-    ctx.fillText('IRONMIND CARDIO', canvas.width / 2, 350);
+    ctx.fillText('IRONMIND CARDIO', centerX, centerY - 250);
 
     // 2. MAIN TIMER (MASSIVE & CENTERED)
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
-    ctx.font = 'black 1400px monospace'; 
-    ctx.fillText(formatTime(time), canvas.width / 2, 1400);
+    ctx.font = '900 230px monospace'; // Slightly reduced size
+    ctx.fillText(formatTime(time), centerX, centerY + 80);
 
-    // 3. STATS BAR (PILL DESIGN)
-    const barY = 1600;
-    const barHeight = 400;
-    ctx.beginPath();
-    ctx.roundRect(400, barY, canvas.width - 800, barHeight, 200);
-    ctx.fillStyle = '#1e293b';
-    ctx.fill();
+    // 3. STATS (Below Timer, high contrast)
+    ctx.fillStyle = '#60a5fa'; // Brighter blue
+    ctx.font = 'bold 38px monospace';
+    const distText = `${stats.distance} KM`;
+    const speedText = `${speed.toFixed(1)} KM/H`;
+    ctx.fillText(distText, centerX - 120, centerY + 180);
+    ctx.fillText(speedText, centerX + 120, centerY + 180);
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'black 160px monospace';
-    ctx.textAlign = 'center';
+    ctx.fillStyle = '#94a3b8';
     let variantLabel = mode === 'bicicleta' ? `L:${load}` : `I:${incline}%`;
-    const liveStats = `${stats.distance}KM  •  ${speed.toFixed(1)}KM/H  •  ${variantLabel}  •  ${heartRate}BPM`;
-    ctx.fillText(liveStats, canvas.width / 2, barY + 260);
+    const footerText = `${variantLabel} • ${heartRate} BPM`;
+    ctx.font = 'bold 32px monospace';
+    ctx.fillText(footerText.toUpperCase(), centerX, centerY + 240);
 
-    // Indicador de Atividade
+    // Status Indicator (Blinking at very bottom)
     if (isActive) {
-      ctx.fillStyle = (Math.floor(Date.now() / 500) % 2 === 0) ? '#22c55e' : '#166534';
+      ctx.fillStyle = (Math.floor(Date.now() / 500) % 2 === 0) ? '#10b981' : '#064e3b';
       ctx.beginPath();
-      ctx.arc(200, 2120, 40, 0, Math.PI * 2);
+      ctx.arc(centerX, centerY + 300, 15, 0, Math.PI * 2);
       ctx.fill();
     }
-
   }, [time, speed, incline, load, mode, isActive, heartRate]);
 
   // Handle PiP stream initialization
@@ -196,9 +194,10 @@ export default function CardioTab() {
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0a0a0a] overflow-hidden relative transition-colors duration-300">
-      {/* Hidden elements for PiP generation */}
-      <canvas ref={canvasRef} width={3600} height={2200} className="hidden" />
-      <video ref={videoRef} className="hidden" playsInline muted />
+      <div className="opacity-0 pointer-events-none absolute -z-50 overflow-hidden w-px h-px">
+        <canvas ref={canvasRef} width={720} height={720} />
+        <video ref={videoRef} playsInline muted />
+      </div>
 
       {/* Bio-Monitor Floating Hud */}
       <AnimatePresence>

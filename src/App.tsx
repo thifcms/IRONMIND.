@@ -159,6 +159,7 @@ export default function App() {
   const [showConfirmClearTraining, setShowConfirmClearTraining] = useState(false);
   const [showConfirmClearDiet, setShowConfirmClearDiet] = useState(false);
   const [showConfirmClearChat, setShowConfirmClearChat] = useState(false);
+  const [showConfirmClearHistory, setShowConfirmClearHistory] = useState(false);
 
   const clearTrainingPlan = () => {
     setTrainingPlan(null);
@@ -177,6 +178,16 @@ export default function App() {
     setChatHistory([initialMessage]);
     localStorage.removeItem('ironmind_chat_history');
     setShowConfirmClearChat(false);
+  };
+
+  const clearHistory = () => {
+    setWeightHistory([]);
+    setMeasurementHistory([]);
+    setLoadHistory([]);
+    localStorage.removeItem('weightHistory');
+    localStorage.removeItem('measurementHistory');
+    localStorage.removeItem('loadHistory');
+    setShowConfirmClearHistory(false);
   };
 
   const updateDietPlan = (plan: DietPlan) => {
@@ -308,18 +319,18 @@ export default function App() {
       </div>
 
       {/* Main Content */}
-      <main className={`flex-1 overflow-hidden relative bg-slate-50`}>
-        {/* Swipe Wrapper - Persistent container to avoid jumps during state change */}
+      <main className="flex-1 overflow-hidden relative bg-slate-50">
         <motion.div 
-          className="h-full w-full relative flex flex-col"
+          className="h-full w-full relative flex flex-col overflow-hidden"
           drag="x"
           dragDirectionLock
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.1}
           onDragEnd={(_, info) => {
-            const threshold = 60;
-            if (info.offset.x > threshold) handleSwipe('right');
-            if (info.offset.x < -threshold) handleSwipe('left');
+            const threshold = 50;
+            const velocityThreshold = 10;
+            if (info.offset.x > threshold && info.velocity.x > velocityThreshold) handleSwipe('right');
+            else if (info.offset.x < -threshold && info.velocity.x < -velocityThreshold) handleSwipe('left');
           }}
         >
           <AnimatePresence>
@@ -401,6 +412,7 @@ export default function App() {
                   setLoadHistory={setLoadHistory}
                   userProfile={userProfile}
                   setUserProfile={setUserProfile}
+                  onClearHistory={() => setShowConfirmClearHistory(true)}
                 />
               )}
             </motion.div>
@@ -410,7 +422,7 @@ export default function App() {
 
       {/* Confirmation Modals */}
       <AnimatePresence>
-        {(showConfirmClearTraining || showConfirmClearDiet || showConfirmClearChat) && (
+        {(showConfirmClearTraining || showConfirmClearDiet || showConfirmClearChat || showConfirmClearHistory) && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -435,6 +447,7 @@ export default function App() {
                 {showConfirmClearChat && (
                   <span>Isso apagará todo o histórico da conversa com o <span translate="no" className="notranslate">IronMind</span>.</span>
                 )}
+                {showConfirmClearHistory && 'Isso apagará permanentemente todo o seu histórico de biometria, medidas e cargas.'}
               </p>
               <div className="flex gap-3">
                 <button 
@@ -442,6 +455,7 @@ export default function App() {
                     setShowConfirmClearTraining(false);
                     setShowConfirmClearDiet(false);
                     setShowConfirmClearChat(false);
+                    setShowConfirmClearHistory(false);
                   }}
                   className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest"
                 >
@@ -452,6 +466,7 @@ export default function App() {
                     if (showConfirmClearTraining) clearTrainingPlan();
                     if (showConfirmClearDiet) clearDietPlan();
                     if (showConfirmClearChat) clearChatHistory();
+                    if (showConfirmClearHistory) clearHistory();
                   }}
                   className="flex-1 py-3 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-100"
                 >

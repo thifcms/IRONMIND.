@@ -36,7 +36,7 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
   };
 
   return (
-    <div className="p-6 pb-20 space-y-6 bg-slate-50 overflow-y-auto h-full transition-colors duration-300">
+    <div className="p-6 pb-20 space-y-6 bg-slate-50 overflow-y-auto h-full transition-colors duration-300 touch-pan-y">
       <header className="flex items-center gap-4">
         <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
           <Video className="w-6 h-6 text-white" />

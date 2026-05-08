@@ -282,7 +282,7 @@ export default function TrainingTab({
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 touch-pan-y">
         {/* Expiration Banner */}
         {isExpired && (
           <motion.div 
@@ -355,14 +355,44 @@ export default function TrainingTab({
            </button>
         </div>
 
-        <div className="space-y-3">
+        <motion.div 
+          key={activeDayIndex}
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: {
+                staggerChildren: 0.1,
+                delayChildren: 0.05
+              }
+            }
+          }}
+          initial="hidden"
+          animate="visible"
+          className="space-y-3"
+        >
           {activeDay.exercises.map((ex) => {
             const sets = completedSets[ex.id] || new Array(ex.sets).fill(false);
             const isCurrentExerciseTimer = activeTimer?.exerciseId === ex.id;
             const videoUrl = resolveVideoUrl(ex);
             
             return (
-              <div key={ex.id} className="bg-white dark:bg-[#121212] rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-4 transition-all hover:border-blue-200 dark:hover:border-blue-900">
+              <motion.div 
+                key={ex.id} 
+                variants={{
+                  hidden: { opacity: 0, y: 15 },
+                  visible: { 
+                    opacity: 1, 
+                    y: 0,
+                    transition: {
+                      type: "spring",
+                      stiffness: 100,
+                      damping: 15
+                    }
+                  }
+                }}
+                className="bg-white dark:bg-[#121212] rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-4 transition-all hover:border-blue-200 dark:hover:border-blue-900"
+              >
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center border border-blue-100 dark:border-blue-900/30 shadow-sm">
@@ -464,10 +494,10 @@ export default function TrainingTab({
                     </div>
                   )}
                 </div>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       </div>
 
       {/* Add Exercise Modal Overlay */}
