@@ -1,0 +1,633 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { TrainingPlan, Exercise } from '../types';
+import { Play, Dumbbell, Clock, Check, Plus, Trash2, StickyNote, X, TrendingUp, Target, Search, ChevronRight, Filter } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { EXERCISE_LIBRARY, LibraryExercise, MUSCLE_GROUPS } from '../constants/exercises';
+
+export default function TrainingTab({ 
+  plan, 
+  onUpdatePlan, 
+  onClearPlan,
+  onRequestNew
+}: { 
+  plan: TrainingPlan; 
+  onUpdatePlan: (p: TrainingPlan) => void;
+  onClearPlan: () => void;
+  onRequestNew: () => void;
+}) {
+  const [activeDayIndex, setActiveDayIndex] = useState(0);
+  const [completedSets, setCompletedSets] = useState<Record<string, boolean[]>>({});
+
+  // Reset and load progress based on plan
+  useEffect(() => {
+    const saved = localStorage.getItem(`trainingProgress_${plan.id}`);
+    setCompletedSets(saved ? JSON.parse(saved) : {});
+  }, [plan.id]);
+
+  // Persist progress specifically for this plan
+  useEffect(() => {
+    if (Object.keys(completedSets).length > 0 || localStorage.getItem(`trainingProgress_${plan.id}`)) {
+      localStorage.setItem(`trainingProgress_${plan.id}`, JSON.stringify(completedSets));
+    }
+  }, [completedSets, plan.id]);
+
+  const [activeTimer, setActiveTimer] = useState<{ exerciseId: string; time: number } | null>(null);
+  const [isAddingExercise, setIsAddingExercise] = useState(false);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [selectedLibEx, setSelectedLibEx] = useState<LibraryExercise | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterMuscle, setFilterMuscle] = useState<string | null>(null);
+  const [editingNotes, setEditingNotes] = useState<string | null>(null);
+
+  const activeDay = plan.days[activeDayIndex] || plan.days[0];
+
+  const progress = useMemo(() => {
+    if (!activeDay) return 0;
+    const totalSets = activeDay.exercises.reduce((acc, ex) => acc + ex.sets, 0);
+    if (totalSets === 0) return 0;
+    
+    const completed = activeDay.exercises.reduce((acc, ex) => {
+      const sets = completedSets[ex.id] || [];
+      return acc + sets.filter(s => s).length;
+    }, 0);
+    
+    return Math.round((completed / totalSets) * 100);
+  }, [activeDay, completedSets]);
+
+  const removeExercise = (id: string, name: string) => {
+    // Se o ID for instável (comum em IAs), tentamos remover por nome + id
+    const newDays = plan.days.map((day, idx) => {
+      if (idx === activeDayIndex) {
+        return {
+          ...day,
+          exercises: day.exercises.filter(ex => ex.id !== id)
+        };
+      }
+      return day;
+    });
+    onUpdatePlan({ ...plan, days: newDays });
+  };
+
+  const addExercise = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const newEx: Exercise = {
+      id: crypto.randomUUID(),
+      name: formData.get('name') as string,
+      sets: Number(formData.get('sets')),
+      reps: formData.get('reps') as string,
+      weight: formData.get('weight') as string || '',
+    };
+
+    const newDays = plan.days.map((day, idx) => {
+      if (idx === activeDayIndex) {
+        return {
+          ...day,
+          exercises: [...day.exercises, newEx]
+        };
+      }
+      return day;
+    });
+
+    onUpdatePlan({ ...plan, days: newDays });
+    setIsAddingExercise(false);
+  };
+
+  const addFromLibrary = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedLibEx) return;
+
+    const formData = new FormData(e.currentTarget);
+    const newEx: Exercise = {
+      id: crypto.randomUUID(),
+      name: selectedLibEx.name,
+      sets: Number(formData.get('sets')),
+      reps: formData.get('reps') as string,
+      weight: formData.get('weight') as string || '',
+      videoUrl: selectedLibEx.videoUrl
+    };
+
+    const newDays = plan.days.map((day, idx) => {
+      if (idx === activeDayIndex) {
+        return {
+          ...day,
+          exercises: [...day.exercises, newEx]
+        };
+      }
+      return day;
+    });
+
+    onUpdatePlan({ ...plan, days: newDays });
+    setSelectedLibEx(null);
+    setIsLibraryOpen(false);
+  };
+
+  const filteredLibrary = useMemo(() => {
+    return EXERCISE_LIBRARY.filter(ex => {
+      const matchesSearch = ex.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesMuscle = !filterMuscle || ex.muscle === filterMuscle;
+      return matchesSearch && matchesMuscle;
+    });
+  }, [searchTerm, filterMuscle]);
+
+  const updateNotes = (id: string, notes: string) => {
+    const newDays = plan.days.map(day => ({
+      ...day,
+      exercises: day.exercises.map(ex => ex.id === id ? { ...ex, notes } : ex)
+    }));
+    onUpdatePlan({ ...plan, days: newDays });
+    setEditingNotes(null);
+  };
+
+  // Request Notification Permission on Mount
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  const sendNotification = useCallback((title: string, body: string) => {
+    if (!("Notification" in window)) return;
+    
+    if (Notification.permission === "granted") {
+      try {
+        const notif = new Notification(title, { 
+          body, 
+          icon: 'https://cdn-icons-png.flaticon.com/512/3043/3043232.png',
+          silent: false,
+          tag: 'ironmind-rest'
+        });
+        notif.onclick = () => window.focus();
+      } catch (e) {
+        console.error("Error showing notification", e);
+      }
+    }
+  }, []);
+
+  // Sound generator
+  const playBeep = useCallback(() => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      const triggerBeep = (timeOffset: number) => {
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime + timeOffset);
+        oscillator.start(audioCtx.currentTime + timeOffset);
+        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime + timeOffset);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + timeOffset + 0.3);
+        oscillator.stop(audioCtx.currentTime + timeOffset + 0.3);
+      };
+
+      // Double beep for better attention
+      triggerBeep(0);
+      triggerBeep(0.4);
+    } catch (e) {
+      console.warn("Audio context not allowed yet", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    let interval: any;
+    if (activeTimer && activeTimer.time > 0) {
+      interval = setInterval(() => {
+        setActiveTimer(prev => prev ? { ...prev, time: prev.time - 1 } : null);
+      }, 1000);
+    } else if (activeTimer && activeTimer.time === 0) {
+      playBeep();
+      const exercise = plan.days.flatMap(d => d.exercises).find(e => e.id === activeTimer.exerciseId);
+      sendNotification("Descanso Finalizado!", `Hora da próxima série de ${exercise?.name || 'exercício'}`);
+      setActiveTimer(null);
+    }
+    return () => clearInterval(interval);
+  }, [activeTimer, playBeep, sendNotification, plan.days]);
+
+  const toggleSet = (exerciseId: string, setIndex: number, totalSets: number) => {
+    setCompletedSets(prev => {
+      const exerciseSets = prev[exerciseId] ? [...prev[exerciseId]] : new Array(totalSets).fill(false);
+      const newSets = [...exerciseSets];
+      newSets[setIndex] = !newSets[setIndex];
+      
+      // Start timer if set was completed (checked)
+      if (newSets[setIndex]) {
+        setActiveTimer({ exerciseId, time: 60 });
+      }
+      
+      return { ...prev, [exerciseId]: newSets };
+    });
+  };
+
+  const resetTrainingProgress = () => {
+    setCompletedSets({});
+    localStorage.removeItem(`trainingProgress_${plan.id}`);
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-slate-50">
+      {/* Plan Header */}
+      <div className="p-4 bg-white border-b border-slate-200 flex flex-col gap-3">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Protocolo Ativo</p>
+            <h2 className="text-xl font-[1000] text-slate-900 tracking-tighter italic uppercase leading-none">{plan.name}</h2>
+          </div>
+        </div>
+        
+        <div className="flex flex-col items-center gap-1.5 mt-1 max-w-xs mx-auto">
+          {/* Base do Triângulo Invertido: 2 botões largos */}
+          <div className="flex gap-1.5 w-full">
+            <button 
+              onClick={onRequestNew}
+              className="flex-1 px-2 py-3 bg-slate-100 text-slate-600 rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-blue-50 hover:text-blue-600 transition-colors border border-slate-200"
+            >
+              Novo Protocolo
+            </button>
+            <button 
+              onClick={resetTrainingProgress}
+              className="flex-1 px-2 py-3 bg-rose-50 text-rose-600 rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-rose-100 transition-colors border border-rose-100"
+            >
+              Reiniciar Hoje
+            </button>
+          </div>
+          {/* Ponta do Triângulo Invertido: 1 botão centralizado e mais estreito */}
+          <button 
+            onClick={onClearPlan}
+            className="w-4/5 px-2 py-2 bg-slate-900 text-white rounded-xl text-[8px] font-black uppercase tracking-widest hover:bg-slate-800 transition-colors border border-slate-900 shadow-sm"
+          >
+            Limpar Protocolo
+          </button>
+        </div>
+      </div>
+
+      {/* Days Sub-tabs */}
+      <div className="flex bg-white px-2 py-2 gap-2 overflow-x-auto border-b border-slate-200 sticky top-0 z-10 no-scrollbar">
+        {plan.days.map((day, idx) => (
+          <button
+            key={idx}
+            onClick={() => setActiveDayIndex(idx)}
+            className={`flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+              activeDayIndex === idx 
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' 
+                : 'bg-slate-100 text-slate-400'
+            }`}
+          >
+            {day.label.split('-')[0].trim() || `Treino ${String.fromCharCode(65 + idx)}`}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+        {/* Progress Tracker */}
+        <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm overflow-hidden relative group">
+          <div className="flex justify-between items-end mb-3">
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Status do Treino</p>
+              <h4 className="text-2xl font-[1000] text-slate-900 tracking-tighter italic uppercase leading-none">
+                {progress}% <span className="text-blue-600">Completo</span>
+              </h4>
+            </div>
+            <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-200">
+               <Target className={`w-5 h-5 transition-colors ${progress === 100 ? 'text-emerald-500' : 'text-slate-300'}`} />
+            </div>
+          </div>
+          
+          <div className="h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ type: 'spring', damping: 20, stiffness: 100 }}
+              className={`h-full relative ${progress === 100 ? 'bg-emerald-500' : 'bg-blue-600'}`}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/20" />
+            </motion.div>
+          </div>
+          
+          <p className="mt-3 text-[9px] font-bold text-slate-400 uppercase tracking-[0.15em] flex items-center gap-1.5">
+            {progress === 100 
+              ? 'Protocolo Finalizado. Excelente Trabalho.' 
+              : 'Execute cada série com técnica máxima.'}
+          </p>
+        </div>
+
+        {/* Day Title and Add Button */}
+        <div className="flex items-center justify-between mb-2">
+           <div>
+             <h3 className="text-sm font-black text-blue-600 uppercase tracking-tighter italic">
+               {activeDay.label}
+             </h3>
+             <p className="text-[10px] text-slate-400 font-medium">{activeDay.exercises.length} exercícios planejados</p>
+           </div>
+           <button 
+             onClick={() => setIsLibraryOpen(true)}
+             className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-colors shadow-sm"
+           >
+             <Plus className="w-3.5 h-3.5" />
+             Monte seu Treino
+           </button>
+        </div>
+
+        <div className="space-y-3">
+          {activeDay.exercises.map((ex) => {
+            const sets = completedSets[ex.id] || new Array(ex.sets).fill(false);
+            const isCurrentExerciseTimer = activeTimer?.exerciseId === ex.id;
+            
+            return (
+              <div key={ex.id} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col gap-4 transition-all hover:border-blue-200">
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center border border-blue-100 shadow-sm">
+                      <Dumbbell className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-base text-slate-900 leading-tight">{ex.name}</h3>
+                      <div className="flex gap-2 mt-1">
+                        <span className="text-[9px] font-black text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded leading-none uppercase tracking-widest">
+                          {ex.sets} X {ex.reps}
+                        </span>
+                        {ex.weight && (
+                          <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded leading-none uppercase tracking-widest">
+                            {ex.weight}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setEditingNotes(editingNotes === ex.id ? null : ex.id)}
+                      className={`w-9 h-9 border rounded-xl flex items-center justify-center transition-colors ${
+                        ex.notes ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100'
+                      }`}
+                    >
+                      <StickyNote className="w-4 h-4" />
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        removeExercise(ex.id, ex.name);
+                      }}
+                      className="w-9 h-9 bg-red-50 border border-red-100 rounded-xl flex items-center justify-center text-red-500 hover:bg-red-100 transition-all active:scale-95 z-20"
+                      title="Remover exercício"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    {ex.videoUrl && (
+                      <a 
+                        href={ex.videoUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="w-9 h-9 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center text-blue-600 hover:bg-white transition-colors"
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {editingNotes === ex.id && (
+                  <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 animate-in fade-in slide-in-from-top-2">
+                    <textarea 
+                      autoFocus
+                      defaultValue={ex.notes}
+                      onBlur={(e) => updateNotes(ex.id, e.target.value)}
+                      placeholder="Adicione suas anotações aqui... (ex: 'Baixar 2kg na próxima')"
+                      className="w-full bg-transparent border-none text-[11px] text-amber-900 placeholder:text-amber-400 focus:ring-0 resize-none min-h-[60px]"
+                    />
+                  </div>
+                )}
+
+                {ex.notes && editingNotes !== ex.id && (
+                  <div className="px-3 py-2 bg-slate-50 rounded-lg text-[10px] text-slate-500 italic border-l-2 border-amber-300">
+                    "{ex.notes}"
+                  </div>
+                )}
+                
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    {sets.map((done, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => toggleSet(ex.id, idx, ex.sets)}
+                        className={`w-10 h-10 rounded-xl border-2 transition-all flex items-center justify-center font-black text-[11px] ${
+                          done 
+                            ? 'bg-blue-600 border-blue-600 text-white' 
+                            : 'bg-white border-slate-100 text-slate-400 hover:border-blue-200'
+                        }`}
+                      >
+                        {done ? <Check className="w-5 h-5 stroke-[3]" /> : idx + 1}
+                      </button>
+                    ))}
+                  </div>
+
+                  {isCurrentExerciseTimer && (
+                    <div className="flex items-center justify-between bg-blue-600 text-white p-3 rounded-xl animate-pulse">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        <span className="text-[9px] font-black uppercase tracking-widest">Descanso</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xl font-mono font-black tracking-tighter">
+                        00:{activeTimer.time.toString().padStart(2, '0')}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Add Exercise Modal Overlay */}
+      {isAddingExercise && (
+        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end justify-center">
+          <div className="w-full bg-white rounded-t-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter italic">Novo Exercício</h3>
+              <button 
+                onClick={() => setIsAddingExercise(false)}
+                className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={addExercise} className="space-y-4">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Nome do Exercício</label>
+                <input required name="name" type="text" className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl text-sm focus:border-blue-500 focus:outline-none" placeholder="Ex: Supino Inclinado" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Séries</label>
+                  <input required name="sets" type="number" className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl text-sm focus:border-blue-500 focus:outline-none" defaultValue="3" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Repetições</label>
+                  <input required name="reps" type="text" className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl text-sm focus:border-blue-500 focus:outline-none" defaultValue="12" />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Peso Inicial (Opcional)</label>
+                <input name="weight" type="text" className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl text-sm focus:border-blue-500 focus:outline-none" placeholder="Ex: 20kg cada lado" />
+              </div>
+              <button type="submit" className="w-full py-4 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest text-[11px] shadow-xl hover:bg-slate-800 transition-all mt-4">
+                Confirmar Adição
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Exercise Library Modal */}
+      <AnimatePresence>
+        {isLibraryOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex flex-col"
+          >
+            <div className="flex-1 overflow-hidden flex flex-col max-w-lg mx-auto w-full bg-white sm:my-8 sm:rounded-[2.5rem] shadow-2xl relative">
+              {/* Library Header */}
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white/80 sticky top-0 z-10 backdrop-blur-sm">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter italic">Biblioteca de Exercícios</h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Selecione para configurar séries e reps</p>
+                </div>
+                <button 
+                  onClick={() => setIsLibraryOpen(false)}
+                  className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:bg-red-50 hover:text-red-500 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Filters & Search */}
+              <div className="px-6 py-4 space-y-3 bg-slate-50 border-b border-slate-100">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input 
+                    type="text" 
+                    placeholder="Buscar exercício..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold focus:border-blue-500 focus:ring-0 outline-none"
+                  />
+                </div>
+                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                  <button 
+                    onClick={() => setFilterMuscle(null)}
+                    className={`flex-none px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${
+                      !filterMuscle ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-400 border-slate-200'
+                    }`}
+                  >
+                    Tudo
+                  </button>
+                  {MUSCLE_GROUPS.map(muscle => (
+                    <button 
+                      key={muscle}
+                      onClick={() => setFilterMuscle(muscle)}
+                      className={`flex-none px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${
+                        filterMuscle === muscle ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-400 border-slate-200'
+                      }`}
+                    >
+                      {muscle}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Exercises List */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {filteredLibrary.length > 0 ? (
+                  filteredLibrary.map(ex => (
+                    <button
+                      key={ex.name}
+                      onClick={() => setSelectedLibEx(ex)}
+                      className="w-full p-4 bg-slate-50 hover:bg-blue-50 border border-slate-100 hover:border-blue-200 rounded-2xl flex items-center justify-between group transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-slate-200 group-hover:border-blue-200">
+                          <Dumbbell className="w-5 h-5 text-slate-400 group-hover:text-blue-500" />
+                        </div>
+                        <div className="text-left">
+                          <h4 className="text-sm font-bold text-slate-900">{ex.name}</h4>
+                          <span className="text-[9px] font-black uppercase text-blue-600 tracking-widest">{ex.muscle}</span>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transform group-hover:translate-x-1 transition-all" />
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-xs font-bold text-slate-400 uppercase">Nenhum exercício encontrado</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Configure Library Exercise Modal */}
+      <AnimatePresence>
+        {selectedLibEx && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110] flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="w-full max-w-sm bg-white rounded-[2rem] p-8 shadow-2xl"
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h3 className="text-xl font-[1000] text-slate-900 uppercase tracking-tighter italic leading-none">{selectedLibEx.name}</h3>
+                  <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1">{selectedLibEx.muscle}</p>
+                </div>
+                <button 
+                  onClick={() => setSelectedLibEx(null)}
+                  className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-500"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={addFromLibrary} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Séries</label>
+                    <input required name="sets" type="number" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none" defaultValue="3" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Repetições</label>
+                    <input required name="reps" type="text" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none" defaultValue="12" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Carga (Opcional)</label>
+                  <input name="weight" type="text" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none" placeholder="Ex: 20kg" />
+                </div>
+                <button type="submit" className="w-full py-4 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest text-[11px] shadow-xl hover:bg-blue-600 transition-all mt-4">
+                  Adicionar ao Treino
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+

@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="notranslate" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="google" content="notranslate">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>IronMind TOTAL - Complete Edition</title>
+    
+    <!-- Tailwind CSS 4.0 via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100..900;1,100..900&display=swap');
+        
+        :root {
+          --tab-bar-height: 70px;
+          --header-height: 60px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .notranslate { translate: no; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-in {
+            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        input:focus, textarea:focus {
+            font-size: 16px !important; /* Prevents auto-zoom on iOS */
+        }
+        
+        .tab-content {
+          height: calc(100vh - var(--header-height) - var(--tab-bar-height) - 20px);
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        /* 3D Neumorphism / Claymorphism Button Style */
+        .btn-3d {
+          box-shadow: 4px 4px 0px #cbd5e1;
+          transition: all 0.1s active:translate-x-[2px] active:translate-y-[2px] active:shadow-none;
+        }
+
+        .btn-3d-blue {
+          box-shadow: 4px 4px 0px #1e40af;
+          transition: all 0.1s active:translate-x-[2px] active:translate-y-[2px] active:shadow-none;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 overflow-hidden">
+    <div id="root"></div>
+
+    <!-- React, Lucide, Recharts via ESM -->
+    <script type="module">
+        import React, { useState, useEffect, useMemo, useRef, useCallback } from 'https://esm.sh/react@18.2.0';
+        import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
+        import * as LucideImport from 'https://esm.sh/lucide-react@0.344.0';
+        import { motion, AnimatePresence } from 'https://esm.sh/framer-motion@11.0.8';
+        import { 
+          LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, 
+          ResponsiveContainer, AreaChart, Area 
+        } from 'https://esm.sh/recharts@2.12.2';
+        import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
+
+        const Lucide = LucideImport;
+        const { 
+          Dumbbell, MessageSquare, Timer, Video, User, ChevronRight, 
+          Plus, Trash2, CheckCircle2, TrendingUp, Search, X, 
+          Play, Info, ChevronLeft, Target, Key, AlertCircle,
+          Flame, Utensils, Music, Heart, ExternalLink, Send,
+          Check, Loader2, Clock, Scale, Ruler, Award, Zap,
+          Wind, RotateCcw, Pause, StickyNote, Filter, Camera,
+          AlertTriangle
+        } = Lucide;
+
+        // --- BIBLIOTECA DE EXERCÍCIOS COMPLETA ---
+        const EXERCISE_LIBRARY = [
+            { name: 'Supino Reto (Barra)', muscle: 'Peito', videoUrl: 'https://www.youtube.com/watch?v=scfJ-XN9-nU' },
+            { name: 'Supino Inclinado (Barra)', muscle: 'Peito', videoUrl: 'https://www.youtube.com/watch?v=SrqOu55lr6A' },
+            { name: 'Supino Reto (Haltere)', muscle: 'Peito', videoUrl: 'https://www.youtube.com/watch?v=VmBQ6scIbe4' },
+            { name: 'Supino Inclinado (Haltere)', muscle: 'Peito', videoUrl: 'https://www.youtube.com/watch?v=5ceR_Kdfid0' },
+            { name: 'Crucifixo Reto', muscle: 'Peito' },
+            { name: 'Crossover (Polia Alta)', muscle: 'Peito' },
+            { name: 'Fly (Máquina)', muscle: 'Peito' },
+            { name: 'Flexão de Braços', muscle: 'Peito' },
+            { name: 'Puxada Aberta (Pulley)', muscle: 'Costas' },
+            { name: 'Remada Curvada (Barra)', muscle: 'Costas' },
+            { name: 'Remada Unilateral (Serrote)', muscle: 'Costas' },
+            { name: 'Puxada com Triângulo', muscle: 'Costas' },
+            { name: 'Remada Baixa (Triângulo)', muscle: 'Costas' },
+            { name: 'Levantamento Terra', muscle: 'Costas' },
+            { name: 'Pull Down (Corda)', muscle: 'Costas' },
+            { name: 'Barra Fixa', muscle: 'Costas' },
+            { name: 'Agachamento Livre', muscle: 'Pernas' },
+            { name: 'Leg Press 45', muscle: 'Pernas' },
+            { name: 'Extensora', muscle: 'Pernas' },
+            { name: 'Flexora Deitada', muscle: 'Pernas' },
+            { name: 'Flexora Sentada', muscle: 'Pernas' },
+            { name: 'Afundo (Haltere)', muscle: 'Pernas' },
+            { name: 'Stiff (Barra)', muscle: 'Pernas' },
+            { name: 'Cadeira Abdutora', muscle: 'Pernas' },
+            { name: 'Cadeira Adutora', muscle: 'Pernas' },
+            { name: 'Gêmeos em Pé', muscle: 'Pernas' },
+            { name: 'Gêmeos Sentado', muscle: 'Pernas' },
+            { name: 'Desenvolvimento (Barra)', muscle: 'Ombros' },
+            { name: 'Elevação Lateral', muscle: 'Ombros' },
+            { name: 'Elevação Frontal', muscle: 'Ombros' },
+            { name: 'Posterior de Ombro (Corda)', muscle: 'Ombros' },
+            { name: 'Encolhimento (Haltere)', muscle: 'Ombros' },
+            { name: 'Rosca Direta (Barra E-Z)', muscle: 'Bíceps' },
+            { name: 'Rosca Alternada', muscle: 'Bíceps' },
+            { name: 'Rosca Martelo', muscle: 'Bíceps' },
+            { name: 'Rosca Scott', muscle: 'Bíceps' },
+            { name: 'Tríceps Pulley (Barra)', muscle: 'Tríceps' },
+            { name: 'Tríceps Corda', muscle: 'Tríceps' },
+            { name: 'Tríceps Testa', muscle: 'Tríceps' },
+            { name: 'Mergulho (Paralelas)', muscle: 'Tríceps' },
+            { name: 'Abdominal Supra', muscle: 'Abdômen' },
+            { name: 'Abdominal Infra', muscle: 'Abdômen' },
+            { name: 'Plancha Isométrica', muscle: 'Abdômen' }
+        ];
+
+        const MUSCLE_GROUPS = Array.from(new Set(EXERCISE_LIBRARY.map(ex => ex.muscle)));
+
+        // --- ENUMS SIMULADOS ---
+        const Tab = {
+          TREINADOR: 'treinador',
+          AQUECIMENTO: 'aquecimento',
+          TREINO: 'treino',
+          VIDEOS: 'videos',
+          CARDIO: 'cardio',
+          DIETA: 'dieta',
+          SOM: 'som',
+          HISTORICO: 'historico'
+        };
+
+        const exportApp = () => {
+          const html = document.documentElement.outerHTML;
+          const blob = new Blob([html], { type: 'text/html' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'IronMind_TOTAL.html';
+          a.click();
+        };
+
+        // --- COMPONENTE PRINCIPAL ---
+        function App() {
+            const [apiKey, setApiKey] = useState(() => localStorage.getItem('GEMINI_API_KEY') || '');
+            const [showKeyModal, setShowKeyModal] = useState(!apiKey);
+            const [activeTab, setActiveTab] = useState(Tab.TREINADOR);
+            const [isOpening, setIsOpening] = useState(true);
+            const [sessionTime, setSessionTime] = useState(0);
+
+            // Estados de Dados
+            const [trainingPlan, setTrainingPlan] = useState(() => {
+                const saved = localStorage.getItem('trainingPlan');
+                return saved ? JSON.parse(saved) : null;
+            });
+            const [dietPlan, setDietPlan] = useState(() => {
+                const saved = localStorage.getItem('dietPlan');
+                return saved ? JSON.parse(saved) : null;
+            });
+            const [chatHistory, setChatHistory] = useState(() => {
+                const saved = localStorage.getItem('chatHistory');
+                return saved ? JSON.parse(saved) : [
+                    { role: 'model', text: 'Olá! Sou o <span translate="no" class="notranslate">IronMind</span>, seu treinador pessoal. Vamos começar? Posso montar um treino, uma dieta ou analisar seu progresso.' }
+                ];
+            });
+            const [weightHistory, setWeightHistory] = useState(() => {
+                const saved = localStorage.getItem('weightHistory');
+                return saved ? JSON.parse(saved) : [{ date: Date.now(), weight: 80 }];
+            });
+            const [measurementHistory, setMeasurementHistory] = useState(() => {
+                const saved = localStorage.getItem('measurementHistory');
+                return saved ? JSON.parse(saved) : [];
+            });
+            const [loadHistory, setLoadHistory] = useState(() => {
+                const saved = localStorage.getItem('loadHistory');
+                return saved ? JSON.parse(saved) : [];
+            });
+            const [userProfile, setUserProfile] = useState(() => {
+                const saved = localStorage.getItem('userProfile');
+                return saved ? JSON.parse(saved) : { height: 180 };
+            });
+
+            // Persistência
+            useEffect(() => { localStorage.setItem('chatHistory', JSON.stringify(chatHistory)); }, [chatHistory]);
+            useEffect(() => { localStorage.setItem('trainingPlan', JSON.stringify(trainingPlan)); }, [trainingPlan]);
+            useEffect(() => { localStorage.setItem('dietPlan', JSON.stringify(dietPlan)); }, [dietPlan]);
+            useEffect(() => { localStorage.setItem('weightHistory', JSON.stringify(weightHistory)); }, [weightHistory]);
+            useEffect(() => { localStorage.setItem('measurementHistory', JSON.stringify(measurementHistory)); }, [measurementHistory]);
+            useEffect(() => { localStorage.setItem('loadHistory', JSON.stringify(loadHistory)); }, [loadHistory]);
+            useEffect(() => { localStorage.setItem('userProfile', JSON.stringify(userProfile)); }, [userProfile]);
+
+            // Timer de Sessão
+            useEffect(() => {
+                const interval = setInterval(() => setSessionTime(p => p + 1), 1000);
+                return () => clearInterval(interval);
+            }, []);
+
+            const formatSessionTime = (s) => {
+                const mins = Math.floor(s / 60);
+                const secs = s % 60;
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            };
+
+            const buildManualTraining = () => {
+                const plan = {
+                    id: Date.now().toString(),
+                    name: 'Treino Manual',
+                    createdAt: Date.now(),
+                    days: [
+                        { label: 'Treino A', exercises: [] },
+                        { label: 'Treino B', exercises: [] }
+                    ]
+                };
+                setTrainingPlan(plan);
+                setActiveTab(Tab.TREINO);
+            };
+
+            const handleAcceptTraining = (plan) => {
+                setTrainingPlan(plan);
+                setActiveTab(Tab.TREINO);
+            };
+
+            const handleAcceptDiet = (plan) => {
+                setDietPlan(plan);
+                setActiveTab(Tab.DIETA);
+            };
+
+            return React.createElement(React.Fragment, null,
+                React.createElement(AnimatePresence, null,
+                    isOpening && React.createElement(SplashScreen, { onComplete: () => setIsOpening(false) })
+                ),
+
+                React.createElement('div', { className: 'flex flex-col h-screen max-w-md mx-auto bg-white shadow-2xl relative overflow-hidden' },
+                    // Header
+                    React.createElement('header', { className: 'px-4 py-3 flex justify-between items-center bg-slate-100 border-b border-slate-200 z-30' },
+                        React.createElement('div', { className: 'flex items-center gap-3 bg-gradient-to-br from-slate-200 to-slate-300 p-2 px-5 rounded-sm shadow-[4px_4px_0px_#475569] border border-slate-300' },
+                            React.createElement('div', { className: 'w-6 h-6 bg-slate-900 rounded-px flex items-center justify-center' },
+                                React.createElement(Dumbbell, { className: 'w-4 h-4 text-white transform -rotate-12' })
+                            ),
+                            React.createElement('h1', { className: 'font-black text-xl uppercase italic tracking-tighter notranslate', translate: 'no' }, 
+                                React.createElement('span', { className: 'text-slate-900' }, 'IRON'),
+                                React.createElement('span', { className: 'text-blue-600' }, 'MIND')
+                            )
+                        ),
+                        React.createElement('div', { className: 'flex items-center gap-2' },
+                            React.createElement('div', { className: 'bg-white px-2 py-1 rounded-lg border-2 border-slate-200 flex items-center gap-1.5 shadow-[2px_2px_0px_#cbd5e1]' },
+                                React.createElement(Timer, { className: 'w-3 h-3 text-blue-500 animate-pulse' }),
+                                React.createElement('span', { className: 'text-[9px] font-black font-mono' }, formatSessionTime(sessionTime))
+                            ),
+                            React.createElement('button', {
+                                onClick: () => setShowKeyModal(true),
+                                className: 'p-2 bg-white rounded-lg border-2 border-slate-200 text-slate-400'
+                            }, React.createElement(Key, { className: 'w-4 h-4' }))
+                        )
+                    ),
+
+                    // Main
+                    React.createElement('main', { className: 'flex-1 overflow-hidden relative pb-16' },
+                        React.createElement(AnimatePresence, { mode: 'wait' },
+                          React.createElement(motion.div, { 
+                            key: activeTab,
+                            initial: { opacity: 0, x: 10 },
+                            animate: { opacity: 1, x: 0 },
+                            exit: { opacity: 0, x: -10 },
+                            className: 'h-full tab-content'
+                          },
+                            activeTab === Tab.TREINADOR && React.createElement(CoachTab, { 
+                                history: chatHistory, 
+                                setHistory: setChatHistory, 
+                                apiKey, 
+                                onAcceptTraining: handleAcceptTraining,
+                                onAcceptDiet: handleAcceptDiet,
+                                onClearChat: () => { setChatHistory([{ role: 'model', text: 'Conversa resetada. Como posso ajudar?' }]); localStorage.removeItem('chatHistory'); }
+                            }),
+                            activeTab === Tab.AQUECIMENTO && React.createElement(WarmupTab, null),
+                            activeTab === Tab.TREINO && React.createElement(TrainingTab, { 
+                                plan: trainingPlan, 
+                                onUpdatePlan: setTrainingPlan,
+                                onRequestNew: () => setActiveTab(Tab.TREINADOR),
+                                onClearPlan: () => { setTrainingPlan(null); localStorage.removeItem('trainingPlan'); },
+                                buildManualTraining
+                            }),
+                            activeTab === Tab.VIDEOS && (trainingPlan ? React.createElement(VideosTab, { plan: trainingPlan }) : React.createElement(EmptyState, { type: 'vídeos', onClick: () => setActiveTab(Tab.TREINADOR) })),
+                            activeTab === Tab.DIETA && React.createElement(DietTab, { 
+                                plan: dietPlan, 
+                                apiKey,
+                                onClearPlan: () => { setDietPlan(null); localStorage.removeItem('dietPlan'); },
+                                onRequestNew: () => setActiveTab(Tab.TREINADOR)
+                            }),
+                            activeTab === Tab.CARDIO && React.createElement(CardioTab, null),
+                            activeTab === Tab.SOM && React.createElement(MusicTab, null),
+                            activeTab === Tab.HISTORICO && React.createElement(HistoryTab, {
+                                weightHistory, setWeightHistory,
+                                measurementHistory, setMeasurementHistory,
+                                loadHistory, setLoadHistory,
+                                userProfile, setUserProfile
+                            })
+                          )
+                        )
+                    ),
+
+                    // Tabs
+                    React.createElement('nav', { className: 'fixed bottom-0 left-0 right-0 max-w-md mx-auto glass border-t border-slate-100 flex justify-around p-2 z-40' },
+                        [
+                            { id: Tab.TREINADOR, icon: MessageSquare, label: 'Coach' },
+                            { id: Tab.TREINO, icon: Dumbbell, label: 'Treino' },
+                            { id: Tab.VIDEOS, icon: Play, label: 'Vídeos' },
+                            { id: Tab.DIETA, icon: Utensils, label: 'Dieta' },
+                            { id: Tab.SOM, icon: Music, label: 'Som' },
+                            { id: Tab.HISTORICO, icon: TrendingUp, label: 'Evol.' }
+                        ].map(tab => React.createElement('button', {
+                            key: tab.id,
+                            onClick: () => setActiveTab(tab.id),
+                            className: `flex flex-col items-center gap-1 transition-all ${activeTab === tab.id ? 'text-blue-600 scale-110' : 'text-slate-400'}`
+                        }, 
+                            React.createElement(tab.icon, { className: 'w-5 h-5' }),
+                            React.createElement('span', { className: 'text-[9px] font-black uppercase tracking-tighter' }, tab.label)
+                        ))
+                    ),
+
+                    // Modals
+                    showKeyModal && React.createElement(APIKeyModal, { 
+                        onSave: (k) => { setApiKey(k); localStorage.setItem('GEMINI_API_KEY', k); setShowKeyModal(false); },
+                        onClose: () => setShowKeyModal(false)
+                    })
+                )
+            );
+        }
+
+        // --- SUB-COMPONENTES ---
+
+        function CoachTab({ history, setHistory, apiKey, onAcceptTraining, onAcceptDiet, onClearChat }) {
+            const [input, setInput] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            const scrollRef = useRef(null);
+
+            useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }, [history]);
+
+            const handleSend = async () => {
+                if (!input.trim() || !apiKey || isLoading) return;
+                const newMsg = { role: 'user', text: input };
+                setHistory(p => [...p, newMsg]);
+                setInput('');
+                setIsLoading(true);
+
+                try {
+                    const genAI = new GoogleGenerativeAI(apiKey);
+                    const model = genAI.getGenerativeModel({ 
+                        model: "gemini-1.5-flash",
+                        systemInstruction: "Você é o IronMind Coach, especialista em biomecânica e nutrição. Seja motivador e técnico. Formate sua resposta como texto rico. Se detectar que o usuário quer um novo treino completo, forneça o JSON de um objeto TrainingPlan (id, name, createdAt, days:[{label, exercises:[{id, name, sets, reps, weight}]}]) cercado por triple-backticks json no final. O mesmo para DietPlan."
+                    });
+
+                    const chat = model.startChat({
+                        history: history.filter(h => h.role !== 'proposal').map(h => ({
+                            role: h.role === 'model' ? 'model' : 'user',
+                            parts: [{ text: h.text }]
+                        }))
+                    });
+
+                    const result = await chat.sendMessage(input);
+                    const text = result.response.text();
+                    
+                    // Extrair JSON se houver
+                    const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
+                    let cleanText = text.replace(/```json\n[\s\S]*?\n```/, "").trim();
+                    
+                    const responseMsg = { role: 'model', text: cleanText };
+                    
+                    if (jsonMatch) {
+                        const data = JSON.parse(jsonMatch[1]);
+                        responseMsg.proposal = { 
+                            type: data.days ? 'training' : 'diet', 
+                            data 
+                        };
+                    }
+                    
+                    setHistory(p => [...p, responseMsg]);
+                } catch (e) {
+                    setHistory(p => [...p, { role: 'model', text: 'Erro de conexão: ' + e.message }]);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            return React.createElement('div', { className: 'flex flex-col h-full bg-slate-50' },
+                React.createElement('div', { className: 'p-2 px-4 flex justify-between items-center bg-white border-b' },
+                    React.createElement('button', { onClick: exportApp, className: 'text-[9px] font-black uppercase bg-blue-600 text-white px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-2' }, 
+                      React.createElement(ExternalLink, { className: 'w-3 h-3' }), 'Baixar App'
+                    ),
+                    React.createElement('button', { onClick: onClearChat, className: 'text-[9px] font-black uppercase bg-slate-100 border px-2 py-1.5 rounded-lg text-slate-400' }, 'Limpar Chat')
+                ),
+                React.createElement('div', { ref: scrollRef, className: 'flex-1 overflow-y-auto p-4 space-y-4' },
+                    history.map((msg, i) => React.createElement('div', { key: i, className: `flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}` },
+                        React.createElement('div', { className: `max-w-[85%] p-4 rounded-2xl ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-none shadow-lg' : 'bg-white border rounded-tl-none shadow-sm'}` },
+                            React.createElement('p', { className: 'text-sm whitespace-pre-wrap', dangerouslySetInnerHTML: { __html: msg.text.replace(/IronMind/gi, '<b translate="no" class="notranslate">IronMind</b>') } }),
+                            msg.proposal && React.createElement('div', { className: 'mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl' },
+                                React.createElement('p', { className: 'text-[10px] font-black text-blue-900 uppercase mb-2' }, `Proposta de ${msg.proposal.type === 'training' ? 'Treino' : 'Dieta'}`),
+                                React.createElement('button', { 
+                                    onClick: () => msg.proposal.type === 'training' ? onAcceptTraining(msg.proposal.data) : onAcceptDiet(msg.proposal.data),
+                                    className: 'w-full py-2 bg-blue-600 text-white rounded-lg font-black text-[9px] uppercase shadow-md active:scale-95'
+                                }, 'Aceitar Protocolo')
+                            )
+                        )
+                    )),
+                    isLoading && React.createElement('div', { className: 'animate-pulse text-[9px] font-black uppercase text-slate-400 p-4' }, 'Coach está escrevendo...')
+                ),
+                React.createElement('div', { className: 'p-4 bg-white border-t space-y-2' },
+                    React.createElement('form', { 
+                        className: 'flex gap-2',
+                        onSubmit: (e) => { e.preventDefault(); handleSend(); }
+                    },
+                        React.createElement('textarea', {
+                            value: input,
+                            onChange: e => setInput(e.target.value),
+                            placeholder: 'Diga: "Monte um treino de pernas"',
+                            className: 'flex-1 p-3 bg-slate-50 border rounded-xl text-sm focus:outline-none focus:border-blue-300 resize-none max-h-24',
+                            rows: 2
+                        }),
+                        React.createElement('button', { className: 'bg-blue-600 text-white p-3 rounded-xl self-end' }, React.createElement(Send, { className: 'w-5 h-5' }))
+                    )
+                )
+            );
+        }
+
+        function TrainingTab({ plan, onUpdatePlan, onRequestNew, onClearPlan, buildManualTraining }) {
+            const [activeDayIdx, setActiveDayIdx] = useState(0);
+            const [isLibOpen, setIsLibOpen] = useState(false);
+            const [isAddingExercise, setIsAddingExercise] = useState(false);
+            const [timer, setTimer] = useState(null);
+
+            if (!plan) return React.createElement(EmptyState, { type: 'treino', onClick: onRequestNew, onManualBuild: buildManualTraining });
+
+            const activeDay = plan.days[activeDayIdx] || plan.days[0];
+
+            return React.createElement('div', { className: 'p-4 space-y-6' },
+                React.createElement('div', { className: 'flex justify-between items-center bg-white p-4 rounded-3xl border border-slate-200 shadow-sm' },
+                    React.createElement('div', null,
+                        React.createElement('p', { className: 'text-[9px] font-black text-slate-400 uppercase' }, 'Plano Ativo'),
+                        React.createElement('h3', { className: 'text-xl font-black italic uppercase leading-none' }, plan.name)
+                    ),
+                    React.createElement('button', { onClick: onClearPlan, className: 'text-rose-500' }, React.createElement(Trash2, { className: 'w-4 h-4' }))
+                ),
+
+                React.createElement('div', { className: 'flex gap-2 overflow-x-auto no-scrollbar py-2' },
+                    plan.days.map((day, i) => React.createElement('button', {
+                        key: i,
+                        onClick: () => setActiveDayIdx(i),
+                        className: `px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeDayIdx === i ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`
+                    }, day.label))
+                ),
+
+                React.createElement('div', { className: 'flex justify-between items-end' },
+                    React.createElement('div', null,
+                        React.createElement('h4', { className: 'text-blue-600 font-black uppercase tracking-tighter italic' }, activeDay.label),
+                        React.createElement('p', { className: 'text-[9px] font-bold text-slate-400' }, `${activeDay.exercises.length} Exercises`)
+                    ),
+                    React.createElement('button', { onClick: () => setIsLibOpen(true), className: 'bg-slate-900 text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase shadow-md' }, '+ Add')
+                ),
+
+                React.createElement('div', { className: 'space-y-3' },
+                    activeDay.exercises.map((ex, i) => React.createElement('div', { key: ex.id || i, className: 'bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col gap-4' },
+                        React.createElement('div', { className: 'flex justify-between items-start' },
+                          React.createElement('div', { className: 'flex gap-3' },
+                            React.createElement('div', { className: 'w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center' }, React.createElement(Dumbbell, { className: 'w-5 h-5 text-white' })),
+                            React.createElement('div', null,
+                                React.createElement('h5', { className: 'font-bold text-sm text-slate-800' }, ex.name),
+                                React.createElement('p', { className: 'text-[10px] font-black text-blue-600 uppercase' }, `${ex.sets}x ${ex.reps} • ${ex.weight || 'Sem carga'}`)
+                            )
+                          ),
+                          React.createElement('button', { 
+                            onClick: () => {
+                              const newExs = activeDay.exercises.filter((_, idx) => idx !== i);
+                              const newDays = [...plan.days];
+                              newDays[activeDayIdx] = { ...activeDay, exercises: newExs };
+                              onUpdatePlan({ ...plan, days: newDays });
+                            },
+                            className: 'text-red-400' 
+                          }, React.createElement(X, { className: 'w-4 h-4' }))
+                        ),
+                        React.createElement('div', { className: 'flex gap-2' },
+                            Array.from({ length: ex.sets }).map((_, s) => React.createElement('button', {
+                                key: s,
+                                onClick: () => { if(timer) setTimer(null); else setTimer(60); },
+                                className: 'w-8 h-8 rounded-lg border-2 border-slate-100 flex items-center justify-center font-black text-[10px] active:bg-blue-600 active:text-white transition-colors'
+                            }, s + 1))
+                        )
+                    ))
+                ),
+
+                timer && React.createElement('div', { className: 'fixed bottom-24 left-4 right-4 bg-slate-900 text-white p-4 rounded-2xl flex justify-between items-center shadow-2xl z-50 animate-bounce' },
+                    React.createElement('div', { className: 'flex items-center gap-2' },
+                        React.createElement(Clock, { className: 'w-4 h-4 text-blue-400' }),
+                        React.createElement('span', { className: 'text-xs font-black uppercase' }, 'Descanse')
+                    ),
+                    React.createElement('div', { className: 'text-2xl font-mono font-black' }, `00:${timer.toString().padStart(2, '0')}`),
+                    React.createElement('button', { onClick: () => setTimer(null) }, React.createElement(X, { className: 'w-4 h-4' }))
+                ),
+
+                isAddingExercise && React.createElement(ManualExerciseModal, {
+                    onClose: () => setIsAddingExercise(false),
+                    onAdd: (ex) => {
+                        const newEx = { ...ex, id: Date.now().toString() };
+                        const newDays = [...plan.days];
+                        newDays[activeDayIdx] = { ...activeDay, exercises: [...activeDay.exercises, newEx] };
+                        onUpdatePlan({ ...plan, days: newDays });
+                        setIsAddingExercise(false);
+                    }
+                }),
+
+                isLibOpen && React.createElement(ExerciseLibraryModal, { 
+                    onClose: () => setIsLibOpen(false),
+                    onAddManual: () => { setIsLibOpen(false); setIsAddingExercise(true); },
+                    onAdd: (ex) => {
+                        const newEx = { ...ex, id: Date.now().toString(), sets: 4, reps: '12', weight: '' };
+                        const newDays = [...plan.days];
+                        newDays[activeDayIdx] = { ...activeDay, exercises: [...activeDay.exercises, newEx] };
+                        onUpdatePlan({ ...plan, days: newDays });
+                        setIsLibOpen(false);
+                    }
+                })
+            );
+        }
+
+        function DietTab({ plan, apiKey, onClearPlan, onRequestNew }) {
+            const [analyzing, setAnalyzing] = useState(false);
+            const [analysis, setAnalysis] = useState(null);
+            const inputRef = useRef(null);
+
+            if (!plan) return React.createElement(EmptyState, { type: 'dieta', onClick: onRequestNew });
+
+            const handlePhoto = async (e) => {
+                const file = e.target.files[0];
+                if (!file || !apiKey) return;
+                setAnalyzing(true);
+                
+                // Simulação de análise para economia de tokens se preferir, ou chamada real:
+                try {
+                  const reader = new FileReader();
+                  reader.onload = async (evt) => {
+                    const base64 = evt.target.result;
+                    const genAI = new GoogleGenerativeAI(apiKey);
+                    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+                    const result = await model.generateContent([
+                      "Analise esta comida. Diga o prato, calorias estimadas e dê um veredito: Green (Saudável), Yellow (Atenção), Red (Fora da Dieta). Formate JSON: {food, calories, color, explanation}.",
+                      { inlineData: { data: base64.split(',')[1], mimeType: file.type } }
+                    ]);
+                    const json = JSON.parse(result.response.text());
+                    setAnalysis(json);
+                  };
+                  reader.readAsDataURL(file);
+                } catch (err) { alert('Erro na análise.'); }
+                finally { setAnalyzing(false); }
+            };
+
+            return React.createElement('div', { className: 'p-4 space-y-4' },
+                React.createElement('header', { className: 'bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex justify-between items-center' },
+                   React.createElement('div', null,
+                        React.createElement('p', { className: 'text-[9px] font-black text-slate-400 uppercase' }, 'Plano Nutricional'),
+                        React.createElement('h3', { className: 'text-xl font-black italic uppercase leading-none' }, plan.name)
+                    ),
+                    React.createElement('button', { onClick: onClearPlan, className: 'text-slate-400' }, React.createElement(Trash2, { className: 'w-4 h-4' }))
+                ),
+
+                React.createElement('div', { className: 'bg-blue-600 p-6 rounded-[2.5rem] text-white flex flex-col items-center gap-4 shadow-xl' },
+                    React.createElement(Camera, { className: 'w-8 h-8 mb-2' }),
+                    React.createElement('h4', { className: 'font-black uppercase tracking-tight text-center' }, 'Controle Visual de Pratos'),
+                    React.createElement('button', { 
+                        onClick: () => inputRef.current.click(),
+                        disabled: analyzing,
+                        className: 'w-full bg-white text-blue-600 py-3 rounded-xl font-black uppercase text-[10px] shadow-lg active:scale-95'
+                    }, analyzing ? 'Analisando...' : 'Scan Refeição'),
+                    React.createElement('input', { type: 'file', ref: inputRef, className: 'hidden', onChange: handlePhoto, accept: 'image/*', capture: 'environment' })
+                ),
+
+                analysis && React.createElement('div', { className: `p-4 rounded-2xl border-l-4 shadow-md ${analysis.color === 'Green' ? 'bg-emerald-50 border-emerald-500' : analysis.color === 'Red' ? 'bg-rose-50 border-rose-500' : 'bg-amber-50 border-amber-500'}` },
+                    React.createElement('div', { className: 'flex justify-between mb-2' },
+                        React.createElement('span', { className: 'font-black uppercase text-[10px]' }, analysis.food),
+                        React.createElement('span', { className: 'font-black text-slate-900' }, `${analysis.calories} kcal`)
+                    ),
+                    React.createElement('p', { className: 'text-[11px] text-slate-600 leading-tight italic' }, analysis.explanation)
+                ),
+
+                React.createElement('div', { className: 'space-y-4 pt-4' },
+                    plan.meals.map((meal, i) => React.createElement('div', { key: i, className: 'bg-white p-4 rounded-2xl border border-slate-100 flex gap-4' },
+                        React.createElement('div', { className: 'w-10 h-10 bg-slate-50 border rounded-xl flex items-center justify-center font-black text-[10px] text-blue-600' }, meal.time),
+                        React.createElement('div', null,
+                            React.createElement('h5', { className: 'font-black uppercase text-slate-800 italic' }, meal.name),
+                            React.createElement('ul', { className: 'mt-2 space-y-1' },
+                                meal.items.map((it, j) => React.createElement('li', { key: j, className: 'text-[11px] text-slate-500 flex gap-2' }, 
+                                    React.createElement(CheckCircle2, { className: 'w-3 h-3 text-emerald-500' }), it))
+                            )
+                        )
+                    ))
+                )
+            );
+        }
+
+        function HistoryTab({ weightHistory, setWeightHistory, measurementHistory, setMeasurementHistory, loadHistory, setLoadHistory, userProfile, setUserProfile }) {
+            const [w, setW] = useState('');
+            
+            const bmiData = weightHistory.map(entry => {
+                const heightM = userProfile.height / 100;
+                return {
+                    date: new Date(entry.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+                    weight: entry.weight,
+                    imc: parseFloat((entry.weight / (heightM * heightM)).toFixed(1))
+                };
+            });
+
+            return React.createElement('div', { className: 'p-4 space-y-6' },
+                React.createElement('div', { className: 'bg-white p-6 rounded-[2.5rem] border shadow-sm' },
+                    React.createElement('h4', { className: 'text-[10px] font-black uppercase text-slate-400 mb-4' }, 'Adicionar Peso'),
+                    React.createElement('div', { className: 'flex gap-2' },
+                        React.createElement('input', { 
+                            type: 'number', 
+                            value: w, 
+                            onChange: e => setW(e.target.value), 
+                            placeholder: '80.5 kg',
+                            className: 'flex-1 p-3 bg-slate-50 border rounded-xl font-black'
+                        }),
+                        React.createElement('button', { 
+                            onClick: () => { setWeightHistory(p => [...p, { date: Date.now(), weight: parseFloat(w) }]); setW(''); },
+                            className: 'bg-blue-600 text-white p-3 rounded-xl' 
+                        }, React.createElement(Plus, { className: 'w-5 h-5' }))
+                    )
+                ),
+
+                React.createElement('div', { className: 'bg-white p-4 rounded-3xl border h-64 shadow-sm' },
+                    React.createElement('h4', { className: 'text-[10px] font-black uppercase text-slate-400 mb-4' }, 'Gráfico de Peso'),
+                    React.createElement(ResponsiveContainer, { width: '100%', height: '100%' },
+                        React.createElement(AreaChart, { data: bmiData },
+                            React.createElement(CartesianGrid, { vertical: false, strokeDasharray: '3 3', stroke: '#f1f5f9' }),
+                            React.createElement(XAxis, { dataKey: 'date', fontSize: 9, tickLine: false, axisLine: false }),
+                            React.createElement(YAxis, { hide: true, domain: ['dataMin - 2', 'dataMax + 2'] }),
+                            React.createElement(ChartTooltip, null),
+                            React.createElement(Area, { type: 'monotone', dataKey: 'weight', stroke: '#2563eb', strokeWidth: 3, fill: '#60a5fa33', dot: { r: 4, fill: '#2563eb' } })
+                        )
+                    )
+                ),
+
+                React.createElement('div', { className: 'grid grid-cols-2 gap-4' },
+                    React.createElement('div', { className: 'bg-blue-600 p-4 rounded-2xl text-white' },
+                        React.createElement('p', { className: 'text-[8px] font-black uppercase opacity-60' }, 'IMC Atual'),
+                        React.createElement('p', { className: 'text-2xl font-black tracking-tighter' }, bmiData[bmiData.length - 1]?.imc || '--')
+                    ),
+                    React.createElement('div', { className: 'bg-slate-900 p-4 rounded-2xl text-white' },
+                        React.createElement('p', { className: 'text-[8px] font-black uppercase opacity-60' }, 'Último Peso'),
+                        React.createElement('p', { className: 'text-2xl font-black tracking-tighter' }, (weightHistory[weightHistory.length - 1]?.weight || '--') + 'kg')
+                    )
+                )
+            );
+        }
+
+        function VideosTab({ plan }) {
+            const exercises = Array.from(new Set(plan.days.flatMap(d => d.exercises.map(ex => ex.name)))).map(name => plan.days.flatMap(d => d.exercises).find(e => e.name === name));
+            const [v, setV] = useState(null);
+
+            return React.createElement('div', { className: 'p-4 space-y-4' },
+                exercises.map(ex => React.createElement('div', { key: ex.name, className: 'bg-white rounded-3xl border overflow-hidden shadow-sm' },
+                    React.createElement('div', { className: 'aspect-video bg-slate-900 flex items-center justify-center' },
+                        v === ex.name 
+                            ? React.createElement('iframe', { src: `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent('execução ' + ex.name)}&autoplay=1&mute=1`, className: 'w-full h-full', allowFullScreen: true })
+                            : React.createElement('button', { onClick: () => setV(ex.name), className: 'text-white flex flex-col items-center gap-2' }, 
+                                React.createElement(Play, { className: 'w-10 h-10 fill-current' }),
+                                React.createElement('span', { className: 'text-[9px] font-black uppercase tracking-widest' }, 'Assistir Técnica'))
+                    ),
+                    React.createElement('div', { className: 'p-4' },
+                        React.createElement('h4', { className: 'font-black uppercase tracking-tighter italic' }, ex.name),
+                        React.createElement('p', { className: 'text-[10px] text-slate-400 font-medium' }, 'Demonstração de amplitude e cadência.')
+                    )
+                ))
+            );
+        }
+
+        function WarmupTab() {
+            const [s, setS] = useState(300);
+            const [on, setOn] = useState(false);
+            useEffect(() => {
+                let i;
+                if(on && s > 0) i = setInterval(() => setS(p => p - 1), 1000);
+                return () => clearInterval(i);
+            }, [on, s]);
+            return React.createElement('div', { className: 'p-8 flex flex-col items-center justify-center gap-8 h-full bg-white' },
+                React.createElement('div', null,
+                    React.createElement('p', { className: 'text-[9px] font-black uppercase text-slate-400 text-center tracking-widest' }, 'Preparação de Articulações'),
+                    React.createElement('h2', { className: 'text-4xl font-black uppercase italic tracking-tighter text-slate-900' }, 'Warm Up')
+                ),
+                React.createElement('div', { className: 'text-7xl font-mono font-black text-blue-600 tabular-nums shadow-lg p-8 rounded-[3rem] bg-slate-50 border-4 border-white' }, 
+                    `${Math.floor(s/60).toString().padStart(2, '0')}:${(s%60).toString().padStart(2, '0')}`
+                ),
+                React.createElement('div', { className: 'flex gap-4 w-full' },
+                    React.createElement('button', { onClick: () => setOn(!on), className: `flex-1 py-5 rounded-2xl font-black uppercase text-xs shadow-xl transition-all active:scale-95 ${on ? 'bg-slate-200 text-slate-500' : 'bg-blue-600 text-white'}` }, on ? 'Pausar' : 'Iniciar Timer'),
+                    React.createElement('button', { onClick: () => { setS(300); setOn(false); }, className: 'bg-slate-100 text-slate-400 p-5 rounded-2xl' }, React.createElement(RotateCcw, { className: 'w-6 h-6' }))
+                )
+            );
+        }
+
+        function CardioTab() {
+          return React.createElement('div', { className: 'p-10 flex flex-col items-center justify-center text-center gap-6 h-full' },
+              React.createElement('div', { className: 'w-20 h-20 bg-rose-600 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-rose-200 animate-pulse' }, React.createElement(Heart, { className: 'w-10 h-10 text-white' })),
+              React.createElement('h3', { className: 'text-2xl font-black uppercase italic' }, 'Cardio Engine'),
+              React.createElement('p', { className: 'text-xs text-slate-400 max-w-[250px]' }, 'Monitore sua zona de queima. Mantenha entre 130-150 BPM para otimizar lipólise.'),
+              React.createElement('div', { className: 'grid grid-cols-2 gap-4 w-full' }, 
+                ['HIIT 15min', 'LIS 40min'].map(t => React.createElement('button', { key: t, className: 'p-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-[10px] uppercase shadow-sm' }, t))
+              )
+          );
+        }
+
+        function MusicTab() {
+            return React.createElement('div', { className: 'p-8 flex flex-col items-center justify-center text-center gap-8 h-full bg-slate-900 text-white' },
+                React.createElement('div', { className: 'w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(16,185,129,0.3)]' }, React.createElement(Music, { className: 'w-12 h-12 text-slate-900' })),
+                React.createElement('div', null,
+                  React.createElement('h3', { className: 'text-2xl font-black uppercase italic italic tracking-tighter' }, 'IronMind Beats'),
+                  React.createElement('p', { className: 'text-[10px] uppercase font-black text-emerald-500 tracking-[0.3em] mt-2' }, 'Sincronização de Bio-Ritmo')
+                ),
+                React.createElement('div', { className: 'w-full space-y-4' },
+                    React.createElement('button', { className: 'w-full flex items-center justify-between p-5 bg-white/10 rounded-[2rem] border border-white/10 hover:bg-white/20 transition-all font-black uppercase text-[10px]' }, 
+                        React.createElement('span', null, 'Abrir Spotify Workout'),
+                        React.createElement(ExternalLink, { className: 'w-4 h-4 text-emerald-500' })
+                    ),
+                    React.createElement('button', { className: 'w-full flex items-center justify-between p-5 bg-white/10 rounded-[2rem] border border-white/10 hover:bg-white/20 transition-all font-black uppercase text-[10px]' }, 
+                        React.createElement('span', null, 'YouTube Music Mix'),
+                        React.createElement(ExternalLink, { className: 'w-4 h-4 text-red-500' })
+                    )
+                ),
+                React.createElement('div', { className: 'p-4 bg-white/5 rounded-2xl border border-white/5' },
+                    React.createElement('p', { className: 'text-[9px] font-bold text-slate-400 italic' }, 'Dica: A IA reduz o volume da música automaticamente quando for te dar instruções de execução.')
+                )
+            );
+        }
+
+        function SplashScreen({ onComplete }) {
+            useEffect(() => { const t = setTimeout(onComplete, 2200); return () => clearTimeout(t); }, []);
+            return React.createElement(motion.div, {
+                initial: { opacity: 1 },
+                exit: { opacity: 0 },
+                className: 'fixed inset-0 z-[9999] bg-slate-900 flex items-center justify-center'
+            }, 
+                React.createElement('div', { className: 'text-center' },
+                    React.createElement(motion.div, { 
+                        initial: { scale: 0.5, rotate: -10 }, 
+                        animate: { scale: 1, rotate: 0 },
+                        className: 'w-24 h-24 bg-white rounded-none mx-auto mb-8 shadow-[8px_8px_0px_#2563eb] flex items-center justify-center' 
+                    }, React.createElement(Dumbbell, { className: 'w-12 h-12 text-slate-900 -rotate-12' })),
+                    React.createElement('h1', { className: 'text-5xl font-black italic uppercase tracking-tighter text-white' }, 'IRON', React.createElement('span', { className: 'text-blue-500' }, 'MIND')),
+                    React.createElement('p', { className: 'text-[9px] font-black uppercase tracking-[0.5em] text-slate-500 mt-4' }, 'Elite Virtual Trainer • 2026')
+                )
+            );
+        }
+
+        function APIKeyModal({ onSave, onClose }) {
+            const [v, setV] = useState('');
+            return React.createElement('div', { className: 'fixed inset-0 z-[1000] bg-slate-900/95 backdrop-blur-xl flex items-center justify-center p-8' },
+                React.createElement('div', { className: 'bg-white w-full max-w-sm rounded-[3rem] p-8 text-center' },
+                    React.createElement('h3', { className: 'text-xl font-black uppercase italic mb-2' }, 'Conexão IronMind'),
+                    React.createElement('p', { className: 'text-[10px] text-slate-400 mb-6' }, 'Insira sua Gemini API Key para ativar o Coach.'),
+                    React.createElement('input', { type: 'password', value: v, onChange: e => setV(e.target.value), className: 'w-full p-4 bg-slate-50 border rounded-2xl mb-4 font-mono text-center', placeholder: 'SUA_CHAVE_AQUI' }),
+                    React.createElement('button', { onClick: () => onSave(v), className: 'w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase shadow-xl mb-3' }, 'Ativar Sistema'),
+                    React.createElement('button', { 
+                        onClick: () => {
+                            const html = document.documentElement.outerHTML;
+                            const blob = new Blob([html], { type: 'text/html' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'IronMind_TOTAL.html';
+                            a.click();
+                        },
+                        className: 'w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase shadow-xl'
+                    }, 'Download App (HTML)'),
+                    React.createElement('button', { onClick: onClose, className: 'block mt-4 text-[9px] font-bold text-slate-400 mx-auto' }, 'Ignorar por enquanto')
+                )
+            );
+        }
+
+        function EmptyState({ type, onClick, onManualBuild }) {
+            return React.createElement('div', { className: 'flex flex-col items-center justify-center h-full p-10 text-center gap-4' },
+                React.createElement('div', { className: 'w-16 h-16 bg-slate-100 rounded-[2rem] flex items-center justify-center' }, React.createElement(Dumbbell, { className: 'w-8 h-8 text-slate-300' })),
+                React.createElement('h3', { className: 'font-black uppercase text-slate-900' }, `Sem ${type}`),
+                React.createElement('button', { onClick: onClick, className: 'bg-blue-600 text-white px-8 py-3 rounded-xl font-black uppercase text-[10px] shadow-lg' }, 'Falar com Coach'),
+                onManualBuild && React.createElement('button', { onClick: onManualBuild, className: 'text-blue-600 font-black uppercase text-[9px]' }, 'Ou montar manualmente')
+            );
+        }
+
+        function ExerciseLibraryModal({ onClose, onAdd, onAddManual }) {
+            const [q, setQ] = useState('');
+            const filtered = EXERCISE_LIBRARY.filter(e => e.name.toLowerCase().includes(q.toLowerCase()));
+            return React.createElement('div', { className: 'fixed inset-0 z-[500] bg-slate-900/40 backdrop-blur flex flex-col' },
+                React.createElement('div', { className: 'flex-1 bg-white mt-12 rounded-t-[3rem] p-8 overflow-hidden flex flex-col' },
+                    React.createElement('div', { className: 'flex justify-between items-center mb-6' }, 
+                        React.createElement('div', null,
+                            React.createElement('h3', { className: 'font-black uppercase' }, 'Biblioteca'),
+                            React.createElement('button', { onClick: onAddManual, className: 'text-blue-600 text-[10px] font-black uppercase' }, '+ Criar Personalizado')
+                        ),
+                        React.createElement('button', { onClick: onClose }, React.createElement(X, { className: 'w-6 h-6 text-slate-300' }))
+                    ),
+                    React.createElement('input', { placeholder: 'Buscar...', className: 'p-4 bg-slate-50 border rounded-2xl mb-4', value: q, onChange: e => setQ(e.target.value) }),
+                    React.createElement('div', { className: 'flex-1 overflow-y-auto space-y-2 no-scrollbar' },
+                        filtered.map(ex => React.createElement('button', { key: ex.name, onClick: () => onAdd(ex), className: 'w-full text-left p-4 hover:bg-blue-50 border rounded-2xl flex items-center justify-between group transition-all' },
+                            React.createElement('div', null,
+                                React.createElement('p', { className: 'font-bold text-slate-800' }, ex.name),
+                                React.createElement('p', { className: 'text-[9px] font-black text-blue-600 uppercase' }, ex.muscle)
+                            ),
+                            React.createElement(ChevronRight, { className: 'w-4 h-4 text-slate-300 group-hover:translate-x-1 transition-all' })
+                        ))
+                    )
+                )
+            );
+        }
+
+        function ManualExerciseModal({ onClose, onAdd }) {
+            const [name, setName] = useState('');
+            const [sets, setSets] = useState('3');
+            const [reps, setReps] = useState('12');
+            const [weight, setWeight] = useState('');
+            return React.createElement('div', { className: 'fixed inset-0 z-[600] bg-slate-900/90 backdrop-blur-xl flex items-center justify-center p-8' },
+                React.createElement('div', { className: 'bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl' },
+                    React.createElement('h3', { className: 'font-black uppercase italic text-xl mb-6' }, 'Personalizar'),
+                    React.createElement('div', { className: 'space-y-4' },
+                        React.createElement('input', { placeholder: 'Nome (ex: Rosca Martelo)', value: name, onChange: e => setName(e.target.value), className: 'w-full p-4 bg-slate-50 border rounded-2xl' }),
+                        React.createElement('div', { className: 'grid grid-cols-2 gap-4' },
+                            React.createElement('input', { placeholder: 'Séries', type: 'number', value: sets, onChange: e => setSets(e.target.value), className: 'p-4 bg-slate-50 border rounded-2xl' }),
+                            React.createElement('input', { placeholder: 'Reps', value: reps, onChange: e => setReps(e.target.value), className: 'p-4 bg-slate-50 border rounded-2xl' })
+                        ),
+                        React.createElement('input', { placeholder: 'Carga (ex: 15kg)', value: weight, onChange: e => setWeight(e.target.value), className: 'w-full p-4 bg-slate-50 border rounded-2xl' }),
+                        React.createElement('button', { 
+                            onClick: () => onAdd({ name, sets: parseInt(sets), reps, weight }),
+                            className: 'w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase shadow-xl' 
+                        }, 'Salvar Exercício'),
+                        React.createElement('button', { onClick: onClose, className: 'w-full text-slate-400 py-2 text-[10px] font-bold uppercase' }, 'Cancelar')
+                    )
+                )
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+    </script>
+</body>
+</html>

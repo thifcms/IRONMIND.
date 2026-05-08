@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="notranslate" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>IronMind - Treinador Inteligente</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100..900;1,100..900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .notranslate {
+            translate: no;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
+
+    <!-- React & Libraries via ESM -->
+    <script type="module">
+        import React, { useState, useEffect, useMemo, useRef } from 'https://esm.sh/react@18.2.0';
+        import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
+        import { 
+            Dumbbell, MessageSquare, Timer, Video, User, ChevronRight, 
+            Plus, Trash2, CheckCircle2, TrendingUp, Search, X, 
+            Play, Info, ChevronLeft, Target, Key, AlertCircle
+        } from 'https://esm.sh/lucide-react@0.344.0';
+        import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
+
+        // --- CONSTANTES & BIBLIOTECA ---
+        const EXERCISE_LIBRARY = [
+            { name: 'Supino Reto', muscle: 'Peito', videoUrl: 'https://www.youtube.com/embed/scfJ-XN9-nU' },
+            { name: 'Supino Inclinado', muscle: 'Peito', videoUrl: 'https://www.youtube.com/embed/SrqOu55lr6A' },
+            { name: 'Agachamento Livre', muscle: 'Pernas', videoUrl: 'https://www.youtube.com/embed/XqC9--3VwJ4' },
+            { name: 'Leg Press 45', muscle: 'Pernas' },
+            { name: 'Puxada Aberta', muscle: 'Costas' },
+            { name: 'Remada Curvada', muscle: 'Costas' },
+            { name: 'Desenvolvimento', muscle: 'Ombros' },
+            { name: 'Elevação Lateral', muscle: 'Ombros' },
+            { name: 'Rosca Direta', muscle: 'Bíceps' },
+            { name: 'Tríceps Pulley', muscle: 'Tríceps' }
+        ];
+
+        const MUSCLE_GROUPS = Array.from(new Set(EXERCISE_LIBRARY.map(ex => ex.muscle)));
+
+        // --- COMPONENTE PRINCIPAL ---
+        function App() {
+            const [apiKey, setApiKey] = useState(() => localStorage.getItem('GEMINI_API_KEY') || '');
+            const [showKeyModal, setShowKeyModal] = useState(!apiKey);
+            const [activeTab, setActiveTab] = useState('treinador');
+            const [chatHistory, setChatHistory] = useState(() => {
+                const saved = localStorage.getItem('chatHistory');
+                return saved ? JSON.parse(saved) : [
+                    { role: 'model', text: 'Olá! Sou o <span translate="no" class="notranslate">IronMind</span>, seu treinador de elite. Vamos começar? Como posso ajudar hoje?' }
+                ];
+            });
+            const [trainingPlan, setTrainingPlan] = useState(() => {
+                const saved = localStorage.getItem('trainingPlan');
+                return saved ? JSON.parse(saved) : null;
+            });
+            const [isLoading, setIsLoading] = useState(false);
+
+            // Persistência
+            useEffect(() => {
+                localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+            }, [chatHistory]);
+
+            useEffect(() => {
+                if (trainingPlan) localStorage.setItem('trainingPlan', JSON.stringify(trainingPlan));
+            }, [trainingPlan]);
+
+            // Chamada Gemini
+            const handleSendMessage = async (text) => {
+                if (!apiKey) {
+                    setShowKeyModal(true);
+                    return;
+                }
+
+                const newHistory = [...chatHistory, { role: 'user', text }];
+                setChatHistory(newHistory);
+                setIsLoading(true);
+
+                try {
+                    const genAI = new GoogleGenerativeAI(apiKey);
+                    const model = genAI.getGenerativeModel({ 
+                        model: "gemini-1.5-flash",
+                        systemInstruction: "Você é o IronMind Coach, um treinador de elite em biomecânica e nutrição. Seja direto, motivador e técnico. Use português do Brasil. Se o usuário quiser um treino, responda com texto encorajador e forneça um plano estruturado em JSON no final se possível."
+                    });
+
+                    const chat = model.startChat({
+                        history: chatHistory.map(h => ({
+                            role: h.role === 'model' ? 'model' : 'user',
+                            parts: [{ text: h.text.replace(/<\/?[^>]+(>|$)/g, "") }]
+                        }))
+                    });
+
+                    const result = await chat.sendMessage(text);
+                    const responseText = result.response.text();
+                    
+                    setChatHistory([...newHistory, { role: 'model', text: responseText }]);
+                } catch (error) {
+                    console.error("ERRO CRÍTICO GEMINI:", error);
+                    let errMsg = "Ocorreu um erro de conexão.";
+                    if (error.message.includes("API key not valid")) errMsg = "Sua API Key do Google é inválida.";
+                    if (error.message.includes("429")) errMsg = "Cota de mensagens excedida (Geralmente 15/min no plano gratuito).";
+                    
+                    setChatHistory([...newHistory, { role: 'model', text: `ERRO: ${errMsg}` }]);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            return React.createElement('div', { className: 'min-h-screen flex flex-col max-w-md mx-auto bg-white shadow-2xl relative overflow-hidden' },
+                // Header
+                React.createElement('header', { className: 'p-6 flex items-center justify-between glass sticky top-0 z-30 border-b border-slate-100' },
+                    React.createElement('div', { className: 'flex items-center gap-3' },
+                        React.createElement('div', { className: 'bg-slate-900 p-2 rounded-xl' }, 
+                            React.createElement(Dumbbell, { className: 'w-5 h-5 text-white' })
+                        ),
+                        React.createElement('div', null,
+                            React.createElement('h1', { className: 'font-black text-2xl uppercase italic tracking-tighter notranslate', translate: 'no' }, 
+                                React.createElement('span', { className: 'text-slate-900' }, 'IRON'),
+                                React.createElement('span', { className: 'text-blue-600' }, 'MIND')
+                            )
+                        )
+                    ),
+                    React.createElement('button', { 
+                        onClick: () => setShowKeyModal(true),
+                        className: 'p-2 text-slate-400 hover:text-blue-600'
+                    }, React.createElement(Key, { className: 'w-5 h-5' }))
+                ),
+
+                // Conteúdo
+                React.createElement('main', { className: 'flex-1 overflow-y-auto p-4 pb-24' },
+                    activeTab === 'treinador' && React.createElement(CoachView, { history: chatHistory, onSend: handleSendMessage, isLoading: isLoading }),
+                    activeTab === 'treino' && React.createElement(TrainingView, { 
+                        plan: trainingPlan, 
+                        onUpdate: p => setTrainingPlan(p),
+                        onManual: () => setTrainingPlan({
+                            id: Date.now().toString(),
+                            name: 'Treino Custom',
+                            days: [{ label: 'Treino A', exercises: [] }]
+                        })
+                    })
+                ),
+
+                // Tabs
+                React.createElement('nav', { className: 'fixed bottom-0 left-0 right-0 max-w-md mx-auto glass border-t border-slate-100 flex justify-around p-3 z-30' },
+                    [
+                        { id: 'treinador', icon: MessageSquare, label: 'Coach' },
+                        { id: 'treino', icon: Dumbbell, label: 'Treino' },
+                        { id: 'biometria', icon: TrendingUp, label: 'Progresso' }
+                    ].map(tab => React.createElement('button', {
+                        key: tab.id,
+                        onClick: () => setActiveTab(tab.id),
+                        className: `flex flex-col items-center gap-1 transition-all ${activeTab === tab.id ? 'text-blue-600 scale-110' : 'text-slate-400'}`
+                    }, 
+                        React.createElement(tab.icon, { className: 'w-5 h-5' }),
+                        React.createElement('span', { className: 'text-[10px] font-bold uppercase' }, tab.label)
+                    ))
+                ),
+
+                // Key Modal
+                showKeyModal && React.createElement(APIKeyModal, { 
+                    onSave: (k) => { setApiKey(k); localStorage.setItem('GEMINI_API_KEY', k); setShowKeyModal(false); },
+                    onClose: () => setShowKeyModal(false)
+                })
+            );
+        }
+
+        // --- COMPONENTES AUXILIARES ---
+        function CoachView({ history, onSend, isLoading }) {
+            const [input, setInput] = useState('');
+            const endRef = useRef(null);
+
+            useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [history]);
+
+            return React.createElement('div', { className: 'flex flex-col h-full' },
+                React.createElement('div', { className: 'space-y-4 mb-20' },
+                    history.map((msg, idx) => React.createElement('div', {
+                        key: idx,
+                        className: `flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in`
+                    }, 
+                        React.createElement('div', {
+                            className: `max-w-[85%] p-4 rounded-2xl ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white border border-slate-100 rounded-tl-none shadow-sm'}`,
+                            dangerouslySetInnerHTML: { __html: msg.text.replace(/IronMind/gi, '<span translate="no" class="notranslate font-bold">IronMind</span>') }
+                        })
+                    )),
+                    isLoading && React.createElement('div', { className: 'flex justify-start' },
+                        React.createElement('div', { className: 'bg-slate-100 p-4 rounded-2xl rounded-tl-none animate-pulse text-slate-400 text-xs font-bold uppercase' }, 'Coach pensando...')
+                    ),
+                    React.createElement('div', { ref: endRef })
+                ),
+                React.createElement('div', { className: 'fixed bottom-20 left-0 right-0 max-w-md mx-auto p-4 glass z-20' },
+                    React.createElement('form', { 
+                        className: 'flex gap-2',
+                        onSubmit: (e) => { e.preventDefault(); if(input.trim()) { onSend(input); setInput(''); } }
+                    },
+                        React.createElement('input', {
+                            value: input,
+                            onChange: (e) => setInput(e.target.value),
+                            placeholder: 'Diga: "Monte um treino de hipertrofia"',
+                            className: 'flex-1 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:border-blue-500 outline-none'
+                        }),
+                        React.createElement('button', {
+                            className: 'bg-slate-900 text-white p-4 rounded-2xl hover:bg-blue-600 transition-colors shadow-lg'
+                        }, React.createElement(ChevronRight, { className: 'w-6 h-6' }))
+                    )
+                )
+            );
+        }
+
+        function TrainingView({ plan, onUpdate, onManual }) {
+            const [isLibOpen, setIsLibOpen] = useState(false);
+
+            if (!plan) return React.createElement('div', { className: 'flex flex-col items-center justify-center py-20 text-center' },
+                React.createElement(Dumbbell, { className: 'w-12 h-12 text-slate-200 mb-4' }),
+                React.createElement('h2', { className: 'font-black uppercase italic' }, 'Sem plano ativo'),
+                React.createElement('p', { className: 'text-xs text-slate-400 mb-6' }, 'Peça ao coach ou monte manualmente.'),
+                React.createElement('button', { onClick: onManual, className: 'bg-blue-600 text-white px-8 py-3 rounded-xl font-bold uppercase text-xs' }, 'Monte Seu Treino')
+            );
+
+            return React.createElement('div', null,
+                React.createElement('div', { className: 'flex justify-between items-center mb-6' },
+                    React.createElement('h3', { className: 'font-black text-xl italic uppercase' }, plan.name),
+                    React.createElement('button', { onClick: () => setIsLibOpen(true), className: 'bg-slate-900 text-white p-2 rounded-lg' }, React.createElement(Plus, { className: 'w-4 h-4' }))
+                ),
+                plan.days[0].exercises.map((ex, i) => React.createElement('div', { key: i, className: 'bg-white p-4 rounded-3xl border border-slate-100 mb-4 flex items-center justify-between shadow-sm' },
+                    React.createElement('div', null,
+                        React.createElement('p', { className: 'font-black uppercase text-slate-800' }, ex.name),
+                        React.createElement('p', { className: 'text-[10px] font-bold text-blue-600 uppercase tracking-widest' }, `${ex.sets}x ${ex.reps}`)
+                    ),
+                    React.createElement('button', { 
+                        onClick: () => {
+                            const newExercises = plan.days[0].exercises.filter((_, idx) => idx !== i);
+                            onUpdate({ ...plan, days: [{ ...plan.days[0], exercises: newExercises }] });
+                        },
+                        className: 'text-red-400 p-2' 
+                    }, React.createElement(Trash2, { className: 'w-4 h-4' }))
+                )),
+                isLibOpen && React.createElement(ExerciseLibraryModal, { 
+                    onClose: () => setIsLibOpen(false),
+                    onAdd: (ex) => {
+                        const newEx = { ...ex, sets: 4, reps: '12' };
+                        onUpdate({ ...plan, days: [{ ...plan.days[0], exercises: [...plan.days[0].exercises, newEx] }] });
+                        setIsLibOpen(false);
+                    }
+                })
+            );
+        }
+
+        function ExerciseLibraryModal({ onClose, onAdd }) {
+            const [search, setSearch] = useState('');
+            const filtered = EXERCISE_LIBRARY.filter(e => e.name.toLowerCase().includes(search.toLowerCase()));
+
+            return React.createElement('div', { className: 'fixed inset-0 bg-slate-900/50 backdrop-blur z-[100] flex items-end sm:items-center justify-center' },
+                React.createElement('div', { className: 'bg-white w-full max-w-md rounded-t-[3rem] sm:rounded-[3rem] p-8 max-h-[80vh] flex flex-col' },
+                    React.createElement('div', { className: 'flex justify-between items-center mb-6' },
+                        React.createElement('h3', { className: 'font-black uppercase italic' }, 'Biblioteca'),
+                        React.createElement('button', { onClick: onClose }, React.createElement(X, { className: 'w-6 h-6' }))
+                    ),
+                    React.createElement('input', {
+                        placeholder: 'Buscar exercício...',
+                        className: 'p-4 bg-slate-50 border border-slate-100 rounded-2xl mb-4 text-sm',
+                        value: search,
+                        onChange: e => setSearch(e.target.value)
+                    }),
+                    React.createElement('div', { className: 'overflow-y-auto' },
+                        filtered.map(ex => React.createElement('button', {
+                            key: ex.name,
+                            onClick: () => onAdd(ex),
+                            className: 'w-full text-left p-4 hover:bg-blue-50 border-b border-slate-50 flex items-center justify-between group'
+                        }, 
+                           React.createElement('span', { className: 'font-bold' }, ex.name),
+                           React.createElement(ChevronRight, { className: 'w-4 h-4 text-slate-300 group-hover:translate-x-1 transition-transform' })
+                        ))
+                    )
+                )
+            );
+        }
+
+        function APIKeyModal({ onSave, onClose }) {
+            const [val, setVal] = useState('');
+            return React.createElement('div', { className: 'fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-[200] flex items-center justify-center p-6' },
+                React.createElement('div', { className: 'bg-white rounded-[2.5rem] p-8 w-full max-w-sm text-center shadow-2xl' },
+                    React.createElement(Key, { className: 'w-12 h-12 text-blue-600 mx-auto mb-6' }),
+                    React.createElement('h2', { className: 'font-black uppercase italic text-xl mb-2' }, 'Conexão IronMind'),
+                    React.createElement('p', { className: 'text-xs text-slate-500 mb-6' }, 'Para ativar a IA, insira sua Gemini API Key. Suas mensagens ficam protegidas pelo Google.'),
+                    React.createElement('input', {
+                        type: 'password',
+                        placeholder: 'Cole sua API Key aqui...',
+                        className: 'w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl mb-4 text-center text-sm font-mono',
+                        value: val,
+                        onChange: e => setVal(e.target.value)
+                    }),
+                    React.createElement('div', { className: 'space-y-3' },
+                        React.createElement('button', { 
+                            onClick: () => onSave(val),
+                            className: 'w-full bg-slate-900 text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-100'
+                        }, 'Ativar Coach'),
+                        React.createElement('button', { 
+                            onClick: onClose,
+                            className: 'w-full text-slate-400 py-3 text-[10px] font-bold uppercase'
+                        }, 'Cancelar')
+                    ),
+                    React.createElement('a', { 
+                        href: 'https://aistudio.google.com/app/apikey',
+                        target: '_blank',
+                        className: 'block mt-6 text-[10px] text-blue-500 font-bold uppercase underline'
+                    }, 'Como conseguir uma chave grátis?')
+                )
+            );
+        }
+
+        // Renderização
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+    </script>
+</body>
+</html>
