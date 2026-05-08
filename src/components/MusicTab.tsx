@@ -47,13 +47,13 @@ export default function MusicTab() {
   ];
 
   return (
-    <div className="p-4 pb-16 space-y-6 flex flex-col h-full bg-slate-50 items-center justify-center">
+    <div className="p-4 pb-16 space-y-6 flex flex-col h-full bg-slate-50 dark:bg-[#0a0a0a] items-center justify-center">
       <div className="text-center space-y-3">
-        <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto border border-blue-100 shadow-sm relative group">
+        <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto border border-blue-100 dark:border-blue-900/30 shadow-sm relative group">
           <Music2 className="w-7 h-7 text-blue-600 relative z-10" />
         </div>
         <div className="space-y-0.5">
-          <h2 className="text-2xl font-[1000] text-slate-900 tracking-tighter leading-none italic uppercase">Som & Beat</h2>
+          <h2 className="text-2xl font-[1000] text-slate-900 dark:text-slate-100 tracking-tighter leading-none italic uppercase">Som & Beat</h2>
           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Sincronize sua energia</p>
         </div>
       </div>
@@ -63,18 +63,18 @@ export default function MusicTab() {
           <button
             key={app.name}
             onClick={() => openApp(app)}
-            className="w-full group block bg-white border border-slate-200 rounded-2xl p-3.5 shadow-sm transition-all active:scale-[0.98] text-left"
+            className="w-full group block bg-white dark:bg-[#121212] border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm transition-all active:scale-[0.98] text-left"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shadow-inner`}>
+                <div className={`w-10 h-10 rounded-xl bg-slate-50 dark:bg-[#181818] border border-slate-100 dark:border-slate-800 flex items-center justify-center shadow-inner`}>
                   <img src={app.logo} alt={app.name} className="w-5 h-5 grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 transition-all" referrerPolicy="no-referrer" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-slate-900 leading-tight">{app.name}</h3>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-slate-100 leading-tight">{app.name}</h3>
                 </div>
               </div>
-              <div className="w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
+              <div className="w-8 h-8 bg-slate-50 dark:bg-[#181818] rounded-full flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
                 <Play className="w-3 h-3 fill-current" />
               </div>
             </div>

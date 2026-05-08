@@ -135,18 +135,40 @@ async function startServer() {
   app.post("/api/chat", async (req, res) => {
     const { history, message } = req.body;
     try {
-      let contents = history.slice(-10).map((m: any) => ({
+      // Garantir que as roles alternem (User -> Model -> User -> Model)
+      // O Gemini SDK exige alternância estrita.
+      let rawContents = history.map((m: any) => ({
         role: m.role === 'model' ? 'model' : 'user',
         parts: [{ text: m.text }]
       })).filter((c: any) => c.parts[0].text && c.parts[0].text.trim() !== "");
 
-      if (contents.length > 0 && contents[0].role === 'model') {
-        contents = contents.slice(1);
+      const contents: any[] = [];
+      if (rawContents.length > 0) {
+        let currentGroup = rawContents[0];
+        for (let i = 1; i < rawContents.length; i++) {
+          if (rawContents[i].role === currentGroup.role) {
+            // Mesma role, concatena o texto
+            currentGroup.parts[0].text += "\n\n" + rawContents[i].parts[0].text;
+          } else {
+            // Role diferente, fecha o grupo anterior e abre novo
+            contents.push(currentGroup);
+            currentGroup = rawContents[i];
+          }
+        }
+        contents.push(currentGroup);
       }
 
+      // Se o último for user, o Gemini se perde se enviarmos message separada.
+      // Vamos remover o último se for user e usar apenas a message final para evitar duplicidade ou conflito.
+      // Mas o correto é garantir que o último de 'contents' seja 'model' para o Gemini receber o próximo 'user'.
+      
+      // Sanitização final: se o histórico termina em 'user', Gemini pode reclamar de ordem.
+      // Vamos garantir que limpamos mensagens vazias.
+      const sanitizedContents = contents.filter(c => c.parts[0].text.trim() !== "");
+      
       const result = await withRetry(() => model.generateContent({
         contents: [
-          ...contents,
+          ...sanitizedContents,
           { role: 'user', parts: [{ text: message }] }
         ],
         generationConfig: {
@@ -229,6 +251,42 @@ async function startServer() {
       res.json(JSON.parse(response.text() || "{}"));
     } catch (error: any) {
       console.error("Image Analysis Server Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/exercise-guide", async (req, res) => {
+    const { name } = req.body;
+    try {
+      const guideSchema = {
+        type: SchemaType.OBJECT,
+        properties: {
+          name: { type: SchemaType.STRING },
+          muscle: { type: SchemaType.STRING },
+          setup: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+          execution: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+          commonMistakes: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+          proTip: { type: SchemaType.STRING }
+        },
+        required: ["name", "muscle", "setup", "execution", "commonMistakes", "proTip"]
+      };
+
+      const result = await withRetry(() => model.generateContent({
+        contents: [{ 
+          role: 'user', 
+          parts: [{ text: `Gere um guia técnico ultra-detalhado para o exercício: "${name}". O guia deve ser focado em biomecânica e segurança.` }] 
+        }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: guideSchema as any,
+          temperature: 0.1,
+        },
+      }));
+
+      const response = await result.response;
+      res.json(JSON.parse(response.text() || "{}"));
+    } catch (error: any) {
+      console.error("Exercise Guide Error:", error);
       res.status(500).json({ error: error.message });
     }
   });

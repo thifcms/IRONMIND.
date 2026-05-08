@@ -207,7 +207,7 @@ export default function CardioTab() {
   const stats = getStats();
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 overflow-hidden relative">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0a0a0a] overflow-hidden relative transition-colors duration-300">
       {/* Hidden elements for PiP generation */}
       <canvas ref={canvasRef} width={3600} height={2200} className="hidden" />
       <video ref={videoRef} className="hidden" playsInline muted />
@@ -222,7 +222,7 @@ export default function CardioTab() {
             className={`absolute top-20 right-4 px-3 py-1.5 rounded-full backdrop-blur-md border flex items-center gap-2 z-20 ${
               bioStatus.status === 'perigo' 
               ? 'bg-red-500 text-white border-red-500 shadow-lg' 
-              : 'bg-emerald-500/20 border-emerald-500/50 text-emerald-500'
+              : 'bg-emerald-500/20 border-emerald-500/50 text-emerald-500 dark:bg-emerald-500/10 dark:border-emerald-500/30'
             }`}
           >
             {bioStatus.status === 'perigo' ? <AlertTriangle className="w-3 h-3 animate-pulse" /> : <Heart className="w-3 h-3 animate-bounce" />}
@@ -239,11 +239,11 @@ export default function CardioTab() {
             onClick={() => { setMode(m); setTime(0); setIsActive(false); }}
             className={`flex-1 py-2 rounded-xl flex flex-col items-center gap-1 transition-all capitalize font-bold text-[8px] tracking-widest border-2 ${
               mode === m 
-                ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
-                : 'bg-white text-slate-400 border-slate-100'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-md dark:shadow-none' 
+                : 'bg-white dark:bg-[#121212] text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-800'
             }`}
           >
-            <div className={`p-1 rounded-lg ${mode === m ? 'bg-white/20' : 'bg-slate-50'}`}>
+            <div className={`p-1 rounded-lg ${mode === m ? 'bg-white/20' : 'bg-slate-50 dark:bg-slate-900'}`}>
               {m === 'corrida' && <MapPin className="w-3.5 h-3.5" />}
               {m === 'esteira' && <Footprints className="w-3.5 h-3.5" />}
               {m === 'bicicleta' && <Bike className="w-3.5 h-3.5" />}
@@ -260,7 +260,7 @@ export default function CardioTab() {
             <svg className="absolute inset-0 w-full h-full -rotate-90">
                 <circle 
                     cx="64" cy="64" r="60" 
-                    className="stroke-slate-200 fill-none" 
+                    className="stroke-slate-200 dark:stroke-slate-800 fill-none" 
                     strokeWidth="3"
                 />
                 <motion.circle 
@@ -274,66 +274,66 @@ export default function CardioTab() {
             </svg>
             
             <div className="text-center z-10">
-                <span className="block text-2xl font-mono font-black tracking-tighter text-slate-900">{formatTime(time)}</span>
-                <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest">Tempo</span>
+                <span className="block text-2xl font-mono font-black tracking-tighter text-slate-900 dark:text-white">{formatTime(time)}</span>
+                <span className="text-[7px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Tempo</span>
             </div>
         </div>
 
         {/* Dynamic Inputs with Sliders */}
-        <div className="w-full bg-white rounded-2xl border border-slate-200 p-3 shadow-sm space-y-4">
+        <div className="w-full bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-slate-800 p-3 shadow-sm space-y-4">
            <div className="space-y-3">
               {/* Speed Slider */}
               <div className="space-y-1">
-                <div className="flex justify-between items-center text-slate-400">
+                <div className="flex justify-between items-center text-slate-400 dark:text-slate-500">
                   <div className="flex items-center gap-1.5">
                     <Gauge className="w-3 h-3 text-blue-500" />
                     <span className="text-[8px] font-black uppercase">Velocidade (KM/H)</span>
                   </div>
-                  <span className="font-mono font-black text-slate-900 text-sm">{speed.toFixed(1)}</span>
+                  <span className="font-mono font-black text-slate-900 dark:text-slate-100 text-sm">{speed.toFixed(1)}</span>
                 </div>
                 <input 
                   type="range" 
                   min="1" max="25" step="0.5" 
                   value={speed} 
                   onChange={(e) => setSpeed(parseFloat(e.target.value))}
-                  className="w-full h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
                 />
               </div>
 
               {mode === 'esteira' && (
                 <div className="space-y-1">
-                  <div className="flex justify-between items-center text-slate-400">
+                  <div className="flex justify-between items-center text-slate-400 dark:text-slate-500">
                     <div className="flex items-center gap-1.5">
                       <TrendingUp className="w-3 h-3 text-blue-500" />
                       <span className="text-[8px] font-black uppercase">Inclinação (%)</span>
                     </div>
-                    <span className="font-mono font-black text-slate-900 text-sm">{incline}</span>
+                    <span className="font-mono font-black text-slate-900 dark:text-slate-100 text-sm">{incline}</span>
                   </div>
                   <input 
                     type="range" 
                     min="0" max="15" step="1" 
                     value={incline} 
                     onChange={(e) => setIncline(parseInt(e.target.value))}
-                    className="w-full h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
                   />
                 </div>
               )}
 
               {mode === 'bicicleta' && (
                 <div className="space-y-1">
-                  <div className="flex justify-between items-center text-slate-400">
+                  <div className="flex justify-between items-center text-slate-400 dark:text-slate-500">
                     <div className="flex items-center gap-1.5">
                       <Weight className="w-3 h-3 text-blue-500" />
                       <span className="text-[8px] font-black uppercase">Resistência</span>
                     </div>
-                    <span className="font-mono font-black text-slate-900 text-sm">{load}</span>
+                    <span className="font-mono font-black text-slate-900 dark:text-slate-100 text-sm">{load}</span>
                   </div>
                   <input 
                     type="range" 
                     min="1" max="20" step="1" 
                     value={load} 
                     onChange={(e) => setLoad(parseInt(e.target.value))}
-                    className="w-full h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
                   />
                 </div>
               )}
@@ -341,31 +341,31 @@ export default function CardioTab() {
         </div>
 
         <div className="grid grid-cols-2 gap-3 w-full">
-            <div className="bg-white rounded-2xl p-2.5 border border-slate-200 text-center shadow-sm">
-                <div className="flex items-center justify-center gap-1.5 text-slate-400 mb-0.5">
+            <div className="bg-white dark:bg-[#121212] rounded-2xl p-2.5 border border-slate-200 dark:border-slate-800 text-center shadow-sm">
+                <div className="flex items-center justify-center gap-1.5 text-slate-400 dark:text-slate-500 mb-0.5">
                     <MapPin className="w-2.5 h-2.5" />
                     <span className="text-[6px] font-black uppercase tracking-widest">Distância</span>
                 </div>
-                <span className="text-lg font-mono font-black text-slate-900">{stats.distance} <span className="text-[7px] text-slate-400">km</span></span>
+                <span className="text-lg font-mono font-black text-slate-900 dark:text-slate-100">{stats.distance} <span className="text-[7px] text-slate-400 dark:text-slate-500">km</span></span>
             </div>
-            <div className="bg-white rounded-2xl p-2.5 border border-slate-200 text-center shadow-sm">
-                <div className="flex items-center justify-center gap-1.5 text-slate-400 mb-0.5">
+            <div className="bg-white dark:bg-[#121212] rounded-2xl p-2.5 border border-slate-200 dark:border-slate-800 text-center shadow-sm">
+                <div className="flex items-center justify-center gap-1.5 text-slate-400 dark:text-slate-500 mb-0.5">
                     <Zap className="w-2.5 h-2.5" />
                     <span className="text-[6px] font-black uppercase tracking-widest">Calorias</span>
                 </div>
-                <span className="text-lg font-mono font-black text-slate-900">{stats.calories} <span className="text-[7px] text-slate-400">kcal</span></span>
+                <span className="text-lg font-mono font-black text-slate-900 dark:text-slate-100">{stats.calories} <span className="text-[7px] text-slate-400 dark:text-slate-500">kcal</span></span>
             </div>
         </div>
       </div>
 
       {/* Controls */}
-      <div className="px-4 py-4 space-y-3 bg-white border-t border-slate-200">
+      <div className="px-4 py-4 space-y-3 bg-white dark:bg-[#121212] border-t border-slate-200 dark:border-slate-800">
         <button 
             onClick={() => setIsActive(!isActive)}
             className={`w-full py-3.5 rounded-xl font-black uppercase tracking-[0.2em] text-[9px] transition-all ${
                 isActive 
-                    ? 'bg-red-50 text-red-600 border border-red-200' 
-                    : 'bg-blue-600 text-white shadow-lg'
+                    ? 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/20' 
+                    : 'bg-blue-600 text-white shadow-lg dark:shadow-none'
             }`}
         >
             {isActive ? 'PONTUALIZAR / PAUSAR' : 'INICIAR TREINO'}
@@ -374,13 +374,13 @@ export default function CardioTab() {
         <div className="flex gap-2 pb-2">
             <button 
               onClick={() => handleMediaClick('https://www.netflix.com')}
-              className="flex-1 bg-slate-50 border border-slate-200 py-3 rounded-lg flex items-center justify-center font-black text-[8px] tracking-[0.1em] text-slate-600 hover:bg-slate-100 transition-colors"
+              className="flex-1 bg-slate-50 dark:bg-[#1a1a1a] border border-slate-200 dark:border-slate-800 py-3 rounded-lg flex items-center justify-center font-black text-[8px] tracking-[0.1em] text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
             >
               NETFLIX
             </button>
             <button 
               onClick={() => handleMediaClick('https://www.youtube.com')}
-              className="flex-1 bg-slate-50 border border-slate-200 py-3 rounded-lg flex items-center justify-center gap-1.5 font-black text-[8px] tracking-[0.1em] text-slate-600 hover:bg-slate-100 transition-colors"
+              className="flex-1 bg-slate-50 dark:bg-[#1a1a1a] border border-slate-200 dark:border-slate-800 py-3 rounded-lg flex items-center justify-center gap-1.5 font-black text-[8px] tracking-[0.1em] text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
             >
               <Youtube className="w-3 h-3 text-[#FF0000]" /> YOUTUBE
             </button>

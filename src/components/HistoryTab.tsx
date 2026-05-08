@@ -84,7 +84,7 @@ export default function HistoryTab({
   const imcCategory = getIMCCategory(currentIMC);
 
   return (
-    <div className="p-4 pb-24 space-y-6 bg-slate-50 min-h-full overflow-x-hidden">
+    <div className="p-4 pb-24 space-y-6 bg-slate-50 min-h-full overflow-x-hidden transition-colors duration-300">
       <header className="flex items-center gap-3">
         <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-md shadow-blue-100">
           <TrendingUp className="w-5 h-5 text-white" />
@@ -133,7 +133,7 @@ export default function HistoryTab({
                 placeholder="Peso (kg)"
                 value={newWeight}
                 onChange={(e) => setNewWeight(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full pl-9 pr-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none text-slate-900"
               />
             </div>
             <button 
@@ -151,7 +151,7 @@ export default function HistoryTab({
                 placeholder="Altura (cm)"
                 value={newHeight}
                 onChange={(e) => setNewHeight(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full pl-9 pr-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none text-slate-900"
               />
             </div>
             <button 
@@ -190,12 +190,20 @@ export default function HistoryTab({
                     <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" opacity={0.1} vertical={false} />
                 <XAxis dataKey="date" stroke="#94a3b8" fontSize={8} tickLine={false} axisLine={false} />
                 <YAxis domain={['dataMin - 1', 'dataMax + 1']} hide />
                 <Tooltip 
-                  contentStyle={{ borderRadius: '12px', fontSize: '10px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  labelStyle={{ fontWeight: 'bold' }}
+                  contentStyle={{ 
+                    borderRadius: '12px', 
+                    fontSize: '10px', 
+                    border: 'none', 
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                    backgroundColor: '#1e293b',
+                    color: '#f8fafc'
+                  }}
+                  itemStyle={{ color: '#f8fafc' }}
+                  labelStyle={{ fontWeight: 'bold', color: '#f8fafc' }}
                 />
                 <Area type="monotone" dataKey="imc" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorImc)" dot={{ r: 3, fill: '#2563eb' }} />
               </AreaChart>
@@ -218,14 +226,14 @@ export default function HistoryTab({
               placeholder="Local (Braço, Coxa...)"
               value={newMeasureLabel}
               onChange={(e) => setNewMeasureLabel(e.target.value)}
-              className="flex-1 px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+              className="flex-1 px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none text-slate-900"
             />
             <input 
               type="number" 
               placeholder="cm"
               value={newMeasureValue}
               onChange={(e) => setNewMeasureValue(e.target.value)}
-              className="w-16 px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-16 px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none text-slate-900"
             />
             <button 
               onClick={addMeasurement}
@@ -264,14 +272,14 @@ export default function HistoryTab({
               placeholder="Exercicio"
               value={newLoadExercise}
               onChange={(e) => setNewLoadExercise(e.target.value)}
-              className="flex-1 px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+              className="flex-1 px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none text-slate-900"
             />
             <input 
               type="number" 
               placeholder="kg"
               value={newLoadWeight}
               onChange={(e) => setNewLoadWeight(e.target.value)}
-              className="w-16 px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-16 px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none text-slate-900"
             />
             <button 
               onClick={addLoad}

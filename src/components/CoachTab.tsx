@@ -80,12 +80,12 @@ export default function CoachTab({ history, setHistory, onAcceptTraining, onAcce
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0a0a0a]">
       {/* Header com opção de Limpar */}
-      <div className="bg-white border-b border-slate-200 p-2 flex justify-end items-center sticky top-0 z-20 shadow-sm">
+      <div className="bg-white dark:bg-[#121212] border-b border-slate-200 dark:border-slate-800 p-2 flex justify-end items-center sticky top-0 z-20 shadow-sm">
         <button 
           onClick={onClearChat}
-          className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-slate-400 hover:text-rose-500 hover:border-rose-100 transition-all active:scale-95 flex items-center gap-2"
+          className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-xl text-slate-400 hover:text-rose-500 hover:border-rose-100 transition-all active:scale-95 flex items-center gap-2"
         >
           <Trash2 className="w-3.5 h-3.5" />
           <span className="text-[9px] font-black uppercase tracking-widest">Limpar Conversa</span>
@@ -97,8 +97,8 @@ export default function CoachTab({ history, setHistory, onAcceptTraining, onAcce
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[90%] rounded-2xl p-4 shadow-sm ${
               msg.role === 'user' 
-                ? 'bg-blue-600 text-white rounded-tr-none shadow-blue-200' 
-                : 'bg-white text-slate-700 rounded-tl-none border border-slate-200'
+                ? 'bg-blue-600 text-white rounded-tr-none shadow-blue-200 dark:shadow-none' 
+                : 'bg-white dark:bg-[#181818] text-slate-700 dark:text-slate-300 rounded-tl-none border border-slate-200 dark:border-slate-800'
             }`}>
               <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium">
                 {msg.text.split(/(IronMind)/gi).map((part, index) => (
@@ -112,7 +112,7 @@ export default function CoachTab({ history, setHistory, onAcceptTraining, onAcce
                 <div className={`mt-3 p-3 rounded-xl border ${
                   msg.role === 'user' 
                     ? 'bg-white/10 border-white/20 text-white' 
-                    : 'bg-blue-50 border-blue-100 text-blue-900'
+                    : 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30 text-blue-900 dark:text-blue-300'
                 }`}>
                   <p className="text-[8px] font-[1000] uppercase tracking-widest mb-1 opacity-80">
                     Proposta de {msg.proposal.type === 'training' ? 'Treino' : 'Dieta'}
@@ -138,7 +138,7 @@ export default function CoachTab({ history, setHistory, onAcceptTraining, onAcce
         ))}
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-white rounded-xl rounded-tl-none p-3 flex items-center gap-2 border border-slate-200 shadow-sm">
+            <div className="bg-white dark:bg-[#181818] rounded-xl rounded-tl-none p-3 flex items-center gap-2 border border-slate-200 dark:border-slate-800 shadow-sm">
               <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Calculando...</span>
             </div>
@@ -146,11 +146,17 @@ export default function CoachTab({ history, setHistory, onAcceptTraining, onAcce
         )}
       </div>
 
-      <div className="p-3 bg-white border-t border-slate-200">
+      <div className="p-3 bg-white dark:bg-[#121212] border-t border-slate-200 dark:border-slate-800">
         <div className="flex gap-2 items-end">
           <textarea 
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
             placeholder="Mensagem..."
             rows={1}
             className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-300 transition-all text-slate-700 min-h-[48px] max-h-32 resize-none"

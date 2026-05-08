@@ -96,6 +96,11 @@ export default function App() {
   }, [userProfile]);
 
   useEffect(() => {
+    localStorage.removeItem('darkMode');
+    document.documentElement.classList.remove('dark');
+  }, []);
+
+  useEffect(() => {
     const savedTraining = localStorage.getItem('trainingPlan');
     const savedDiet = localStorage.getItem('dietPlan');
     
@@ -170,7 +175,7 @@ export default function App() {
   const clearChatHistory = () => {
     const initialMessage: ChatMessage = { role: 'model', text: 'Olá! Sou o IronMind, seu treinador pessoal. Como posso te ajudar hoje? Quer montar um treino novo ou uma dieta?' };
     setChatHistory([initialMessage]);
-    localStorage.removeItem('chatHistory');
+    localStorage.removeItem('ironmind_chat_history');
     setShowConfirmClearChat(false);
   };
 
@@ -221,7 +226,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden relative">
+    <div className={`flex flex-col h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden relative transition-colors duration-300`}>
       <AnimatePresence>
         {isOpening && (
           <SplashScreen onComplete={handleCloseSplash} />
@@ -229,46 +234,40 @@ export default function App() {
       </AnimatePresence>
 
       {/* Header & Navigation */}
-      <div className="bg-white border-b border-slate-200 shadow-sm z-20">
-        <header className="px-4 py-3 flex justify-between items-center bg-slate-100 border-b border-slate-200">
-          <div className="flex items-center gap-4">
-            {/* 3D Stone Block Logo Container */}
-            <div className="group relative flex items-center gap-3 bg-gradient-to-br from-slate-200 to-slate-400 p-2.5 px-6 rounded-sm shadow-[6px_6px_0px_#475569] transform transition-all hover:translate-y-0.5 hover:translate-x-0.5 hover:shadow-[3px_3px_0px_#475569] border border-slate-300 overflow-hidden">
+      <div className={`bg-white border-slate-200 border-b shadow-sm z-20`}>
+        <header className={`px-4 py-3 flex justify-between items-center bg-slate-100 border-slate-200 border-b`}>
+          <div className="flex items-center gap-4 flex-1">
+            {/* 3D Stone Block Logo Container - Increased size to fill space */}
+            <div className={`group relative flex items-center gap-4 from-slate-200 to-slate-400 shadow-[6px_6px_0px_#475569] bg-gradient-to-br p-2.5 px-6 rounded-sm transform transition-all hover:translate-y-0.5 hover:translate-x-0.5 border border-slate-300 overflow-hidden`}>
               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/concrete-wall.png')] opacity-20 pointer-events-none"></div>
               <div className="relative w-8 h-8 bg-slate-900 rounded-px flex items-center justify-center shadow-inner">
                  <Dumbbell className="w-5 h-5 text-white transform -rotate-12" />
               </div>
-              <div className="flex flex-col leading-tight">
+              <div className="flex flex-col leading-none">
                 <h1 className="font-[1000] text-2xl uppercase tracking-tighter flex items-center italic notranslate" translate="no">
-                  <span className="text-slate-900 drop-shadow-sm">Iron</span>
-                  <span className="text-blue-700 font-black drop-shadow-sm">Mind</span>
+                   <span className="text-slate-900 drop-shadow-sm">Iron</span>
+                   <span className="text-blue-700 font-black drop-shadow-sm">Mind</span>
                 </h1>
-                <span className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-800 -mt-0.5">Strength & Resilience</span>
+                <span className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-800 -mt-0.5">Strength • Resilience</span>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2.5">
-            <div className="bg-white px-3 py-1.5 rounded-xl border-2 border-slate-200 flex items-center gap-2 shadow-[2px_2px_0px_#cbd5e1]">
+            <div className={`px-3 py-1.5 rounded-xl border-2 bg-white border-slate-200 flex items-center gap-2 shadow-[2px_2px_0px_#1e293b]`}>
                <Timer className="w-3.5 h-3.5 text-blue-500 animate-pulse" />
-               <span className="text-[10px] font-mono font-black text-slate-700">{formatSessionTime(sessionTime)}</span>
+               <span className={`text-[10px] font-mono font-black text-slate-700`}>{formatSessionTime(sessionTime)}</span>
             </div>
             <button 
-              onClick={() => window.open(window.location.href, '_blank')}
-              className="p-2 bg-white rounded-xl border-2 border-slate-200 text-slate-400 hover:text-blue-600 transition-all active:scale-95 shadow-[2px_2px_0px_#cbd5e1]"
-              title="Abrir no Chrome / Nova Aba"
-            >
-              <ExternalLink className="w-4.5 h-4.5" />
-            </button>
-            <button 
               onClick={() => setActiveTab(Tab.HISTORICO)}
-              className="p-2 bg-white rounded-xl border-2 border-slate-200 text-slate-400 hover:text-blue-600 transition-all active:scale-95 shadow-[2px_2px_0px_#cbd5e1]"
+              className={`p-2 rounded-xl border-2 bg-white border-slate-200 text-slate-400 hover:text-blue-600 transition-all active:scale-95 shadow-[2px_2px_0px_#1e293b]`}
+              title="Ver Dashboard"
             >
               <TrendingUp className="w-4.5 h-4.5" />
             </button>
           </div>
         </header>
 
-        <nav className="flex justify-around items-center px-4 pb-2">
+        <nav className="flex justify-between items-center px-0.5 pb-1">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -276,16 +275,16 @@ export default function App() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-col items-center gap-1.5 py-2 px-3 transition-all relative rounded-xl ${
+                className={`flex flex-col items-center gap-0.5 py-1.5 transition-all relative rounded-lg flex-1 min-w-0 ${
                   isActive ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'scale-110' : ''}`} />
-                <span className="text-[8px] uppercase font-black tracking-widest">{tab.label}</span>
+                <Icon className={`w-4.5 h-4.5 ${isActive ? 'scale-110' : ''}`} />
+                <span className="text-[7px] uppercase font-[1000] tracking-tighter truncate w-full text-center px-0.25">{tab.label}</span>
                 {isActive && (
                   <motion.div 
                     layoutId="nav-active-bar"
-                    className="absolute -bottom-1 left-2 right-2 h-1 bg-blue-600 rounded-full"
+                    className="absolute -bottom-0.5 left-2 right-2 h-0.5 bg-blue-600 rounded-full shadow-[0_0_8px_rgba(37,99,235,0.4)]"
                   />
                 )}
               </button>
@@ -295,7 +294,7 @@ export default function App() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto relative bg-slate-50">
+      <main className={`flex-1 overflow-y-auto relative bg-slate-50`}>
         <AnimatePresence>
           {showRenewalAlert && (
             <motion.div 

@@ -27,7 +27,7 @@ export default function WarmupTab() {
   const progress = ((300 - timeLeft) / 300) * 100;
 
   return (
-    <div className="p-4 pb-16 space-y-4 h-full flex flex-col bg-slate-50">
+    <div className="p-4 pb-16 space-y-4 h-full flex flex-col bg-slate-50 transition-colors duration-300">
       <div className="space-y-3">
         <div>
           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Início</p>
@@ -55,7 +55,7 @@ export default function WarmupTab() {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <button onClick={() => { setTimeLeft(300); setIsActive(false); }} className="flex items-center justify-center gap-2 py-3 px-4 border border-slate-200 rounded-xl text-slate-600 font-bold text-xs uppercase tracking-widest">
+        <button onClick={() => { setTimeLeft(300); setIsActive(false); }} className="flex items-center justify-center gap-2 py-3 px-4 border border-slate-200 rounded-xl text-slate-600 font-bold text-xs uppercase tracking-widest hover:bg-slate-100">
           <RotateCcw className="w-4 h-4" />
           <span>Reiniciar</span>
         </button>

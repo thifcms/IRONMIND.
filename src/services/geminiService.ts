@@ -142,3 +142,33 @@ export async function analyzeFoodImage(imageBase64: string): Promise<{ food: str
     throw new Error("Não foi possível processar a imagem devido a uma instabilidade de rede.");
   }
 }
+
+/**
+ * Busca por um guia técnico de exercício gerado por IA
+ */
+export async function getExerciseGuide(name: string): Promise<{
+  name: string;
+  muscle: string;
+  setup: string[];
+  execution: string[];
+  commonMistakes: string[];
+  proTip: string;
+}> {
+  try {
+    const response = await fetchWithRetry("/api/exercise-guide", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Falha ao gerar guia no servidor");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Exercise Guide Fetch Error:", error);
+    throw error;
+  }
+}
