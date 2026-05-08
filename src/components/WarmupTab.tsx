@@ -3,7 +3,8 @@ import { motion } from 'motion/react';
 import { Zap, Wind, RotateCcw, Play, Pause } from 'lucide-react';
 
 export default function WarmupTab() {
-  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
+  const [totalTime, setTotalTime] = useState(300); // Default 5 minutes
+  const [timeLeft, setTimeLeft] = useState(300);
   const [isActive, setIsActive] = useState(false);
 
   useEffect(() => {
@@ -18,13 +19,22 @@ export default function WarmupTab() {
     return () => clearInterval(interval);
   }, [isActive, timeLeft]);
 
+  const handleTimeSelect = (minutes: number) => {
+    const seconds = minutes * 60;
+    setTotalTime(seconds);
+    setTimeLeft(seconds);
+    setIsActive(false);
+  };
+
   const formatTime = (s: number) => {
     const mins = Math.floor(s / 60);
     const secs = s % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const progress = ((300 - timeLeft) / 300) * 100;
+  const progress = ((totalTime - timeLeft) / totalTime) * 100;
+
+  const timeOptions = [5, 10, 15, 20];
 
   return (
     <div className="p-4 pb-16 space-y-4 h-full flex flex-col bg-slate-50 transition-colors duration-300">
@@ -45,6 +55,28 @@ export default function WarmupTab() {
         </div>
       </div>
 
+      {/* Time Selector */}
+      <div className="flex justify-between items-center bg-white p-2 rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-14 relative">
+        {timeOptions.map((opt) => (
+          <button
+            key={opt}
+            onClick={() => handleTimeSelect(opt)}
+            className="flex-1 relative z-10 h-full flex items-center justify-center"
+          >
+            <span className={`relative z-20 text-[10px] font-black uppercase tracking-tighter transition-colors duration-300 ${totalTime === opt * 60 ? 'text-white' : 'text-slate-400'}`}>
+              {opt} MIN
+            </span>
+            {totalTime === opt * 60 && (
+              <motion.div
+                layoutId="warmup-pill"
+                className="absolute inset-0 bg-blue-600 rounded-xl"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+              />
+            )}
+          </button>
+        ))}
+      </div>
+
       <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center p-6 gap-4">
         <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
           <Wind className="w-6 h-6 text-blue-500" />
@@ -55,7 +87,7 @@ export default function WarmupTab() {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <button onClick={() => { setTimeLeft(300); setIsActive(false); }} className="flex items-center justify-center gap-2 py-3 px-4 border border-slate-200 rounded-xl text-slate-600 font-bold text-xs uppercase tracking-widest hover:bg-slate-100">
+        <button onClick={() => { setTimeLeft(totalTime); setIsActive(false); }} className="flex items-center justify-center gap-2 py-3 px-4 border border-slate-200 rounded-xl text-slate-600 font-bold text-xs uppercase tracking-widest hover:bg-slate-100">
           <RotateCcw className="w-4 h-4" />
           <span>Reiniciar</span>
         </button>
