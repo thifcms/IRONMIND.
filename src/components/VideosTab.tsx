@@ -1,9 +1,9 @@
 import { TrainingPlan, Exercise } from '../types';
 import { Play, Video, Info, Sparkles, X, ChevronRight, AlertCircle, Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { getExerciseGuide } from '../services/geminiService';
+import { getExerciseGuide, resolveVideoDirectly } from '../services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
-import { resolveVideoUrl, formatVideoUrl, getYouTubeSearchUrl } from '../lib/videoUtils';
+import { resolveVideoUrl, formatVideoUrl, getYouTubeSearchUrl, isSearchUrl, isInLibrary } from '../lib/videoUtils';
 
 interface AIExerciseGuide {
   name: string;
@@ -19,6 +19,8 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
   // Agrupar por nome para evitar duplicados na aba de vídeos
   const uniqueExercises = Array.from(new Map(allExercises.map(ex => [ex.name, ex])).values());
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
+  const [resolvedVideos, setResolvedVideos] = useState<Record<string, string>>({});
+  const [resolvingVideo, setResolvingVideo] = useState<string | null>(null);
   
   const [guideLoading, setGuideLoading] = useState<string | null>(null);
   const [selectedGuide, setSelectedGuide] = useState<AIExerciseGuide | null>(null);
@@ -32,6 +34,48 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
       console.error("Failed to generate guide:", error);
     } finally {
       setGuideLoading(null);
+    }
+  };
+
+  const handleWatchVideo = async (ex: Exercise, videoUrl: string | null) => {
+    if (activeVideo === ex.name) {
+      setActiveVideo(null);
+      return;
+    }
+
+    // REGRA DE OURO: API só é consumida se o exercício NÃO estiver na biblioteca local
+    const inLibrary = isInLibrary(ex.name);
+
+    // 1. Se já temos um vídeo oficial ou já resolvido, só mostra
+    if (videoUrl && !isSearchUrl(videoUrl)) {
+      setActiveVideo(ex.name);
+      return;
+    }
+
+    if (resolvedVideos[ex.name]) {
+      setActiveVideo(ex.name);
+      return;
+    }
+
+    // 2. Se estiver na biblioteca mas não tem URL direta, mostramos a busca (PARA ECONOMIZAR API)
+    if (inLibrary) {
+      setActiveVideo(ex.name);
+      return;
+    }
+
+    // 3. SE NÃO ESTIVER NA BIBLIOTECA, aí sim usamos a IA para resolver o link direto
+    setResolvingVideo(ex.name);
+    try {
+      const result = await resolveVideoDirectly(ex.name);
+      if (result.videoId) {
+        setResolvedVideos(prev => ({ ...prev, [ex.name]: result.videoId }));
+      }
+      setActiveVideo(ex.name);
+    } catch (error) {
+      console.error("Failed to resolve direct video:", error);
+      setActiveVideo(ex.name);
+    } finally {
+      setResolvingVideo(null);
     }
   };
 
@@ -53,13 +97,24 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
             Nenhum exercício encontrado no seu plano atual.
           </div>
         ) : uniqueExercises.map((ex) => {
-          const videoUrl = resolveVideoUrl(ex);
+          let videoUrl = resolveVideoUrl(ex);
+          // Substitui por ID resolvido se existir
+          if (resolvedVideos[ex.name]) {
+            videoUrl = `https://www.youtube.com/watch?v=${resolvedVideos[ex.name]}`;
+          }
           
+          const isResolving = resolvingVideo === ex.name;
+
           return (
             <div key={ex.name} className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden hover:border-blue-200 transition-all shadow-sm group">
               <div className="aspect-video bg-slate-900 flex items-center justify-center relative">
-                {activeVideo === ex.name ? (
-                  videoUrl ? (
+                {isResolving ? (
+                   <div className="flex flex-col items-center gap-4 text-white">
+                      <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+                      <p className="text-[10px] font-black uppercase tracking-widest animate-pulse">Sincronizando Demonstração Direta...</p>
+                   </div>
+                ) : activeVideo === ex.name ? (
+                  videoUrl && (!isSearchUrl(videoUrl) || resolvedVideos[ex.name]) ? (
                     <div className="w-full h-full relative group/player">
                       <iframe
                         src={formatVideoUrl(videoUrl)}
@@ -82,7 +137,7 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
 
                       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 opacity-0 group-hover/player:opacity-100 transition-opacity whitespace-nowrap">
                         <a 
-                          href={videoUrl}
+                          href={videoUrl!}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-4 py-2 bg-red-600/90 backdrop-blur text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-xl flex items-center gap-2 hover:bg-red-700 transition-all"
@@ -113,20 +168,31 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
                   ) : (
                     <div className="flex flex-col items-center justify-center p-6 text-center gap-4">
                       <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center">
-                        <Video className="w-8 h-8 text-slate-500" />
+                        {isSearchUrl(videoUrl) ? (
+                           <Sparkles className="w-8 h-8 text-blue-400 animate-pulse" />
+                        ) : (
+                           <Video className="w-8 h-8 text-slate-500" />
+                        )}
                       </div>
                       <div>
-                        <p className="text-white text-sm font-bold uppercase tracking-tight">Vídeo não disponível no acervo</p>
-                        <p className="text-slate-400 text-[10px] mt-1 italic">Deseja buscar demonstrações externas?</p>
+                        <p className="text-white text-sm font-bold uppercase tracking-tight">
+                          {isSearchUrl(videoUrl) ? 'Busca Dinâmica Ativada' : 'Vídeo não disponível no acervo'}
+                        </p>
+                        <p className="text-slate-400 text-[10px] mt-1 italic">
+                          {isSearchUrl(videoUrl) 
+                            ? 'Encontramos as melhores fontes externas para este exercício.' 
+                            : 'Deseja buscar demonstrações externas?'
+                          }
+                        </p>
                       </div>
                       <a 
-                        href={getYouTubeSearchUrl(ex.name)}
+                        href={videoUrl || getYouTubeSearchUrl(ex.name)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-6 py-2.5 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-red-900/20 hover:bg-red-700 transition-all flex items-center gap-2"
+                        className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-900/20 hover:bg-blue-700 transition-all flex items-center gap-2"
                       >
                         <Play className="w-3 h-3 fill-current" />
-                        Pesquisar no YouTube
+                        {isSearchUrl(videoUrl) ? 'Abrir Busca no YouTube' : 'Pesquisar no YouTube'}
                       </a>
                       <button 
                         onClick={() => setActiveVideo(null)}
@@ -144,11 +210,11 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
                     </div>
                     
                     <button 
-                      onClick={() => setActiveVideo(ex.name)}
+                      onClick={() => handleWatchVideo(ex, videoUrl)}
                       className="absolute inset-0 flex items-center justify-center bg-blue-600/5 hover:bg-blue-600/10 transition-colors"
                     >
                       <div className="bg-white/90 backdrop-blur px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-lg text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {videoUrl ? 'Carregar Demonstração' : 'Buscar no YouTube'}
+                        {videoUrl && !isSearchUrl(videoUrl) ? 'Carregar Demonstração' : 'Acessar Link Direto (IA)'}
                       </div>
                     </button>
 
@@ -170,13 +236,17 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
                       <span className="px-2.5 py-1 bg-slate-100 rounded-lg text-[9px] font-black text-slate-500 uppercase tracking-widest border border-slate-200">
                         Foco Técnico
                       </span>
-                      {videoUrl ? (
-                        <span className="px-2.5 py-1 bg-green-50 rounded-lg text-[9px] font-black text-green-600 uppercase tracking-widest border border-green-100">
-                          HD Oficial
-                        </span>
+                    {(videoUrl && !isSearchUrl(videoUrl)) || resolvedVideos[ex.name] ? (
+                        <motion.span 
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="px-2.5 py-1 bg-green-50 rounded-lg text-[9px] font-black text-green-600 uppercase tracking-widest border border-green-100"
+                        >
+                          {resolvedVideos[ex.name] ? 'Sincronizado IA' : 'HD Oficial'}
+                        </motion.span>
                       ) : (
-                        <span className="px-2.5 py-1 bg-slate-50 rounded-lg text-[9px] font-black text-slate-400 uppercase tracking-widest border border-slate-100 italic">
-                          Sugestão Web
+                        <span className="px-2.5 py-1 bg-blue-50 rounded-lg text-[9px] font-black text-blue-600 uppercase tracking-widest border border-blue-100 italic">
+                          Busca Web Ativa
                         </span>
                       )}
                     </div>
@@ -298,7 +368,7 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
                 <div className="bg-blue-600 text-white p-5 rounded-3xl shadow-lg ring-4 ring-blue-100">
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="w-4 h-4 text-blue-200" />
-                    <span className="font-black uppercase tracking-widest text-[10px]">Pro Tip (Treinador IronMind)</span>
+                    <span className="font-black uppercase tracking-widest text-[10px]">Pro Tip (Treinadora IronMind)</span>
                   </div>
                   <p className="text-sm font-medium italic leading-relaxed">
                     "{selectedGuide.proTip}"

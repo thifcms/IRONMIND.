@@ -70,7 +70,7 @@ export default function App() {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => {
     const saved = loadChatHistory();
     return saved.length > 0 ? saved : [
-      { role: 'model', text: 'Olá! Sou o IronMind, seu treinador pessoal. Como posso te ajudar hoje? Quer montar um treino novo ou uma dieta?' }
+      { role: 'model', text: 'Olá! Sou a IronMind, sua treinadora pessoal. Como posso te ajudar hoje? Quer montar um treino novo ou uma dieta?' }
     ];
   });
 
@@ -175,7 +175,7 @@ export default function App() {
   };
 
   const clearChatHistory = () => {
-    const initialMessage: ChatMessage = { role: 'model', text: 'Olá! Sou o IronMind, seu treinador pessoal. Como posso te ajudar hoje? Quer montar um treino novo ou uma dieta?' };
+    const initialMessage: ChatMessage = { role: 'model', text: 'Olá! Sou a IronMind, sua treinadora pessoal. Como posso te ajudar hoje? Quer montar um treino novo ou uma dieta?' };
     setChatHistory([initialMessage]);
     localStorage.removeItem('ironmind_chat_history');
     setShowConfirmClearChat(false);
@@ -226,7 +226,7 @@ export default function App() {
   };
 
   const tabs = [
-    { id: Tab.TREINADOR, label: 'Treinador', icon: UserCircle2 },
+    { id: Tab.TREINADOR, label: 'Treinadora', icon: UserCircle2 },
     { id: Tab.AQUECIMENTO, label: 'Aquec.', icon: Timer },
     { id: Tab.TREINO, label: 'Treino', icon: Dumbbell },
     { id: Tab.VIDEOS, label: 'Vídeos', icon: Play },
@@ -331,8 +331,8 @@ export default function App() {
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.1}
           onDragEnd={(_, info) => {
-            const threshold = 50;
-            const velocityThreshold = 10;
+            const threshold = 100; // Aumentado de 50 para 100 para evitar disparos acidentais
+            const velocityThreshold = 20; // Aumentado de 10 para 20
             if (info.offset.x > threshold && info.velocity.x > velocityThreshold) handleSwipe('right');
             else if (info.offset.x < -threshold && info.velocity.x < -velocityThreshold) handleSwipe('left');
           }}
@@ -362,7 +362,7 @@ export default function App() {
                   }}
                   className="bg-white text-blue-600 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest"
                 >
-                  Falar com Treinador
+                  Falar com Treinadora
                 </button>
                 <button onClick={() => setShowRenewalAlert(false)} className="p-1 hover:bg-white/10 rounded-lg">
                   <X className="w-4 h-4" />
@@ -569,7 +569,7 @@ function EmptyState({ type, onClick, onManualBuild }: { type: string, onClick: (
       <p className="text-slate-500 mb-6 text-[11px] max-w-[200px]">
         {type === 'treino' 
           ? 'Escolha uma das opções abaixo para começar sua jornada.' 
-          : `Peça ao Treinador para gerar seu ${type} agora.`}
+          : `Peça à Treinadora para gerar seu ${type} agora.`}
       </p>
       
       <div className="flex flex-col gap-3 w-full max-w-[200px]">
@@ -577,7 +577,7 @@ function EmptyState({ type, onClick, onManualBuild }: { type: string, onClick: (
           onClick={onClick}
           className="w-full px-6 py-3 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] shadow-md shadow-blue-100 flex items-center justify-center gap-2"
         >
-          Ir para Treinador
+          Ir para Treinadora
         </button>
 
         {type === 'treino' && onManualBuild && (
@@ -647,7 +647,7 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
             IRON<span className="text-blue-500">MIND</span>
           </h1>
           <p className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-500 mt-3">
-            EST. 2026 • ELITE TREINADOR
+            EST. 2026 • ELITE TREINADORA
           </p>
         </motion.div>
 

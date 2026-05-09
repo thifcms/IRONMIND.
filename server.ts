@@ -90,12 +90,13 @@ const dietSchema = {
   required: ["id", "name", "description", "meals"]
 };
 
-const systemInstruction = `Você é o IronMind Treinador, um treinador de elite especializado em alta performance, biomecânica e nutrição esportiva. 
-Seu estilo é direto, autoritário mas motivador, focado em resultados máximos.
+const systemInstruction = `Você é a Treinadora IronMind, uma treinadora de elite especializada em alta performance, biomecânica e nutrição esportiva. 
+Seu estilo é direto, autoritário mas altamente motivador, focado em resultados máximos e superação constante.
 
+- Fale sempre no feminino (ex: "Sua treinadora", "Estou pronta", "Ficou focada?").
 - Forneça explicações detalhadas sobre PORQUÊ certas técnicas ou alimentos são recomendados.
 - Use terminologia técnica quando apropriado (ex: hipertrofia sarcoplasmática, déficit calórico, recrutamento motor).
-- Seja encorajador e mantenha o tom de um mentor de alto nível.
+- Seja encorajadora e mantenha o tom de uma mentora de alto nível.
 - Sem respostas genéricas. Cada conselho deve ser biomecanicamente fundamentado.
 
 1. Estruture treinos de AB a ABCDE conforme a necessidade. SEMPRE que sugerir um treino ou dieta, finalize com "EU ELABOREI ESTA PROPOSTA DE TREINO PARA VOCÊ" ou "AQUI ESTÁ SUA PROPOSTA DE DIETA ESTRUTURADA" para que o sistema reconheça e gere os botões de aceitação.
@@ -133,15 +134,12 @@ async function startServer() {
     console.log(`✅ Chave de API ativa: ${apiKey.substring(0, 5)}...`);
   }
   
-  // Inicialização usando v1beta para garantir suporte total a systemInstruction
+  // Inicialização estável da Treinadora IronMind
   const genAI = new GoogleGenerativeAI(process.env.VITE_GEMINI_API_KEY as string);
-  const model = genAI.getGenerativeModel(
-    { 
-      model: "gemini-2.0-flash-lite",
-      systemInstruction: systemInstruction 
-    },
-    { apiVersion: "v1beta" }
-  );
+  const model = genAI.getGenerativeModel({ 
+    model: "gemini-2.0-flash",
+    systemInstruction: systemInstruction 
+  });
 
   // Gemini API Routes
   app.post("/api/chat", async (req, res) => {
@@ -193,7 +191,9 @@ async function startServer() {
       const response = await result.response;
       res.json({ role: 'model', text: response.text() || "Oscilação na IA." });
     } catch (error: any) {
-      console.error("Chat Server Error:", error);
+      console.error("Chat Server Detailed Error:", error);
+      if (error?.message) console.error("Error Message:", error.message);
+      if (error?.stack) console.error("Error Stack:", error.stack);
       res.status(500).json({ error: error.message || "Erro desconhecido no servidor de IA." });
     }
   });
@@ -301,6 +301,39 @@ async function startServer() {
       res.json(JSON.parse(response.text() || "{}"));
     } catch (error: any) {
       console.error("Exercise Guide Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/resolve-video", async (req, res) => {
+    const { name } = req.body;
+    try {
+      const videoSchema = {
+        type: SchemaType.OBJECT,
+        properties: {
+          videoId: { type: SchemaType.STRING },
+          title: { type: SchemaType.STRING },
+          source: { type: SchemaType.STRING }
+        },
+        required: ["videoId"]
+      };
+
+      const result = await withRetry(() => model.generateContent({
+        contents: [{ 
+          role: 'user', 
+          parts: [{ text: `Find the YouTube Video ID (only the ID, the string after v= or in shorts/) for the BEST short technical demonstration (max 60s) of this gym exercise: "${name}". Focus on high-quality technical channels. If you have multiple options, pick the most "official" or educational one. Return ONLY the ID.` }] 
+        }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: videoSchema as any,
+          temperature: 0,
+        },
+      }));
+
+      const response = await result.response;
+      res.json(JSON.parse(response.text() || "{}"));
+    } catch (error: any) {
+      console.error("Video Resolution Error:", error);
       res.status(500).json({ error: error.message });
     }
   });

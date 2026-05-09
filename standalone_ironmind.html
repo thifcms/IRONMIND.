@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google" content="notranslate">
-    <title>IronMind - Treinador Inteligente</title>
+    <title>IronMind - Treinadora Inteligente</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -97,7 +97,7 @@
             const [chatHistory, setChatHistory] = useState(() => {
                 const saved = localStorage.getItem('chatHistory');
                 return saved ? JSON.parse(saved) : [
-                    { role: 'model', text: 'Olá! Sou o <span translate="no" class="notranslate">IronMind</span>, seu treinador de elite. Vamos começar? Como posso ajudar hoje?' }
+                    { role: 'model', text: 'Olá! Sou a <span translate="no" class="notranslate">IronMind</span>, sua treinadora de elite. Vamos começar? Como posso ajudar hoje?' }
                 ];
             });
             const [trainingPlan, setTrainingPlan] = useState(() => {
@@ -129,8 +129,8 @@
                 try {
                     const genAI = new GoogleGenerativeAI(apiKey);
                     const model = genAI.getGenerativeModel({ 
-                        model: "gemini-1.5-flash",
-                        systemInstruction: "Você é o IronMind Coach, um treinador de elite em biomecânica e nutrição. Seja direto, motivador e técnico. Use português do Brasil. Se o usuário quiser um treino, responda com texto encorajador e forneça um plano estruturado em JSON no final se possível."
+                        model: "gemini-2.0-flash",
+                        systemInstruction: "Você é a Treinadora IronMind, uma treinadora de elite em biomecânica e nutrição. Seja direta, motivadora e técnica. Use sempre o feminino. Use português do Brasil. Se o usuário quiser um treino, responda com texto encorajador e forneça um plano estruturado em JSON no final se possível."
                     });
 
                     const chat = model.startChat({
@@ -193,7 +193,7 @@
                 // Tabs
                 React.createElement('nav', { className: 'fixed bottom-0 left-0 right-0 max-w-md mx-auto glass border-t border-slate-100 flex justify-around p-3 z-30' },
                     [
-                        { id: 'treinador', icon: MessageSquare, label: 'Coach' },
+                        { id: 'treinador', icon: MessageSquare, label: 'Treinadora' },
                         { id: 'treino', icon: Dumbbell, label: 'Treino' },
                         { id: 'biometria', icon: TrendingUp, label: 'Progresso' }
                     ].map(tab => React.createElement('button', {
@@ -233,7 +233,7 @@
                         })
                     )),
                     isLoading && React.createElement('div', { className: 'flex justify-start' },
-                        React.createElement('div', { className: 'bg-slate-100 p-4 rounded-2xl rounded-tl-none animate-pulse text-slate-400 text-xs font-bold uppercase' }, 'Coach pensando...')
+                        React.createElement('div', { className: 'bg-slate-100 p-4 rounded-2xl rounded-tl-none animate-pulse text-slate-400 text-xs font-bold uppercase' }, 'Treinadora pensando...')
                     ),
                     React.createElement('div', { ref: endRef })
                 ),
@@ -262,7 +262,7 @@
             if (!plan) return React.createElement('div', { className: 'flex flex-col items-center justify-center py-20 text-center' },
                 React.createElement(Dumbbell, { className: 'w-12 h-12 text-slate-200 mb-4' }),
                 React.createElement('h2', { className: 'font-black uppercase italic' }, 'Sem plano ativo'),
-                React.createElement('p', { className: 'text-xs text-slate-400 mb-6' }, 'Peça ao coach ou monte manualmente.'),
+                React.createElement('p', { className: 'text-xs text-slate-400 mb-6' }, 'Peça à treinadora ou monte manualmente.'),
                 React.createElement('button', { onClick: onManual, className: 'bg-blue-600 text-white px-8 py-3 rounded-xl font-bold uppercase text-xs' }, 'Monte Seu Treino')
             );
 
@@ -343,7 +343,7 @@
                         React.createElement('button', { 
                             onClick: () => onSave(val),
                             className: 'w-full bg-slate-900 text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-100'
-                        }, 'Ativar Coach'),
+                        }, 'Ativar Treinadora'),
                         React.createElement('button', { 
                             onClick: onClose,
                             className: 'w-full text-slate-400 py-3 text-[10px] font-bold uppercase'

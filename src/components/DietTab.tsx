@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { DietPlan } from '../types';
 import { Clock, CheckCircle2, Camera, Loader2, Info, AlertTriangle, Utensils } from 'lucide-react';
 import { analyzeFoodImage } from '../services/geminiService';
+import { compressImage } from '../lib/imageUtils';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function DietTab({ 
@@ -26,9 +27,11 @@ export default function DietTab({
 
     const reader = new FileReader();
     reader.onload = async (event) => {
-      const base64 = event.target?.result as string;
+      const originalBase64 = event.target?.result as string;
       try {
-        const result = await analyzeFoodImage(base64);
+        // Reduz a qualidade da imagem para economizar tokens/custos de API
+        const compressedBase64 = await compressImage(originalBase64);
+        const result = await analyzeFoodImage(compressedBase64);
         setAnalysis(result);
       } catch (error) {
         alert("Erro ao analisar a imagem. Tente novamente.");
@@ -214,7 +217,7 @@ export default function DietTab({
               onClick={onRequestNew}
               className="px-8 py-3 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-slate-100 hover:border-blue-600 dark:hover:border-blue-600 transition-all active:scale-95"
             >
-              Falar com o Treinador
+              Falar com a Treinadora
             </button>
           </div>
         )

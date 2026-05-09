@@ -163,7 +163,7 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
                 handleSend();
               }
             }}
-            placeholder="Mensagem..."
+            placeholder="Falar com a Treinadora..."
             rows={1}
             className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-300 transition-all text-slate-700 min-h-[48px] max-h-32 resize-none"
           />

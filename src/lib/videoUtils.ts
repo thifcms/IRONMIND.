@@ -1,8 +1,22 @@
 import { Exercise } from '../types';
-import { EXERCISE_LIBRARY } from '../constants/exercises';
+import { EXERCISE_LIBRARY, getExerciseVideoUrl } from '../constants/exercises';
+
+export function isSearchUrl(url: string | null) {
+  if (!url) return false;
+  return url.includes('youtube.com/results') || url.includes('google.com/search');
+}
+
+export function isInLibrary(name: string) {
+  const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+  const searchName = normalize(name);
+  return EXERCISE_LIBRARY.some(libEx => {
+    const libName = normalize(libEx.name);
+    return libName === searchName || libName.includes(searchName) || searchName.includes(libName);
+  });
+}
 
 export function resolveVideoUrl(ex: Exercise | { name: string; videoUrl?: string }) {
-  // 1. Priority: Video already in the object
+  // 1. Priority: Video already in the object (e.g. from a past resolution or manual plan)
   if (ex.videoUrl) return ex.videoUrl;
 
   // 2. Second option: Search static library with normalization
@@ -14,8 +28,16 @@ export function resolveVideoUrl(ex: Exercise | { name: string; videoUrl?: string
     return libName === searchName || libName.includes(searchName) || searchName.includes(libName);
   });
 
-  if (libraryMatch?.videoUrl) return libraryMatch.videoUrl;
+  if (libraryMatch) {
+    const url = getExerciseVideoUrl(libraryMatch);
+    if (url) return url;
+    
+    // If in library but no direct URL, we return a SPECIFIC search URL for library items
+    const query = encodeURIComponent(`${libraryMatch.name} ${libraryMatch.englishName || ''} execução correta shorts`.trim());
+    return `https://www.youtube.com/results?search_query=${query}&sp=EgJABQ%253D%253D`;
+  }
 
+  // 3. Last fallback: Not in library, we'll return null so the UI can use IA
   return null;
 }
 

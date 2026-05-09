@@ -172,3 +172,26 @@ export async function getExerciseGuide(name: string): Promise<{
     throw error;
   }
 }
+
+/**
+ * Resolve um ID de vídeo do YouTube diretamente para um exercício usando IA
+ */
+export async function resolveVideoDirectly(name: string): Promise<{ videoId: string }> {
+  try {
+    const response = await fetchWithRetry("/api/resolve-video", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Falha ao resolver vídeo no servidor");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Video Resolution Fetch Error:", error);
+    throw error;
+  }
+}

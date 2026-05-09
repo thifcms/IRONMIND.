@@ -266,7 +266,10 @@ export default function TrainingTab({
       </div>
 
       {/* Days Sub-tabs */}
-      <div className="flex bg-white dark:bg-[#121212] px-2 py-2 gap-2 overflow-x-auto border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10 no-scrollbar">
+      <div 
+        onPointerDown={(e) => e.stopPropagation()} 
+        className="flex bg-white dark:bg-[#121212] px-2 py-2 gap-2 overflow-x-auto border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10 no-scrollbar"
+      >
         {plan.days.map((day, idx) => (
           <button
             key={idx}
@@ -295,7 +298,7 @@ export default function TrainingTab({
             </div>
             <div className="flex-1">
               <p className="text-[10px] font-black text-amber-900 uppercase tracking-tight leading-none mb-0.5">Protocolo com +90 dias</p>
-              <p className="text-[9px] text-amber-700 font-medium leading-tight">Considere falar com o Treinador para uma revisão técnica.</p>
+              <p className="text-[9px] text-amber-700 font-medium leading-tight">Considere falar com a Treinadora para uma revisão técnica.</p>
             </div>
             <button 
               onClick={onOpenSplitSelector}
@@ -551,6 +554,7 @@ export default function TrainingTab({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            onPointerDown={(e) => e.stopPropagation()}
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex flex-col"
           >
             <div className="flex-1 overflow-hidden flex flex-col max-w-lg mx-auto w-full bg-white sm:my-8 sm:rounded-[2.5rem] shadow-2xl relative">
@@ -642,6 +646,7 @@ export default function TrainingTab({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            onPointerDown={(e) => e.stopPropagation()}
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110] flex items-center justify-center p-6"
           >
             <motion.div 
