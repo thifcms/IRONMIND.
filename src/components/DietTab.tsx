@@ -154,7 +154,7 @@ export default function DietTab({
 
       {/* Intro info if no analysis */}
       {!analysis && !analyzing && (
-        <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20 rounded-2xl p-4 flex gap-3 items-center">
+        <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20 rounded-2xl p-4 flex gap-3 items-center texture-dots">
           <div className="w-10 h-10 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center text-blue-600 shrink-0 border dark:border-slate-800">
              <Camera className="w-5 h-5" />
           </div>
@@ -186,7 +186,7 @@ export default function DietTab({
               <div className="bg-white dark:bg-[#121212] rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-blue-200 dark:hover:border-blue-900 transition-colors">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="font-black text-base text-slate-900 dark:text-slate-100 leading-tight uppercase italic">{meal.name}</h3>
-                  <span className="text-[9px] font-black text-blue-600 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 px-2 py-0.5 rounded-md uppercase tracking-widest">
+                  <span className="text-[9px] font-black text-blue-600 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 px-2 py-0.5 rounded-md uppercase tracking-widest texture-dots">
                     {meal.time}
                   </span>
                 </div>

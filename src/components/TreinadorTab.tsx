@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, Dispatch, SetStateAction } from 'react';
-import { Send, Check, Loader2, Trash2 } from 'lucide-react';
+import { Send, Check, Loader2, Trash2, ShieldCheck, ShieldAlert, Cpu } from 'lucide-react';
 import { ChatMessage, TrainingPlan, DietPlan } from '../types';
 import { chatWithCoach, generateProposal } from '../services/geminiService';
+import { checkAIHealth } from '../services/aiManagerService';
 
 interface TreinadorTabProps {
   history: ChatMessage[];
@@ -14,7 +15,12 @@ interface TreinadorTabProps {
 export default function TreinadorTab({ history, setHistory, onAcceptTraining, onAcceptDiet, onClearChat }: TreinadorTabProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [aiStatus, setAiStatus] = useState<{status: string, message: string} | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    checkAIHealth().then(setAiStatus);
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -34,13 +40,18 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
       const response = await chatWithCoach(history, input);
       setHistory(prev => [...prev, response]);
 
+      if (response.shouldClearHistory && onClearChat) {
+        // Se o servidor sugeriu limpar, o erro já está na mensagem.
+        // O usuário já tem o botão de limpar no topo, mas podemos ressaltar aqui.
+      }
+
       // Handle proposal generation
       const text = response.text;
       const lowerText = text.toLowerCase();
       
-      // Gatilhos mais amplos para garantir que o usuário veja os botões
-      const isTrainingProposal = lowerText.includes('proposta de treino') || lowerText.includes('treino elaborei') || lowerText.includes('divisão de treino') || lowerText.includes('protocolo de treino') || lowerText.includes('treino elaborei');
-      const isDietProposal = lowerText.includes('proposta de dieta') || lowerText.includes('plano alimentar') || lowerText.includes('dieta estruturada') || lowerText.includes('cardápio');
+      // Gatilhos super amplos e redundantes para o Gerente de IA garantir a conexão
+      const isTrainingProposal = lowerText.includes('proposta de treino') || lowerText.includes('treino elaborei') || lowerText.includes('divisão de treino') || lowerText.includes('protocolo de treino') || lowerText.includes('treino estruturado') || lowerText.includes('seu novo treino');
+      const isDietProposal = lowerText.includes('proposta de dieta') || lowerText.includes('plano alimentar') || lowerText.includes('dieta estruturada') || lowerText.includes('seu novo plano') || lowerText.includes('cardápio');
 
       if (isTrainingProposal) {
         generateProposal('training', text)
@@ -71,9 +82,13 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
             setHistory(prev => [...prev, { role: 'model', text: "Tive um problema ao estruturar seu plano alimentar. Tente novamente em breve." }]);
           });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      setHistory(prev => [...prev, { role: 'model', text: 'Ops, tivemos um problema técnico. Pode repetir?' }]);
+      const technicalError = error?.message || String(error);
+      setHistory(prev => [...prev, { 
+        role: 'model', 
+        text: `⚠️ ERRO TÉCNICO DETECTADO:\n${technicalError}\n\nPor favor, reporte isso ao suporte ou verifique a conexão.` 
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -81,14 +96,22 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0a0a0a]">
-      {/* Header com opção de Limpar */}
-      <div className="bg-white dark:bg-[#121212] border-b border-slate-200 dark:border-slate-800 p-2 flex justify-end items-center sticky top-0 z-20 shadow-sm">
+      {/* Header com Status do Gerente de IA */}
+      <div className="bg-white dark:bg-[#121212] border-b border-slate-200 dark:border-slate-800 p-2 flex justify-between items-center sticky top-0 z-20 shadow-sm">
+        <div className="flex items-center gap-2 ml-2">
+            <div className={`w-2 h-2 rounded-full ${aiStatus?.status === 'ok' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+            <div className="flex flex-col">
+                <span className="text-[7px] font-black uppercase tracking-widest text-slate-400 leading-none">Gerente de IA</span>
+                <span className="text-[9px] font-bold text-slate-600 dark:text-slate-300">{aiStatus?.message || 'Verificando...'}</span>
+            </div>
+        </div>
+
         <button 
           onClick={onClearChat}
           className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-xl text-slate-400 hover:text-rose-500 hover:border-rose-100 transition-all active:scale-95 flex items-center gap-2"
         >
           <Trash2 className="w-3.5 h-3.5" />
-          <span className="text-[9px] font-black uppercase tracking-widest">Limpar Conversa</span>
+          <span className="text-[9px] font-black uppercase tracking-widest">Limpar</span>
         </button>
       </div>
 
@@ -108,11 +131,21 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
                 ))}
               </p>
               
+              {msg.shouldClearHistory && onClearChat && (
+                <button 
+                  onClick={onClearChat}
+                  className="mt-3 w-full py-2 bg-rose-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-rose-100"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Zerar Chat Agora
+                </button>
+              )}
+              
               {msg.proposal && (
                 <div className={`mt-3 p-3 rounded-xl border ${
                   msg.role === 'user' 
                     ? 'bg-white/10 border-white/20 text-white' 
-                    : 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30 text-blue-900 dark:text-blue-300'
+                    : 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30 text-blue-900 dark:text-blue-300 texture-dots'
                 }`}>
                   <p className="text-[8px] font-[1000] uppercase tracking-widest mb-1 opacity-80">
                     Proposta de {msg.proposal.type === 'training' ? 'Treino' : 'Dieta'}

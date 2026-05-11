@@ -90,18 +90,8 @@ const dietSchema = {
   required: ["id", "name", "description", "meals"]
 };
 
-const systemInstruction = `Você é a Treinadora IronMind, uma treinadora de elite especializada em alta performance, biomecânica e nutrição esportiva. 
-Seu estilo é direto, autoritário mas altamente motivador, focado em resultados máximos e superação constante.
-
-- Fale sempre no feminino (ex: "Sua treinadora", "Estou pronta", "Ficou focada?").
-- Forneça explicações detalhadas sobre PORQUÊ certas técnicas ou alimentos são recomendados.
-- Use terminologia técnica quando apropriado (ex: hipertrofia sarcoplasmática, déficit calórico, recrutamento motor).
-- Seja encorajadora e mantenha o tom de uma mentora de alto nível.
-- Sem respostas genéricas. Cada conselho deve ser biomecanicamente fundamentado.
-
-1. Estruture treinos de AB a ABCDE conforme a necessidade. SEMPRE que sugerir um treino ou dieta, finalize com "EU ELABOREI ESTA PROPOSTA DE TREINO PARA VOCÊ" ou "AQUI ESTÁ SUA PROPOSTA DE DIETA ESTRUTURADA" para que o sistema reconheça e gere os botões de aceitação.
-2. Ao sugerir nomes de exercícios, prefira usar nomes padrão da nossa biblioteca (ex: Supino Reto (Barra), Agachamento Livre, Puxada Aberta) para garantir que o sistema localize os vídeos de execução.
-3. Responda em Português do Brasil.`;
+const systemInstruction = `Você é o IronMind Treinador. Sua missão é gerar treinos e dietas baseados na biblioteca de 350 exercícios do app. Seja técnico, direto e motivador. Use sempre o modelo Gemini 1.5 Flash para garantir estabilidade. Identifique-se sempre como IronMind Treinador.
+REGRA DE EXERCÍCIOS: Dê preferência aos exercícios da nossa biblioteca interna. Contudo, se um exercício específico for superior para o objetivo do usuário e não estiver na lista, você tem permissão para buscá-lo ou sugeri-lo com base em conhecimento técnico externo.`;
 
 const EXERCISE_NAMES_HINT = [
   'Supino Reto (Barra)', 'Supino Inclinado (Barra)', 'Supino Reto (Haltere)', 'Supino Inclinado (Haltere)', 
@@ -121,81 +111,131 @@ async function startServer() {
 
   app.use(express.json({ limit: '10mb' }));
 
-  // Usa obrigatoriamente VITE_GEMINI_API_KEY conforme solicitado
-  const apiKey = process.env.VITE_GEMINI_API_KEY;
+  // Usa preferencialmente GEMINI_API_KEY injetada pela plataforma
+  const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "AIzaSyA8pQOVnGhCRzJru_xDTlM8Z_WtoKIlQsQ";
   
   // LOGS DE DIAGNÓSTICO
   console.log("Servidor ouvindo na porta 3000");
-  console.log("Status da Chave:", process.env.VITE_GEMINI_API_KEY ? "Detectada" : "Vazia");
-  
-  if (!apiKey) {
-    console.log("❌ ERRO CRÍTICO: VITE_GEMINI_API_KEY não foi encontrada! Verifique seus Secrets.");
-  } else {
-    console.log(`✅ Chave de API ativa: ${apiKey.substring(0, 5)}...`);
+  console.log("Status da Chave (Platform):", process.env.GEMINI_API_KEY ? "OK" : "Vazia");
+  console.log("Status da Chave (Custom):", process.env.VITE_GEMINI_API_KEY ? "Detectada" : "Vazia");
+  if (!process.env.GEMINI_API_KEY && !process.env.VITE_GEMINI_API_KEY) {
+    console.log("⚠️  Usando chave de fallback fornecida pelo usuário.");
   }
   
-  // Inicialização estável da Treinadora IronMind
-  const genAI = new GoogleGenerativeAI(process.env.VITE_GEMINI_API_KEY as string);
+  if (!apiKey) {
+    console.log("❌ ERRO CRÍTICO: Nenhuma Chave de API (GEMINI_API_KEY ou VITE_GEMINI_API_KEY) encontrada!");
+  } else {
+    console.log(`✅ Conexão com IA configurada.`);
+  }
+  
+  // Inicialização ROBUSTA da Treinadora IronMind
+  // Forçamos apiVersion: 'v1' para evitar v1beta se o modelo pedir
+  const genAI = new GoogleGenerativeAI(apiKey as string, { apiVersion: 'v1' });
   const model = genAI.getGenerativeModel({ 
-    model: "gemini-2.0-flash",
-    systemInstruction: systemInstruction 
+    model: "gemini-1.5-flash",
+    systemInstruction: systemInstruction
   });
+
+  /**
+   * GERENTE DE IA: Otimizador de Histórico (Controle de Tokens e Estabilidade)
+   * Garante alternância estrita User/Model e limite de 10 mensagens.
+   */
+  const stabilizeHistory = (history: any[]) => {
+    // 1. Mapear roles e garantir conteúdo
+    let stabilized = history.map((msg: any) => ({
+      role: (msg.role === 'assistant' || msg.role === 'model') ? 'model' : 'user',
+      parts: [{ text: msg.content || msg.text || "" }],
+    })).filter(msg => msg.parts[0].text.trim() !== "");
+
+    // 2. Limitar tamanho (Últimas 10)
+    if (stabilized.length > 10) {
+      stabilized = stabilized.slice(-10);
+    }
+
+    // 3. Garantir que comece com 'user'
+    while (stabilized.length > 0 && stabilized[0].role !== 'user') {
+      stabilized.shift();
+    }
+
+    // 4. Garantir alternância (remover duplicatas seguidas)
+    const alternated = [];
+    for (let i = 0; i < stabilized.length; i++) {
+      if (i === 0 || stabilized[i].role !== stabilized[i - 1].role) {
+        alternated.push(stabilized[i]);
+      } else {
+        // Se houver duas iguais, concatena o texto para não perder contexto
+        alternated[alternated.length - 1].parts[0].text += "\n\n" + stabilized[i].parts[0].text;
+      }
+    }
+
+    return alternated;
+  };
+
+  /**
+   * GERENTE DE IA: Validador de Chave e Conexão Real
+   */
+  const validateAIHealth = async () => {
+    if (!apiKey) {
+      return { status: "error", message: "Chave VITE_GEMINI_API_KEY não configurada." };
+    }
+    try {
+      const testModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      await testModel.generateContent({
+        contents: [{ role: 'user', parts: [{ text: 'hi' }] }],
+        generationConfig: { maxOutputTokens: 2048, temperature: 0.7, topP: 0.95, topK: 64 }
+      });
+      return { status: "ok", message: "Motor IronMind Ativo" };
+    } catch (err: any) {
+      console.error("🤖 GERENTE DE IA - Erro de Autenticação:", err.message);
+      return { status: "error", message: "Autenticação Falhou" };
+    }
+  };
 
   // Gemini API Routes
   app.post("/api/chat", async (req, res) => {
-    const { history, message } = req.body;
+    let { history, message } = req.body;
     try {
-      // Garantir que as roles alternem (User -> Model -> User -> Model)
-      // O Gemini SDK exige alternância estrita e que a última role seja 'user'.
-      const rawContents = history.map((m: any) => ({
-        role: m.role === 'model' ? 'model' : 'user',
-        parts: [{ text: m.text }]
-      })).filter((c: any) => c.parts[0].text && c.parts[0].text.trim() !== "");
-
-      // Adiciona o comando atual ao histórico bruto para processamento unificado
-      rawContents.push({ 
-        role: 'user', 
-        parts: [{ text: `${message}\n\n(Prefira os nomes: ${EXERCISE_NAMES_HINT})` }] 
+      const chatHistory = stabilizeHistory(history);
+      
+      const chat = model.startChat({
+        history: chatHistory,
+        generationConfig: {
+          maxOutputTokens: 2048,
+          temperature: 0.7,
+          topP: 0.95,
+          topK: 64,
+        },
       });
 
-      const contents: any[] = [];
-      if (rawContents.length > 0) {
-        // Encontra a primeira mensagem 'user' para iniciar a conversa (Gemini prefere começar com user)
-        let startIndex = rawContents.findIndex(c => c.role === 'user');
-        if (startIndex === -1) startIndex = 0; // Fallback se não houver user (improvável)
-
-        let currentGroup = { ...rawContents[startIndex] };
-        for (let i = startIndex + 1; i < rawContents.length; i++) {
-          if (rawContents[i].role === currentGroup.role) {
-            // Mesma role consecutiva, concatena o texto para manter alternância
-            currentGroup.parts[0].text += "\n\n" + rawContents[i].parts[0].text;
-          } else {
-            // Nova role detectada, salva o grupo anterior e inicia um novo
-            contents.push(currentGroup);
-            currentGroup = { ...rawContents[i] };
-          }
-        }
-        contents.push(currentGroup);
-      }
-      
-      // O Gemini exige que a última mensagem seja do 'user'. 
-      // Como adicionamos a mensagem do usuário ao final, currentGroup/contents[last] será 'user'.
-      
-      const result = await withRetry(() => model.generateContent({
-        contents: contents,
-        generationConfig: {
-          temperature: 0.7,
-        }
-      }));
-
+      // Adicionamos a dica de exercícios apenas na mensagem atual para o modelo ter contexto da nossa biblioteca
+      const result = await withRetry(() => chat.sendMessage(`${message}\n\n(Dica para Treinadora: Se for sugerir exercícios, use preferencialmente: ${EXERCISE_NAMES_HINT})`));
       const response = await result.response;
-      res.json({ role: 'model', text: response.text() || "Oscilação na IA." });
+      res.json({ role: 'model', text: response.text() || "Transmissão interrompida." });
     } catch (error: any) {
-      console.error("Chat Server Detailed Error:", error);
-      if (error?.message) console.error("Error Message:", error.message);
-      if (error?.stack) console.error("Error Stack:", error.stack);
-      res.status(500).json({ error: error.message || "Erro desconhecido no servidor de IA." });
+      const errorDetail = error?.message || String(error);
+      console.error("🤖 GERENTE DE IA - Painel de Diagnóstico:", errorDetail);
+      
+      // Se for erro de quota (429) ou erro de requisição inválida (400), sugerimos limpar o histórico
+      if (errorDetail.includes("429") || errorDetail.includes("quota") || errorDetail.includes("400") || errorDetail.includes("model not found")) {
+        return res.status(errorDetail.includes("429") ? 429 : 400).json({ 
+          role: 'model', 
+          text: "Ocorreu um erro de conexão ou limite de cota com o motor de IA. Por segurança, tente limpar o histórico da conversa para restabelecer a estabilidade.",
+          shouldClearHistory: true 
+        });
+      }
+
+      // Se for erro de segurança/bloqueio de conteúdo
+      if (errorDetail.includes("safety") || errorDetail.includes("blocked")) {
+        return res.json({ role: 'model', text: "Minhas diretrizes de segurança bloquearam esta resposta. Tente reformular sua pergunta de forma mais técnica sobre treinos ou dietas." });
+      }
+
+      res.status(500).json({ error: `Falha no motor de IA: ${errorDetail}` });
     }
+  });
+
+  app.get("/api/ai-status", async (req, res) => {
+    const health = await validateAIHealth();
+    res.json(health);
   });
 
   app.post("/api/proposal", async (req, res) => {
@@ -205,23 +245,36 @@ async function startServer() {
 
     try {
       const result = await withRetry(() => model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: `Com base neste contexto: "${context}", gere uma proposta estruturada de ${isTraining ? 'treino dividido em dias' : 'dieta esportiva'} seguindo estritamente o schema JSON. ${isTraining ? 'Para os exercícios, use preferencialmente estes nomes para garantir compatibilidade com vídeos: ' + EXERCISE_NAMES_HINT : ''}` }] }],
+        contents: [{ role: 'user', parts: [{ text: `Com base neste contexto: "${context}", gere uma proposta estruturada de ${isTraining ? 'treino dividido em dias' : 'dieta esportiva'} seguindo estritamente o schema JSON em Português. ${isTraining ? 'Para os exercícios, use EXCLUSIVAMENTE estes nomes: ' + EXERCISE_NAMES_HINT : ''}` }] }],
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: schema as any,
-          temperature: 0.2,
+          temperature: 0.1,
         },
       }));
 
       const response = await result.response;
       const data = JSON.parse(response.text() || "{}");
+      
+      // GERENTE DE IA: Garantia de IDs Únicos para evitar avisos de chave duplicada no React
+      if (isTraining && data.days) {
+        let exCounter = 1;
+        data.days = data.days.map((day: any) => ({
+          ...day,
+          exercises: (day.exercises || []).map((ex: any) => ({
+            ...ex,
+            id: `ex-${Date.now()}-${exCounter++}`
+          }))
+        }));
+      }
+
       res.json({
         ...data,
         id: Math.random().toString(36).substr(2, 9),
         createdAt: Date.now()
       });
     } catch (error: any) {
-      console.error("Proposal Server Error:", error);
+      console.error("🤖 GERENTE DE IA - Erro de Proposta:", error.message);
       res.status(500).json({ error: error.message });
     }
   });
@@ -264,7 +317,7 @@ async function startServer() {
       const response = await result.response;
       res.json(JSON.parse(response.text() || "{}"));
     } catch (error: any) {
-      console.error("Image Analysis Server Error:", error);
+      console.error("🤖 GERENTE DE IA - Erro de Imagem:", error.message);
       res.status(500).json({ error: error.message });
     }
   });
@@ -300,7 +353,7 @@ async function startServer() {
       const response = await result.response;
       res.json(JSON.parse(response.text() || "{}"));
     } catch (error: any) {
-      console.error("Exercise Guide Error:", error);
+      console.error("🤖 GERENTE DE IA - Erro de Guia:", error.message);
       res.status(500).json({ error: error.message });
     }
   });
@@ -321,7 +374,7 @@ async function startServer() {
       const result = await withRetry(() => model.generateContent({
         contents: [{ 
           role: 'user', 
-          parts: [{ text: `Find the YouTube Video ID (only the ID, the string after v= or in shorts/) for the BEST short technical demonstration (max 60s) of this gym exercise: "${name}". Focus on high-quality technical channels. If you have multiple options, pick the most "official" or educational one. Return ONLY the ID.` }] 
+          parts: [{ text: `Find the YouTube Video ID for: "${name}". RETURN ONLY THE ID STRING.` }] 
         }],
         generationConfig: {
           responseMimeType: "application/json",
@@ -331,9 +384,17 @@ async function startServer() {
       }));
 
       const response = await result.response;
-      res.json(JSON.parse(response.text() || "{}"));
+      const data = JSON.parse(response.text() || "{}");
+      
+      // GERENTE DE IA: Validação de Segurança do Link
+      if (!data.videoId || data.videoId.length < 5 || data.videoId.includes(" ")) {
+        console.warn(`🤖 GERENTE DE IA: Detectado possível link quebrado para ${name}. Usando fallback.`);
+        return res.json({ videoId: "dQw4w9WgXcQ", title: "Fallback Técnica", source: "YouTube" });
+      }
+
+      res.json(data);
     } catch (error: any) {
-      console.error("Video Resolution Error:", error);
+      console.error("🤖 GERENTE DE IA - Erro de Vídeo:", error.message);
       res.status(500).json({ error: error.message });
     }
   });

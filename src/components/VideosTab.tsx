@@ -96,7 +96,7 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
           <div className="text-center py-20 bg-white rounded-[2.5rem] border border-slate-100 italic text-slate-400 text-sm">
             Nenhum exercício encontrado no seu plano atual.
           </div>
-        ) : uniqueExercises.map((ex) => {
+        ) : uniqueExercises.map((ex, idx) => {
           let videoUrl = resolveVideoUrl(ex);
           // Substitui por ID resolvido se existir
           if (resolvedVideos[ex.name]) {
@@ -106,7 +106,7 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
           const isResolving = resolvingVideo === ex.name;
 
           return (
-            <div key={ex.name} className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden hover:border-blue-200 transition-all shadow-sm group">
+            <div key={`${ex.name}-${idx}`} className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden hover:border-blue-200 transition-all shadow-sm group">
               <div className="aspect-video bg-slate-900 flex items-center justify-center relative">
                 {isResolving ? (
                    <div className="flex flex-col items-center gap-4 text-white">

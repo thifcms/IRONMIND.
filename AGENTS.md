@@ -32,12 +32,24 @@ This document defines the architectural roles and responsibilities of the specia
 - Gestão de tokens OAuth para manter o usuário logado nos serviços de terceiros.
 - Estratégias de carregamento de mídia para evitar interrupções.
 
-## Ponto seguro de restauração (IronMind • 2026-05-09)
+## 4. Agente: Gerente de IA (AI Architect & Debugger)
+**Função:** Guardião da inteligência artificial e integridade técnica.
+**Objetivo:** Monitorar a saúde da API Gemini, otimizar o fluxo de tokens e garantir que todos os recursos baseados em IA (treinos, dietas, visão computacional) funcionem sem erros.
+**Auditoria de Varredura (2026-05-10):**
+- ✅ **Varredura Completa:** Todos os arquivos de integração de IA foram revisados.
+- ✅ **Chave API:** Identificada configuração via `VITE_GEMINI_API_KEY`. Validação de presença funcional.
+- ✅ **Estabilização de Chat:** Nova lógica de `stabilizeHistory` implementada para evitar erros de alternância de roles no Gemini.
+- ✅ **Transparência de Erros:** Mensagens genéricas substituídas por diagnósticos diretos do Gerente de IA.
+- ✅ **Treinos/Dietas:** Gatilhos e schemas JSON refinados para garantir geração em Português e compatibilidade com a biblioteca.
+- ✅ **Fluxo de Tokens:** Histórico limitado aos últimos 10 turnos com trimagem inteligente.
+- ✅ **Reinicialização Geral:** Efetuado "Hard Reset" do servidor para limpar caches e aplicar novas diretrizes de segurança e performance.
+
+## Ponto seguro de restauração (IronMind • 2026-05-10)
 
 Para evitar erros de "oscilação no servidor" ou falhas de conexão com a IA, as seguintes regras devem ser mantidas:
 
-1. **Variáveis de Ambiente**: Sempre utilize `process.env.VITE_GEMINI_API_KEY` para o servidor. Esta é a chave configurada nos Secrets da aplicação.
+1. **Variáveis de Ambiente**: Sempre utilize `process.env.VITE_GEMINI_API_KEY` para o servidor.
 2. **Configuração do Servidor**: O servidor Express deve rodar na **porta 3000** e aceitar requisições de `/api`.
-3. **Vite Proxy**: O `vite.config.ts` deve manter o bloco de `proxy` apontando `/api` para `http://0.0.0.0:3000`. Isso permite que o front-end e o back-end se comuniquem corretamente no ambiente de preview.
-4. **Modelo de IA**: O modelo preferencial é o `gemini-2.0-flash` para suportar nativamente instruções de sistema.
-5. **Comunicação Front-End**: As chamadas de fetch no front-end devem ser relativas (ex: `fetch("/api/chat")`) para garantir que passem pelo proxy do Vite.
+3. **Vite Proxy**: O `vite.config.ts` deve manter o bloco de `proxy`.
+4. **Modelo de IA**: O modelo preferencial é o `gemini-1.5-flash` com `maxOutputTokens: 2048`. Caso não encontre um exercício na biblioteca de 350 itens, a IA está autorizada a buscar referências externas.
+5. **Configuração de Chat**: Use `systemPrompt` curto para evitar timeouts.

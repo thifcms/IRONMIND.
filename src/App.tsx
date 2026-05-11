@@ -106,9 +106,31 @@ export default function App() {
     
     if (savedTraining) {
       try {
-        const parsed = JSON.parse(savedTraining);
-        // Safety check: new structure uses 'days', old used 'exercises' in root
+        const parsed = JSON.parse(savedTraining) as TrainingPlan;
+        
+        // Safety check: heal duplicate IDs or missing IDs
         if (parsed && Array.isArray(parsed.days)) {
+          let modified = false;
+          const seenIds = new Set<string>();
+          
+          parsed.days = parsed.days.map(day => ({
+            ...day,
+            exercises: (day.exercises || []).map(ex => {
+              if (!ex.id || seenIds.has(ex.id)) {
+                modified = true;
+                const newId = `ex-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+                seenIds.add(newId);
+                return { ...ex, id: newId };
+              }
+              seenIds.add(ex.id);
+              return ex;
+            })
+          }));
+
+          if (modified) {
+            localStorage.setItem('trainingPlan', JSON.stringify(parsed));
+          }
+
           setTrainingPlan(parsed);
           
           // Check for 90 days (90 * 24 * 60 * 60 * 1000)
@@ -160,6 +182,7 @@ export default function App() {
   const [showConfirmClearDiet, setShowConfirmClearDiet] = useState(false);
   const [showConfirmClearChat, setShowConfirmClearChat] = useState(false);
   const [showConfirmClearHistory, setShowConfirmClearHistory] = useState(false);
+  const [showConfirmHardReset, setShowConfirmHardReset] = useState(false);
   const [isSplitSelectorOpen, setIsSplitSelectorOpen] = useState(false);
 
   const clearTrainingPlan = () => {
@@ -191,6 +214,11 @@ export default function App() {
     setShowConfirmClearHistory(false);
   };
 
+  const hardReset = () => {
+    localStorage.clear();
+    window.location.reload();
+  };
+
   const updateDietPlan = (plan: DietPlan) => {
     setDietPlan(plan);
     localStorage.setItem('dietPlan', JSON.stringify(plan));
@@ -214,7 +242,7 @@ export default function App() {
     }));
 
     const manualPlan: TrainingPlan = {
-      id: crypto.randomUUID(),
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11),
       name: `Treino Manual (${split})`,
       description: `Plano ${split} montado manualmente pelo usuário.`,
       createdAt: Date.now(),
@@ -417,6 +445,10 @@ export default function App() {
                   userProfile={userProfile}
                   setUserProfile={setUserProfile}
                   onClearHistory={() => setShowConfirmClearHistory(true)}
+                  onClearChat={() => setShowConfirmClearChat(true)}
+                  onClearTraining={() => setShowConfirmClearTraining(true)}
+                  onClearDiet={() => setShowConfirmClearDiet(true)}
+                  onHardReset={() => setShowConfirmHardReset(true)}
                 />
               )}
             </motion.div>
@@ -491,7 +523,7 @@ export default function App() {
 
       {/* Confirmation Modals */}
       <AnimatePresence>
-        {(showConfirmClearTraining || showConfirmClearDiet || showConfirmClearChat || showConfirmClearHistory) && (
+        {(showConfirmClearTraining || showConfirmClearDiet || showConfirmClearChat || showConfirmClearHistory || showConfirmHardReset) && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -504,11 +536,11 @@ export default function App() {
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl border border-slate-200"
             >
-              <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center mb-4">
-                <X className="w-6 h-6 text-rose-500" />
+              <div className={`w-12 h-12 ${showConfirmHardReset ? 'bg-red-50' : 'bg-rose-50'} rounded-2xl flex items-center justify-center mb-4`}>
+                <X className={`w-6 h-6 ${showConfirmHardReset ? 'text-red-500' : 'text-rose-500'}`} />
               </div>
               <h3 className="text-lg font-black text-slate-900 uppercase tracking-tighter leading-tight mb-2">
-                Confirmar Exclusão
+                {showConfirmHardReset ? 'LIMPEZA PROFUNDA' : 'Confirmar Exclusão'}
               </h3>
               <p className="text-[11px] text-slate-500 font-bold uppercase mb-6 leading-relaxed">
                 {showConfirmClearTraining && 'Isso apagará seu protocolo de treino atual e todo o histórico de carga associado.'}
@@ -517,6 +549,7 @@ export default function App() {
                   <span>Isso apagará todo o histórico da conversa com o <span translate="no" className="notranslate">IronMind</span>.</span>
                 )}
                 {showConfirmClearHistory && 'Isso apagará permanentemente todo o seu histórico de biometria, medidas e cargas.'}
+                {showConfirmHardReset && 'AVISO: Isso apagará ABSOLUTAMENTE TUDO (Treinos, Dietas, Histórico e Configurações) e resetará o app para o estado inicial.'}
               </p>
               <div className="flex gap-3">
                 <button 
@@ -525,6 +558,7 @@ export default function App() {
                     setShowConfirmClearDiet(false);
                     setShowConfirmClearChat(false);
                     setShowConfirmClearHistory(false);
+                    setShowConfirmHardReset(false);
                   }}
                   className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest"
                 >
@@ -536,8 +570,9 @@ export default function App() {
                     if (showConfirmClearDiet) clearDietPlan();
                     if (showConfirmClearChat) clearChatHistory();
                     if (showConfirmClearHistory) clearHistory();
+                    if (showConfirmHardReset) hardReset();
                   }}
-                  className="flex-1 py-3 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-100"
+                  className={`flex-1 py-3 ${showConfirmHardReset ? 'bg-red-600' : 'bg-rose-600'} text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-100`}
                 >
                   Confirmar
                 </button>

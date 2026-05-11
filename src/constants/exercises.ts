@@ -91,8 +91,6 @@ export const EXERCISE_LIBRARY: LibraryExercise[] = [
   { name: 'Rosca Alternada', muscle: 'Bíceps / Antebraço', englishName: 'Alternating Dumbbell Curl', videoUrl: 'https://www.youtube.com/shorts/kwG2ipFRgfo' },
   { name: 'Rosca Martelo', muscle: 'Bíceps / Antebraço', englishName: 'Hammer Curl', videoUrl: 'https://www.youtube.com/shorts/kwG2ipFRgfo' },
   { name: 'Rosca Scott com Barra E-Z', muscle: 'Bíceps / Antebraço', englishName: 'EZ Bar Preacher Curl', videoUrl: 'https://www.youtube.com/shorts/fS-uU-TjEqQ' },
-  { name: 'Abdominal Supra no Solo', muscle: 'Abdômen / Core', englishName: 'Abdominal Crunch', videoUrl: 'https://www.youtube.com/shorts/p6-k7_5_8O0' },
-  { name: 'Plancha Frontal Isométrica', muscle: 'Abdômen / Core', englishName: 'Plank', videoUrl: 'https://www.youtube.com/shorts/v_S7i-f_AUI' },
   { name: 'Rosca Scott na Máquina', muscle: 'Bíceps / Antebraço', englishName: 'Machine Preacher Curl' },
   { name: 'Rosca Scott com Haltere', muscle: 'Bíceps / Antebraço', englishName: 'Dumbbell Preacher Curl' },
   { name: 'Rosca 21', muscle: 'Bíceps / Antebraço', englishName: '21s' },

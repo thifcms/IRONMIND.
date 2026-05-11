@@ -1,23 +1,15 @@
-# Configuração Estável da Gemini API (Ponto Seguro • 2026-05-09)
+# Configuração Estável da Gemini API (Ponto Seguro • 2026-05-10)
 
-Esta é a configuração técnica que resolveu os problemas de conexão em maio de 2026.
+Esta é a configuração técnica simplificada para evitar timeouts em dispositivos móveis.
 
 ## Back-end (server.ts)
-- **SDK**: `@google/generative-ai` (oficial).
-- **Iniciação**: `new GoogleGenerativeAI(process.env.VITE_GEMINI_API_KEY)`.
-- **Porta**: 3000.
-- **Modelo**: `gemini-2.0-flash` (estável).
+- **SDK**: `@google/generative-ai`.
+- **Modelo**: `gemini-1.5-flash`.
+- **Config**: `maxOutputTokens: 2048`.
+- **Instrução**: Curta e direta no `systemPrompt`. Autorizada busca externa de exercícios se necessário.
 
 ## Front-end (vite.config.ts)
-- **Proxy**:
-```typescript
-proxy: {
-  '/api': {
-    target: 'http://0.0.0.0:3000',
-    changeOrigin: true,
-  },
-}
-```
+- **Proxy**: `/api` para `http://0.0.0.0:3000`.
 
 ## Serviço de Dados (geminiService.ts)
 - **Endpoint**: `/api/chat` (absoluto ao proxy).

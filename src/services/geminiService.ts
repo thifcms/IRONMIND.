@@ -73,6 +73,13 @@ export async function chatWithCoach(history: ChatMessage[], message: string): Pr
 
     if (!response.ok) {
       const errorData = await response.json();
+      if (errorData.shouldClearHistory) {
+        return {
+          role: 'model',
+          text: errorData.text || errorData.error || "Houve uma instabilidade. Por favor, limpe o chat.",
+          shouldClearHistory: true
+        } as any;
+      }
       throw new Error(errorData.error || `Erro HTTP: ${response.status}`);
     }
 
@@ -82,17 +89,11 @@ export async function chatWithCoach(history: ChatMessage[], message: string): Pr
     
     // Tratamento amigável de erros de instabilidade
     const errorMessage = error?.message || String(error);
+    console.warn("🤖 GERENTE DE IA (Frontend): Erro capturado ->", errorMessage);
     
-    if (errorMessage.includes("quota") || errorMessage.includes("429")) {
-      return { 
-        role: 'model', 
-        text: "Minha capacidade de processamento atingiu o limite temporário. Por favor, aguarde alguns segundos e tente novamente." 
-      };
-    }
-
     return { 
       role: 'model', 
-      text: "Detectei uma instabilidade persistente na conexão. Salvei suas mensagens no navegador para evitar perdas; você pode recarregar a página se o problema continuar." 
+      text: `⚠️ Aviso do Gerente de IA: ${errorMessage}. Se o erro persistir, limpe o histórico do chat.` 
     };
   }
 }

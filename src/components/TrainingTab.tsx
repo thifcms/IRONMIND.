@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { TrainingPlan, Exercise } from '../types';
-import { Play, Dumbbell, Clock, Check, Plus, Trash2, StickyNote, X, TrendingUp, Target, Search, ChevronRight, Filter, AlertCircle, ChevronDown } from 'lucide-react';
+import { Play, Dumbbell, Clock, Check, Plus, Trash2, StickyNote, X, TrendingUp, Target, Search, ChevronRight, Filter, AlertCircle, ChevronDown, Timer, Pause, RotateCcw, PlusCircle, MinusCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { EXERCISE_LIBRARY, LibraryExercise, MUSCLE_GROUPS } from '../constants/exercises';
 import { resolveVideoUrl, getYouTubeSearchUrl } from '../lib/videoUtils';
@@ -46,11 +46,11 @@ export default function TrainingTab({
   const [filterMuscle, setFilterMuscle] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
 
-  const activeDay = plan.days[activeDayIndex] || plan.days[0];
+  const activeDay = plan.days && plan.days.length > 0 ? (plan.days[activeDayIndex] || plan.days[0]) : null;
 
   const progress = useMemo(() => {
-    if (!activeDay) return 0;
-    const totalSets = activeDay.exercises.reduce((acc, ex) => acc + ex.sets, 0);
+    if (!activeDay || !activeDay.exercises) return 0;
+    const totalSets = activeDay.exercises.reduce((acc, ex) => acc + (ex.sets || 0), 0);
     if (totalSets === 0) return 0;
     
     const completed = activeDay.exercises.reduce((acc, ex) => {
@@ -78,12 +78,14 @@ export default function TrainingTab({
   const addExercise = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const newId = `ex-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const newEx: Exercise = {
-      id: crypto.randomUUID(),
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : newId,
       name: formData.get('name') as string,
       sets: Number(formData.get('sets')),
       reps: formData.get('reps') as string,
       weight: formData.get('weight') as string || '',
+      rest: formData.get('rest') as string || '60',
     };
 
     const newDays = plan.days.map((day, idx) => {
@@ -105,12 +107,14 @@ export default function TrainingTab({
     if (!selectedLibEx) return;
 
     const formData = new FormData(e.currentTarget);
+    const newId = `ex-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const newEx: Exercise = {
-      id: crypto.randomUUID(),
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : newId,
       name: selectedLibEx.name,
       sets: Number(formData.get('sets')),
       reps: formData.get('reps') as string,
       weight: formData.get('weight') as string || '',
+      rest: formData.get('rest') as string || '60',
       videoUrl: selectedLibEx.videoUrl
     };
 
@@ -220,7 +224,10 @@ export default function TrainingTab({
       
       // Start timer if set was completed (checked)
       if (newSets[setIndex]) {
-        setActiveTimer({ exerciseId, time: 60 });
+        const exercise = activeDay.exercises.find(e => e.id === exerciseId);
+        // Default to 60 if rest is not set or invalid
+        const restTime = exercise?.rest ? parseInt(exercise.rest) : 60;
+        setActiveTimer({ exerciseId, time: restTime || 60 });
       }
       
       return { ...prev, [exerciseId]: newSets };
@@ -286,7 +293,13 @@ export default function TrainingTab({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 touch-pan-y">
-        {/* Expiration Banner */}
+        {!activeDay ? (
+          <div className="text-center py-20 bg-white rounded-3xl border border-slate-100 italic text-slate-400 text-sm">
+            Nenhum treino disponível para este dia.
+          </div>
+        ) : (
+          <React.Fragment>
+            {/* Expiration Banner */}
         {isExpired && (
           <motion.div 
             initial={{ opacity: 0, y: -10 }}
@@ -323,14 +336,14 @@ export default function TrainingTab({
             </div>
           </div>
           
-          <div className="h-3 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-800">
+          <div className="h-4 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden border border-slate-200/50 dark:border-white/5 relative">
             <motion.div 
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-              className={`h-full relative ${progress === 100 ? 'bg-emerald-500' : 'bg-blue-600'}`}
+              className={`h-full relative transition-colors duration-500 texture-dots ${progress === 100 ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.3)]'}`}
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/20" />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" style={{ backgroundSize: '200% 100%' }} />
             </motion.div>
           </div>
           
@@ -342,75 +355,102 @@ export default function TrainingTab({
         </div>
 
         {/* Day Title and Add Button */}
-        <div className="flex items-center justify-between mb-2">
-           <div>
-             <h3 className="text-sm font-black text-blue-600 uppercase tracking-tighter italic">
-               {activeDay.label}
-             </h3>
-             <p className="text-[10px] text-slate-400 font-medium">{activeDay.exercises.length} exercícios planejados</p>
-           </div>
-           <button 
-             onClick={() => setIsLibraryOpen(true)}
-             className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-colors shadow-sm"
-           >
-             <Plus className="w-3.5 h-3.5" />
-             Adicionar Exercício
-           </button>
-        </div>
+        {activeDay && (
+          <div className="flex items-center justify-between mb-2">
+             <div>
+               <h3 className="text-sm font-black text-blue-600 uppercase tracking-tighter italic">
+                 {activeDay.label || 'Treino'}
+               </h3>
+               <p className="text-[10px] text-slate-400 font-medium">{(activeDay.exercises || []).length} exercícios planejados</p>
+             </div>
+             <button 
+               onClick={() => setIsLibraryOpen(true)}
+               className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-colors shadow-sm"
+             >
+               <Plus className="w-3.5 h-3.5" />
+               Adicionar Exercício
+             </button>
+          </div>
+        )}
 
-        <motion.div 
-          key={activeDayIndex}
-          variants={{
-            hidden: { opacity: 0 },
-            visible: {
-              opacity: 1,
-              transition: {
-                staggerChildren: 0.1,
-                delayChildren: 0.05
+        {activeDay && (
+          <motion.div 
+            key={activeDayIndex}
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: {
+                  staggerChildren: 0.1,
+                  delayChildren: 0.05
+                }
               }
-            }
-          }}
-          initial="hidden"
-          animate="visible"
-          className="space-y-3"
-        >
-          {activeDay.exercises.map((ex) => {
-            const sets = completedSets[ex.id] || new Array(ex.sets).fill(false);
+            }}
+            initial="hidden"
+            animate="visible"
+            className="space-y-3"
+          >
+            {(activeDay.exercises || []).map((ex, exIdx) => {
+              const sets = completedSets[ex.id] || new Array(ex.sets).fill(false);
+            const isExerciseComplete = sets.every(s => s) && sets.length > 0;
             const isCurrentExerciseTimer = activeTimer?.exerciseId === ex.id;
             const videoUrl = resolveVideoUrl(ex);
             
             return (
               <motion.div 
-                key={ex.id} 
-                variants={{
-                  hidden: { opacity: 0, y: 15 },
-                  visible: { 
-                    opacity: 1, 
-                    y: 0,
-                    transition: {
-                      type: "spring",
-                      stiffness: 100,
-                      damping: 15
-                    }
-                  }
+                key={ex.id || `${ex.name}-${exIdx}`} 
+                initial={false}
+                animate={{ 
+                  borderColor: isExerciseComplete ? '#10b981' : (isCurrentExerciseTimer ? '#2563eb' : '#e2e8f0'),
+                  backgroundColor: isExerciseComplete ? 'rgba(16, 185, 129, 0.02)' : '#ffffff'
                 }}
-                className="bg-white dark:bg-[#121212] rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-4 transition-all hover:border-blue-200 dark:hover:border-blue-900"
+                className={`group relative rounded-[2rem] p-5 border-2 shadow-sm transition-all flex flex-col gap-5 ${
+                  isExerciseComplete ? 'dark:bg-emerald-900/5 dark:border-emerald-900/40' : 'dark:bg-[#121212] dark:border-slate-800 dark:hover:border-blue-900'
+                }`}
               >
+                {isExerciseComplete && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="absolute -top-3 -right-2 bg-emerald-500 text-white px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1.5 z-10"
+                  >
+                    <Check className="w-3 h-3 stroke-[4]" />
+                    Finalizado
+                  </motion.div>
+                )}
+
                 <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center border border-blue-100 dark:border-blue-900/30 shadow-sm">
-                      <Dumbbell className="w-5 h-5 text-blue-600" />
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 shadow-sm transition-colors texture-dots ${
+                      isExerciseComplete ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30 text-blue-600'
+                    }`}>
+                      <Dumbbell className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-base text-slate-900 dark:text-slate-100 leading-tight">{ex.name}</h3>
-                      <div className="flex gap-2 mt-1">
-                        <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded leading-none uppercase tracking-widest">
-                          {ex.sets} X {ex.reps}
+                      <h3 className="font-[1000] text-lg text-slate-900 dark:text-slate-100 tracking-tighter italic uppercase leading-none">{ex.name}</h3>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded-lg leading-none uppercase tracking-widest">
+                          {ex.sets} SÉRIES
+                        </span>
+                        <div className="w-1 h-1 bg-slate-300 rounded-full" />
+                        <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded-lg leading-none uppercase tracking-widest">
+                          {ex.reps} REPS
                         </span>
                         {ex.weight && (
-                          <span className="text-[9px] font-black text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded leading-none uppercase tracking-widest">
-                            {ex.weight}
-                          </span>
+                          <>
+                            <div className="w-1 h-1 bg-slate-300 rounded-full" />
+                            <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-lg leading-none uppercase tracking-widest texture-dots">
+                              {ex.weight}
+                            </span>
+                          </>
+                        )}
+                        {ex.rest && (
+                          <>
+                            <div className="w-1 h-1 bg-slate-300 rounded-full" />
+                            <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded-lg leading-none uppercase tracking-widest flex items-center gap-1">
+                              <Timer className="w-2.5 h-2.5" /> {ex.rest}s
+                            </span>
+                          </>
                         )}
                       </div>
                     </div>
@@ -471,39 +511,93 @@ export default function TrainingTab({
                   </div>
                 )}
                 
-                <div className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2.5">
                     {sets.map((done, idx) => (
                       <button
                         key={idx}
                         onClick={() => toggleSet(ex.id, idx, ex.sets)}
-                        className={`w-10 h-10 rounded-xl border-2 transition-all flex items-center justify-center font-black text-[11px] ${
+                        className={`w-12 h-12 rounded-2xl border-2 transition-all flex flex-col items-center justify-center font-black transition-all active:scale-95 ${
                           done 
-                            ? 'bg-blue-600 border-blue-600 text-white' 
-                            : 'bg-white dark:bg-[#181818] border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-600 hover:border-blue-200'
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-none' 
+                            : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400 dark:text-slate-600 hover:border-blue-300 dark:hover:border-blue-700'
                         }`}
                       >
-                        {done ? <Check className="w-5 h-5 stroke-[3]" /> : idx + 1}
+                        {done ? (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                          >
+                            <Check className="w-6 h-6 stroke-[3]" />
+                          </motion.div>
+                        ) : (
+                          <span className="text-sm">{idx + 1}</span>
+                        )}
                       </button>
                     ))}
                   </div>
 
                   {isCurrentExerciseTimer && (
-                    <div className="flex items-center justify-between bg-blue-600 text-white p-3 rounded-xl animate-pulse">
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        <span className="text-[9px] font-black uppercase tracking-widest">Descanso</span>
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="bg-slate-900 dark:bg-blue-600 text-white p-4 rounded-2xl shadow-xl border border-slate-800 dark:border-blue-500 overflow-hidden"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+                            <Timer className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-[8px] font-black uppercase tracking-[0.2em] opacity-60 leading-none">Descanso Ativo</p>
+                            <p className="text-[10px] font-bold">Respire fundo...</p>
+                          </div>
+                        </div>
+                        <div className="text-2xl font-mono font-[900] tracking-tighter w-20 text-right">
+                          {Math.floor(activeTimer.time / 60)}:{(activeTimer.time % 60).toString().padStart(2, '0')}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 text-xl font-mono font-black tracking-tighter">
-                        00:{activeTimer.time.toString().padStart(2, '0')}
+                      
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => setActiveTimer(prev => prev ? { ...prev, time: Math.max(0, prev.time - 15) } : null)}
+                          className="flex-1 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-[9px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1"
+                        >
+                          <MinusCircle className="w-3 h-3" /> 15s
+                        </button>
+                        <button 
+                          onClick={() => setActiveTimer(null)}
+                          className="flex-1 py-1.5 bg-rose-500 hover:bg-rose-600 rounded-lg text-[9px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1"
+                        >
+                          Pular
+                        </button>
+                        <button 
+                          onClick={() => setActiveTimer(prev => prev ? { ...prev, time: prev.time + 15 } : null)}
+                          className="flex-1 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-[9px] font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-1"
+                        >
+                          <PlusCircle className="w-3 h-3" /> 15s
+                        </button>
                       </div>
-                    </div>
+
+                      <div className="mt-3 h-1 bg-white/10 rounded-full overflow-hidden">
+                        <motion.div 
+                          className="h-full bg-white"
+                          initial={{ width: '100%' }}
+                          animate={{ width: `${(activeTimer.time / (ex.rest ? parseInt(ex.rest) : 60)) * 100}%` }}
+                        />
+                      </div>
+                    </motion.div>
                   )}
                 </div>
               </motion.div>
             );
           })}
         </motion.div>
+        )}
+        </React.Fragment>
+        )}
       </div>
 
       {/* Add Exercise Modal Overlay */}
@@ -535,9 +629,15 @@ export default function TrainingTab({
                   <input required name="reps" type="text" className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl text-sm focus:border-blue-500 focus:outline-none" defaultValue="12" />
                 </div>
               </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Peso Inicial (Opcional)</label>
-                <input name="weight" type="text" className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl text-sm focus:border-blue-500 focus:outline-none" placeholder="Ex: 20kg cada lado" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Peso Inicial</label>
+                  <input name="weight" type="text" className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl text-sm focus:border-blue-500 focus:outline-none" placeholder="Ex: 20kg" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Descanso (seg)</label>
+                  <input name="rest" type="number" className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl text-sm focus:border-blue-500 focus:outline-none" defaultValue="60" />
+                </div>
               </div>
               <button type="submit" className="w-full py-4 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest text-[11px] shadow-xl hover:bg-slate-800 transition-all mt-4">
                 Confirmar Adição
@@ -610,9 +710,9 @@ export default function TrainingTab({
               {/* Exercises List */}
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
                 {filteredLibrary.length > 0 ? (
-                  filteredLibrary.map(ex => (
+                  filteredLibrary.map((ex, idx) => (
                     <button
-                      key={ex.name}
+                      key={`${ex.name}-${idx}`}
                       onClick={() => setSelectedLibEx(ex)}
                       className="w-full p-4 bg-slate-50 hover:bg-blue-50 border border-slate-100 hover:border-blue-200 rounded-2xl flex items-center justify-between group transition-all"
                     >
@@ -679,9 +779,15 @@ export default function TrainingTab({
                     <input required name="reps" type="text" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none" defaultValue="12" />
                   </div>
                 </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Carga (Opcional)</label>
-                  <input name="weight" type="text" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none" placeholder="Ex: 20kg" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Carga</label>
+                    <input name="weight" type="text" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none" placeholder="Ex: 20kg" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Descanso (s)</label>
+                    <input name="rest" type="number" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:border-blue-500 outline-none" defaultValue="60" />
+                  </div>
                 </div>
                 <button type="submit" className="w-full py-4 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest text-[11px] shadow-xl hover:bg-blue-600 transition-all mt-4">
                   Adicionar ao Treino

@@ -382,7 +382,7 @@
                 try {
                     const genAI = new GoogleGenerativeAI(apiKey);
                     const model = genAI.getGenerativeModel({ 
-                        model: "gemini-2.0-flash",
+                        model: "gemini-1.5-flash",
                         systemInstruction: "Você é a Treinadora IronMind, especialista em biomecânica e nutrição. Seja motivadora e técnica. Use sempre o feminino. Formate sua resposta como texto rico. Se detectar que o usuário quer um novo treino completo, forneça o JSON de um objeto TrainingPlan (id, name, createdAt, days:[{label, exercises:[{id, name, sets, reps, weight}]}]) cercado por triple-backticks json no final. O mesmo para DietPlan."
                     });
 
@@ -575,7 +575,7 @@
                   reader.onload = async (evt) => {
                     const base64 = evt.target.result;
                     const genAI = new GoogleGenerativeAI(apiKey);
-                    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+                    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
                     const result = await model.generateContent([
                       "Analise esta comida. Diga o prato, calorias estimadas e dê um veredito: Green (Saudável), Yellow (Atenção), Red (Fora da Dieta). Formate JSON: {food, calories, color, explanation}.",
                       { inlineData: { data: base64.split(',')[1], mimeType: file.type } }
