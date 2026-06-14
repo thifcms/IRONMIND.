@@ -1,0 +1,3 @@
+Backup before restoring original URL logic.
+Date: 2026-05-31
+Task: Restore getYouTubeSearchUrl logic but keep layout.

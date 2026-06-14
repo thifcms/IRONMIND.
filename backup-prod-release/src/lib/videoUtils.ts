@@ -1,0 +1,88 @@
+import { Exercise } from '../types';
+import { EXERCISE_LIBRARY, getExerciseVideoUrl } from '../constants/exercises';
+
+export function isSearchUrl(url: string | null) {
+  if (!url) return false;
+  return url.includes('youtube.com/results') || url.includes('google.com/search');
+}
+
+export function isInLibrary(name: string) {
+  const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+  const searchName = normalize(name);
+  return EXERCISE_LIBRARY.some(libEx => {
+    const libName = normalize(libEx.name);
+    return libName === searchName || libName.includes(searchName) || searchName.includes(libName);
+  });
+}
+
+export function resolveVideoUrl(ex: Exercise | { name: string; videoUrl?: string }) {
+  // 1. Priority: Video already in the object (e.g. from a past resolution or manual plan)
+  if (ex.videoUrl) return ex.videoUrl;
+
+  // 2. Second option: Search static library with normalization
+  const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+  const searchName = normalize(ex.name);
+
+  const libraryMatch = EXERCISE_LIBRARY.find(libEx => {
+    const libName = normalize(libEx.name);
+    return libName === searchName || libName.includes(searchName) || searchName.includes(libName);
+  });
+
+  if (libraryMatch) {
+    const url = getExerciseVideoUrl(libraryMatch);
+    if (url) return url;
+    
+    // If in library but no direct URL, we return a SPECIFIC search URL for library items
+    const query = encodeURIComponent(`${libraryMatch.name} ${libraryMatch.englishName || ''} execução correta shorts`.trim());
+    return `https://www.youtube.com/results?search_query=${query}&sp=EgJABQ%253D%253D`;
+  }
+
+  // 3. Last fallback: Not in library, we'll return null so the UI can use IA
+  return null;
+}
+
+export function formatVideoUrl(rawUrl: string | null) {
+  if (!rawUrl) return null;
+  
+  // Anti-broken patterns: If URL is generic or suspicious
+  if (rawUrl === 'https://www.youtube.com' || rawUrl.includes('youtube.com/results') || rawUrl.length < 15) {
+    // Return a default high-quality technical video as fallback
+    return `https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=1&rel=0`;
+  }
+  
+  let url = rawUrl;
+  let videoId = '';
+
+  // Extract ID from different formats
+  if (url.includes('youtube.com/watch?v=')) {
+    const parts = url.split('v=');
+    if (parts[1]) {
+      videoId = parts[1].split('&')[0];
+    }
+  } else if (url.includes('youtube.com/shorts/')) {
+    const parts = url.split('shorts/');
+    if (parts[1]) {
+      videoId = parts[1].split('?')[0];
+    }
+  } else if (url.includes('youtu.be/')) {
+    const parts = url.split('youtu.be/');
+    if (parts[1]) {
+      videoId = parts[1].split('?')[0];
+    }
+  } else if (url.includes('youtube.com/embed/')) {
+    const parts = url.split('embed/');
+    if (parts[1]) {
+      videoId = parts[1].split('?')[0];
+    }
+  }
+
+  if (videoId) {
+    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&rel=0&modestbranding=1`;
+  }
+
+  return url;
+}
+
+export function getYouTubeSearchUrl(name: string) {
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent('execução técnica ' + name)}`;
+}

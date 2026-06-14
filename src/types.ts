@@ -11,7 +11,8 @@ export enum Tab {
   DIETA = 'dieta',
   TREINADOR = 'treinador',
   SOM = 'som',
-  HISTORICO = 'historico'
+  HISTORICO = 'historico',
+  PERFIL = 'perfil'
 }
 
 export interface Exercise {
@@ -55,6 +56,7 @@ export interface DietPlan {
 export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
+  shouldClearHistory?: boolean;
   proposal?: {
     type: 'training' | 'diet';
     data: any;

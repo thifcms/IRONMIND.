@@ -3,7 +3,7 @@ import { EXERCISE_LIBRARY, getExerciseVideoUrl } from '../constants/exercises';
 
 export function isSearchUrl(url: string | null) {
   if (!url) return false;
-  return url.includes('youtube.com/results') || url.includes('google.com/search');
+  return url.includes('youtube.com/results') || url.includes('google.com/search') || url.includes('pinterest.com/search');
 }
 
 export function isInLibrary(name: string) {
@@ -84,5 +84,5 @@ export function formatVideoUrl(rawUrl: string | null) {
 }
 
 export function getYouTubeSearchUrl(name: string) {
-  return `https://www.youtube.com/results?search_query=${encodeURIComponent('execução técnica ' + name)}`;
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(name + ' animação muscular execução fitness')}`;
 }

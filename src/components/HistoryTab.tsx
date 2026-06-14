@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { Calendar, TrendingUp, Award, Clock, Scale, Ruler, Plus, Dumbbell, Activity } from 'lucide-react';
+import { Calendar, TrendingUp, Award, Clock, Scale, Ruler, Plus, Dumbbell, Activity, AlertCircle } from 'lucide-react';
 import { WeightEntry, UserProfile, MeasurementEntry, LoadEntry } from '../types';
 
 interface HistoryTabProps {
@@ -72,7 +73,7 @@ export default function HistoryTab({
     setUserProfile(prev => ({ ...prev, height }));
   };
 
-  const bmiData = weightHistory.map(entry => {
+  const bmiData = (weightHistory || []).map(entry => {
     const heightM = (userProfile.height || 0) / 100;
     const imc = heightM > 0 ? entry.weight / (heightM * heightM) : 0;
     return {
@@ -85,6 +86,7 @@ export default function HistoryTab({
   const currentIMC = bmiData.length > 0 ? bmiData[bmiData.length - 1].imc : 0;
   
   const getIMCCategory = (imc: number) => {
+    if (imc <= 0) return { label: 'Sem registros', color: 'text-slate-400' };
     if (imc < 18.5) return { label: 'Abaixo do peso', color: 'text-amber-500' };
     if (imc < 25) return { label: 'Peso normal', color: 'text-emerald-500' };
     if (imc < 30) return { label: 'Sobrepeso', color: 'text-amber-500' };
@@ -94,8 +96,8 @@ export default function HistoryTab({
   const imcCategory = getIMCCategory(currentIMC);
 
   return (
-    <div className="p-4 pb-24 space-y-6 bg-slate-50 min-h-full overflow-x-hidden transition-colors duration-300">
-      <header className="flex flex-col gap-4">
+    <div className="flex flex-col h-full bg-slate-50 overflow-hidden transition-colors duration-300">
+      <header className="flex flex-col gap-4 bg-white p-4 border-b border-slate-200 shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-md shadow-blue-100">
@@ -143,8 +145,9 @@ export default function HistoryTab({
         </div>
       </header>
 
-      {/* Resumo de Frequência (Anteriormente existente) */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24 touch-pan-y">
+        {/* Resumo de Frequência (Anteriormente existente) */}
+        <div className="grid grid-cols-2 gap-3">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
            <div className="flex items-center gap-1.5 text-slate-400 mb-1">
              <Calendar className="w-3.5 h-3.5" />
@@ -229,33 +232,37 @@ export default function HistoryTab({
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-900">Curva de IMC</h3>
           </div>
-          <div className="h-40 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={bmiData}>
-                <defs>
-                  <linearGradient id="colorImc" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" opacity={0.1} vertical={false} />
-                <XAxis dataKey="date" stroke="#94a3b8" fontSize={8} tickLine={false} axisLine={false} />
-                <YAxis domain={['dataMin - 1', 'dataMax + 1']} hide />
-                <Tooltip 
-                  contentStyle={{ 
-                    borderRadius: '12px', 
-                    fontSize: '10px', 
-                    border: 'none', 
-                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                    backgroundColor: '#1e293b',
-                    color: '#f8fafc'
-                  }}
-                  itemStyle={{ color: '#f8fafc' }}
-                  labelStyle={{ fontWeight: 'bold', color: '#f8fafc' }}
-                />
-                <Area type="monotone" dataKey="imc" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorImc)" dot={{ r: 3, fill: '#2563eb' }} />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="h-40 w-full flex items-center justify-center bg-slate-50 border border-dashed border-slate-200 rounded-xl">
+            {bmiData.length === 0 ? (
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider text-center p-4">Registe um novo peso acima para traçar a evolução do IMC</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={bmiData}>
+                  <defs>
+                    <linearGradient id="colorImc" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" opacity={0.1} vertical={false} />
+                  <XAxis dataKey="date" stroke="#94a3b8" fontSize={8} tickLine={false} axisLine={false} />
+                  <YAxis domain={['dataMin - 1', 'dataMax + 1']} hide />
+                  <Tooltip 
+                    contentStyle={{ 
+                      borderRadius: '12px', 
+                      fontSize: '10px', 
+                      border: 'none', 
+                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                      backgroundColor: '#1e293b',
+                      color: '#f8fafc'
+                    }}
+                    itemStyle={{ color: '#f8fafc' }}
+                    labelStyle={{ fontWeight: 'bold', color: '#f8fafc' }}
+                  />
+                  <Area type="monotone" dataKey="imc" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorImc)" dot={{ r: 3, fill: '#2563eb' }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </section>
@@ -295,7 +302,7 @@ export default function HistoryTab({
             {measurementHistory.length === 0 ? (
               <p className="col-span-2 text-center py-4 text-[10px] text-slate-400 font-bold uppercase">Nenhuma medida registrada</p>
             ) : (
-              measurementHistory.slice(-6).map((m, idx) => (
+              (measurementHistory?.slice(-6) || []).map((m, idx) => (
                 <div key={idx} className="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                   <span className="text-[10px] font-black uppercase tracking-tight text-slate-500">{m.label}</span>
                   <span className="text-xs font-black">{m.value} {m.unit}</span>
@@ -341,7 +348,7 @@ export default function HistoryTab({
             {loadHistory.length === 0 ? (
               <p className="text-center py-4 text-[10px] text-slate-400 font-bold uppercase">Nenhum recorde de carga</p>
             ) : (
-              loadHistory.slice(-5).reverse().map((l, idx) => (
+              (loadHistory?.slice(-5).reverse() || []).map((l, idx) => (
                 <div key={idx} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
                   <div className="flex flex-col">
                     <span className="text-[9px] font-black uppercase text-slate-900 leading-none">{l.exercise}</span>
@@ -369,5 +376,6 @@ export default function HistoryTab({
          <TrendingUp className="w-8 h-8 text-white/20" />
       </div>
     </div>
+  </div>
   );
 }

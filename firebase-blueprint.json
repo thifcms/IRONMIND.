@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User personal and fitness data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "age": { "type": "number" },
+        "weight": { "type": "number" },
+        "height": { "type": "number" },
+        "gender": { "type": "string", "enum": ["masculino", "feminino", "outro"] },
+        "objective": { "type": "string", "enum": ["emagrecer", "ganhar massa", "definir", "saúde"] },
+        "experienceLevel": { "type": "string", "enum": ["iniciante", "intermediário", "avançado"] },
+        "daysPerWeek": { "type": "number" },
+        "timePerWorkout": { "type": "number" },
+        "injuries": { "type": "string" },
+        "dietaryRestrictions": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "age", "weight", "height", "gender", "objective", "experienceLevel", "daysPerWeek", "timePerWorkout"]
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "Message from user or AI",
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "enum": ["user", "model"] },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "proposal": { "type": "object" }
+      },
+      "required": ["role", "text", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile document"
+    },
+    "/users/{userId}/chats/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Conversation history with the instructor"
+    }
+  }
+}

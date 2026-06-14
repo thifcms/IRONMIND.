@@ -16,10 +16,15 @@ import {
   TrendingUp,
   Heart,
   X,
-  ExternalLink
+  ExternalLink,
+  Menu,
+  ChevronRight,
+  LogOut,
+  LayoutDashboard,
+  Cpu
 } from 'lucide-react';
 import { Tab, TrainingPlan, DietPlan, ChatMessage, WeightEntry, UserProfile, MeasurementEntry, LoadEntry } from './types';
-import { loadChatHistory, saveChatHistory } from './services/geminiService';
+import { loadChatHistory, saveChatHistory, chatWithCoach } from './services/geminiService';
 import TreinadorTab from './components/TreinadorTab';
 import TrainingTab from './components/TrainingTab';
 import CardioTab from './components/CardioTab';
@@ -28,133 +33,197 @@ import MusicTab from './components/MusicTab';
 import WarmupTab from './components/WarmupTab';
 import VideosTab from './components/VideosTab';
 import HistoryTab from './components/HistoryTab';
+import ProfileTab from './components/ProfileTab';
+
+import { useAuth } from './components/AuthProvider';
+import Login from './components/Login';
+import Register from './components/Register';
+import { getFirestoreInstance } from './lib/firebase';
+import { doc, getDoc, setDoc, updateDoc, collection, query, orderBy, limit, getDocs, onSnapshot, deleteDoc } from 'firebase/firestore';
 
 export default function App() {
+  const db = getFirestoreInstance();
+  const { user, profile, loading, setProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>(Tab.TREINADOR);
   const [isOpening, setIsOpening] = useState(true);
-  const [trainingPlan, setTrainingPlan] = useState<TrainingPlan | null>(null);
-  const [dietPlan, setDietPlan] = useState<DietPlan | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [trainingPlan, setTrainingPlan] = useState<TrainingPlan | null>(() => {
+    try {
+      const saved = localStorage.getItem('ironmind_training');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [dietPlan, setDietPlan] = useState<DietPlan | null>(() => {
+    try {
+      const saved = localStorage.getItem('ironmind_diet');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [sessionTime, setSessionTime] = useState(0);
   const [showRenewalAlert, setShowRenewalAlert] = useState(false);
-  const [weightHistory, setWeightHistory] = useState<WeightEntry[]>(() => {
-    const saved = localStorage.getItem('weightHistory');
-    return saved ? JSON.parse(saved) : [
-      { date: Date.now() - 30 * 24 * 60 * 60 * 1000, weight: 85 },
-      { date: Date.now() - 20 * 24 * 60 * 60 * 1000, weight: 84.5 },
-      { date: Date.now() - 10 * 24 * 60 * 60 * 1000, weight: 83.2 },
-      { date: Date.now(), weight: 82.5 }
-    ];
-  });
-  const [measurementHistory, setMeasurementHistory] = useState<MeasurementEntry[]>(() => {
-    const saved = localStorage.getItem('measurementHistory');
-    return saved ? JSON.parse(saved) : [
-      { date: Date.now() - 30 * 24 * 60 * 60 * 1000, label: 'Braço', value: 38, unit: 'cm' },
-      { date: Date.now() - 30 * 24 * 60 * 60 * 1000, label: 'Peito', value: 102, unit: 'cm' },
-      { date: Date.now(), label: 'Braço', value: 39.5, unit: 'cm' },
-      { date: Date.now(), label: 'Peito', value: 105, unit: 'cm' }
-    ];
-  });
-  const [loadHistory, setLoadHistory] = useState<LoadEntry[]>(() => {
-    const saved = localStorage.getItem('loadHistory');
-    return saved ? JSON.parse(saved) : [
-      { date: Date.now() - 30 * 24 * 60 * 60 * 1000, exercise: 'Supino Reto', weight: 60 },
-      { date: Date.now() - 15 * 24 * 60 * 60 * 1000, exercise: 'Supino Reto', weight: 65 },
-      { date: Date.now(), exercise: 'Supino Reto', weight: 70 }
-    ];
-  });
-  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem('userProfile');
-    return saved ? JSON.parse(saved) : { height: 180 };
-  });
-
+  const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
+  const [measurementHistory, setMeasurementHistory] = useState<MeasurementEntry[]>([]);
+  const [loadHistory, setLoadHistory] = useState<LoadEntry[]>([]);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => {
-    const saved = loadChatHistory();
-    return saved.length > 0 ? saved : [
-      { role: 'model', text: 'Olá! Sou a IronMind, sua treinadora pessoal. Como posso te ajudar hoje? Quer montar um treino novo ou uma dieta?' }
-    ];
+    try {
+      const saved = localStorage.getItem('ironmind_chat');
+      return saved ? JSON.parse(saved) : [
+        { role: 'model', text: 'Saudações. Eu sou o IronMind Neural. Sou o núcleo de inteligência deste ecossistema. Como posso otimizar sua performance hoje?' }
+      ];
+    } catch {
+      return [
+        { role: 'model', text: 'Saudações. Eu sou o IronMind Neural. Sou o núcleo de inteligência deste ecossistema. Como posso otimizar sua performance hoje?' }
+      ];
+    }
   });
+  const [showRegister, setShowRegister] = useState(false);
+  const [showConfirmClearTraining, setShowConfirmClearTraining] = useState(false);
+  const [showConfirmClearDiet, setShowConfirmClearDiet] = useState(false);
+  const [showConfirmClearChat, setShowConfirmClearChat] = useState(false);
+  const [showConfirmClearHistory, setShowConfirmClearHistory] = useState(false);
+  const [showConfirmHardReset, setShowConfirmHardReset] = useState(false);
+  const [isSplitSelectorOpen, setIsSplitSelectorOpen] = useState(false);
 
-  // Persist chat, plans, and biometrics
   useEffect(() => {
-    saveChatHistory(chatHistory);
+    // Redundant because of useState initializer, but keeping for session stats if needed
+    // or just remove if only used for plans
+  }, []);
+
+  useEffect(() => {
+    if (chatHistory.length > 0) {
+      try {
+        localStorage.setItem('ironmind_chat', JSON.stringify(chatHistory));
+      } catch (e) {}
+    }
   }, [chatHistory]);
 
+  // Load data from Firestore when user changes
   useEffect(() => {
-    localStorage.setItem('weightHistory', JSON.stringify(weightHistory));
-  }, [weightHistory]);
+    if (!user) return;
+
+    const userDoc = doc(db, 'users', user.uid);
+    
+    // Listen to chat history
+    const chatQuery = query(collection(userDoc, 'chats'), orderBy('timestamp', 'asc'), limit(50));
+    const unsubChat = onSnapshot(chatQuery, 
+      (snap) => {
+        const msgs = snap.docs.map(d => ({
+          role: d.data().role,
+          text: d.data().text,
+          proposal: d.data().proposal
+        } as ChatMessage));
+        if (msgs.length > 0) {
+          setChatHistory(msgs);
+        } else {
+          setChatHistory([
+            { role: 'model', text: 'Saudações. Eu sou o IronMind Neural. Sou o núcleo de inteligência deste ecossistema. Como posso otimizar sua performance hoje?' }
+          ]);
+        }
+      },
+      (err) => {
+        console.warn("Real-time chats listener suspended/disconnected:", err);
+      }
+    );
+
+    // Load plans and history
+    const loadData = async () => {
+      const snap = await getDoc(userDoc);
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.trainingPlan) {
+          setTrainingPlan(data.trainingPlan);
+          try {
+            localStorage.setItem('ironmind_training', JSON.stringify(data.trainingPlan));
+          } catch (e) {}
+        }
+        if (data.dietPlan) {
+          setDietPlan(data.dietPlan);
+          try {
+            localStorage.setItem('ironmind_diet', JSON.stringify(data.dietPlan));
+          } catch (e) {}
+        }
+        if (data.weightHistory) setWeightHistory(data.weightHistory);
+        if (data.measurementHistory) setMeasurementHistory(data.measurementHistory);
+        if (data.loadHistory) setLoadHistory(data.loadHistory);
+      }
+    };
+    loadData();
+
+    return () => unsubChat();
+  }, [user]);
+
+  const talkToIronMindAI = useCallback(async (message: string) => {
+    if (!user) return;
+    try {
+      // Optimistic update
+      const userMsg: ChatMessage = { role: 'user', text: message };
+      setChatHistory(prev => [...prev, userMsg]);
+      
+      // Save to Firestore
+      const userDoc = doc(db, 'users', user.uid);
+      const chatCol = collection(userDoc, 'chats');
+      await setDoc(doc(chatCol), { ...userMsg, timestamp: new Date().toISOString() });
+
+      const response = await chatWithCoach(chatHistory, message, profile, user.uid);
+      
+      // Save response to Firestore
+      await setDoc(doc(chatCol), { ...response, timestamp: new Date().toISOString() });
+      setChatHistory(prev => [...prev, response]);
+    } catch (e) {
+      console.error("Handshake Link Error:", e);
+    }
+  }, [chatHistory, user, profile]);
+
+  // Sync biometrics to Firestore
+  useEffect(() => {
+    if (!user || weightHistory.length === 0) return;
+    const handler = setTimeout(() => {
+      updateDoc(doc(db, 'users', user.uid), { weightHistory })
+        .catch(err => console.warn("Failsafe: error syncing weight history:", err));
+    }, 2000);
+    return () => clearTimeout(handler);
+  }, [weightHistory, user]);
 
   useEffect(() => {
-    localStorage.setItem('measurementHistory', JSON.stringify(measurementHistory));
-  }, [measurementHistory]);
+    if (!user || measurementHistory.length === 0) return;
+    const handler = setTimeout(() => {
+      updateDoc(doc(db, 'users', user.uid), { measurementHistory })
+        .catch(err => console.warn("Failsafe: error syncing measurement history:", err));
+    }, 2000);
+    return () => clearTimeout(handler);
+  }, [measurementHistory, user]);
 
   useEffect(() => {
-    localStorage.setItem('loadHistory', JSON.stringify(loadHistory));
-  }, [loadHistory]);
-
-  useEffect(() => {
-    localStorage.setItem('userProfile', JSON.stringify(userProfile));
-  }, [userProfile]);
+    if (!user || loadHistory.length === 0) return;
+    const handler = setTimeout(() => {
+      updateDoc(doc(db, 'users', user.uid), { loadHistory })
+        .catch(err => console.warn("Failsafe: error syncing load history:", err));
+    }, 2000);
+    return () => clearTimeout(handler);
+  }, [loadHistory, user]);
 
   useEffect(() => {
     localStorage.removeItem('darkMode');
     document.documentElement.classList.remove('dark');
   }, []);
 
+  // Check for 90 days renewal (90 * 24 * 60 * 60 * 1000)
   useEffect(() => {
-    const savedTraining = localStorage.getItem('trainingPlan');
-    const savedDiet = localStorage.getItem('dietPlan');
+    if (!trainingPlan && !dietPlan) return;
+    const NINETY_DAYS = 90 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
     
-    if (savedTraining) {
-      try {
-        const parsed = JSON.parse(savedTraining) as TrainingPlan;
-        
-        // Safety check: heal duplicate IDs or missing IDs
-        if (parsed && Array.isArray(parsed.days)) {
-          let modified = false;
-          const seenIds = new Set<string>();
-          
-          parsed.days = parsed.days.map(day => ({
-            ...day,
-            exercises: (day.exercises || []).map(ex => {
-              if (!ex.id || seenIds.has(ex.id)) {
-                modified = true;
-                const newId = `ex-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-                seenIds.add(newId);
-                return { ...ex, id: newId };
-              }
-              seenIds.add(ex.id);
-              return ex;
-            })
-          }));
+    const needsTrainingRenewal = trainingPlan?.createdAt && (now - trainingPlan.createdAt > NINETY_DAYS);
+    const needsDietRenewal = dietPlan?.createdAt && (now - dietPlan.createdAt > NINETY_DAYS);
 
-          if (modified) {
-            localStorage.setItem('trainingPlan', JSON.stringify(parsed));
-          }
-
-          setTrainingPlan(parsed);
-          
-          // Check for 90 days (90 * 24 * 60 * 60 * 1000)
-          const NINETY_DAYS = 90 * 24 * 60 * 60 * 1000;
-          if (parsed.createdAt && (Date.now() - parsed.createdAt > NINETY_DAYS)) {
-            setShowRenewalAlert(true);
-          }
-        } else {
-          console.warn("Legacy training plan detected, clearing for safety.");
-          localStorage.removeItem('trainingPlan');
-        }
-      } catch (e) {
-        localStorage.removeItem('trainingPlan');
-      }
+    if (needsTrainingRenewal || needsDietRenewal) {
+      setShowRenewalAlert(true);
     }
-    
-    if (savedDiet) {
-      try {
-        setDietPlan(JSON.parse(savedDiet));
-      } catch (e) {
-        localStorage.removeItem('dietPlan');
-      }
-    }
-  }, []);
+  }, [trainingPlan, dietPlan]);
 
   // Session Timer Logic
   useEffect(() => {
@@ -166,6 +235,62 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isOpening]);
 
+  const handleCloseSplash = useCallback(() => {
+    setIsOpening(false);
+  }, []);
+
+  const updateTrainingPlan = async (plan: TrainingPlan) => {
+    setTrainingPlan(plan);
+    try {
+      localStorage.setItem('ironmind_training', JSON.stringify(plan));
+    } catch (e) {}
+
+    if (user) {
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          trainingPlan: plan
+        });
+      } catch (err) {
+        console.error("Erro ao salvar treino no Firestore:", err);
+      }
+    }
+  };
+
+  const updateDietPlan = async (plan: DietPlan) => {
+    setDietPlan(plan);
+    try {
+      localStorage.setItem('ironmind_diet', JSON.stringify(plan));
+    } catch (e) {}
+
+    if (user) {
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          dietPlan: plan
+        });
+      } catch (err) {
+        console.error("Erro ao salvar dieta no Firestore:", err);
+      }
+    }
+  };
+
+  const clearChatHistory = async () => {
+    const initialMessage: ChatMessage = { role: 'model', text: 'Saudações. Eu sou o IronMind Neural. Sou o núcleo de inteligência deste ecossistema. Como posso otimizar sua performance hoje?' };
+    setChatHistory([initialMessage]);
+    localStorage.setItem('ironmind_chat', JSON.stringify([initialMessage]));
+    
+    if (user) {
+      try {
+        const chatCol = collection(db, 'users', user.uid, 'chats');
+        const snap = await getDocs(chatCol);
+        const deletePromises = snap.docs.map(docSnap => deleteDoc(doc(db, 'users', user.uid, 'chats', docSnap.id)));
+        await Promise.all(deletePromises);
+      } catch (err) {
+        console.warn("Failsafe: error clearing chats in firestore:", err);
+      }
+    }
+    setShowConfirmClearChat(false);
+  };
+
   const formatSessionTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -173,59 +298,116 @@ export default function App() {
     return `${hrs > 0 ? hrs.toString().padStart(2, '0') + ':' : ''}${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const updateTrainingPlan = (plan: TrainingPlan) => {
-    setTrainingPlan(plan);
-    localStorage.setItem('trainingPlan', JSON.stringify(plan));
-  };
+  // Auth Guard
+  useEffect(() => {
+      console.log("AuthProvider AuthGuard state:", { loading, user: !!user, profile: !!profile });
+  }, [loading, user, profile]);
 
-  const [showConfirmClearTraining, setShowConfirmClearTraining] = useState(false);
-  const [showConfirmClearDiet, setShowConfirmClearDiet] = useState(false);
-  const [showConfirmClearChat, setShowConfirmClearChat] = useState(false);
-  const [showConfirmClearHistory, setShowConfirmClearHistory] = useState(false);
-  const [showConfirmHardReset, setShowConfirmHardReset] = useState(false);
-  const [isSplitSelectorOpen, setIsSplitSelectorOpen] = useState(false);
+  if (loading) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white font-black text-sm uppercase tracking-widest">Carregando...</div>;
+  if (!user) {
+    if (showRegister) return <Register onBack={() => setShowRegister(false)} />;
+    return <Login onRegister={() => setShowRegister(true)} />;
+  }
+  if (!profile) return <Register onBack={() => { localStorage.clear(); window.location.reload(); }} />; 
 
-  const clearTrainingPlan = () => {
+  const clearTrainingPlan = async () => {
     setTrainingPlan(null);
-    localStorage.removeItem('trainingPlan');
+    localStorage.removeItem('ironmind_training');
+    if (user) {
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          trainingPlan: null
+        });
+      } catch (err) {
+        console.error("Erro ao limpar treino no Firestore:", err);
+      }
+    }
     setShowConfirmClearTraining(false);
   };
 
-  const clearDietPlan = () => {
+  const clearDietPlan = async () => {
     setDietPlan(null);
-    localStorage.removeItem('dietPlan');
+    localStorage.removeItem('ironmind_diet');
+    if (user) {
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          dietPlan: null
+        });
+      } catch (err) {
+        console.error("Erro ao limpar dieta no Firestore:", err);
+      }
+    }
     setShowConfirmClearDiet(false);
   };
 
-  const clearChatHistory = () => {
-    const initialMessage: ChatMessage = { role: 'model', text: 'Olá! Sou a IronMind, sua treinadora pessoal. Como posso te ajudar hoje? Quer montar um treino novo ou uma dieta?' };
-    setChatHistory([initialMessage]);
-    localStorage.removeItem('ironmind_chat_history');
-    setShowConfirmClearChat(false);
-  };
-
-  const clearHistory = () => {
+  const clearHistory = async () => {
     setWeightHistory([]);
     setMeasurementHistory([]);
     setLoadHistory([]);
-    localStorage.removeItem('weightHistory');
-    localStorage.removeItem('measurementHistory');
-    localStorage.removeItem('loadHistory');
+    if (user) {
+      try {
+        await updateDoc(doc(db, 'users', user.uid), { 
+          weightHistory: [], 
+          measurementHistory: [], 
+          loadHistory: [] 
+        });
+      } catch (err) {
+        console.error("Erro ao limpar histórico no Firestore:", err);
+      }
+    }
     setShowConfirmClearHistory(false);
   };
 
-  const hardReset = () => {
-    localStorage.clear();
-    window.location.reload();
-  };
+  const hardReset = async () => {
+    if (user) {
+      try {
+        // Redefinir documento do usuário para apenas o perfil básico
+        await setDoc(doc(db, 'users', user.uid), profile);
+        // Deletar subcoleção de chats
+        const chatCol = collection(db, 'users', user.uid, 'chats');
+        const snap = await getDocs(chatCol);
+        const deletePromises = snap.docs.map(docSnap => deleteDoc(doc(db, 'users', user.uid, 'chats', docSnap.id)));
+        await Promise.all(deletePromises);
+      } catch (e) {
+        console.error("Hard Reset Error:", e);
+      }
+    }
+    
+    // Preserve authentication and settings, only clear data
+    const keysToKeep = ['darkMode', 'theme_config', 'user', 'profile'];
+    const keys = Object.keys(localStorage);
+    keys.forEach(key => {
+      if (!keysToKeep.includes(key)) {
+        localStorage.removeItem(key);
+      }
+    });
 
-  const updateDietPlan = (plan: DietPlan) => {
-    setDietPlan(plan);
-    localStorage.setItem('dietPlan', JSON.stringify(plan));
+    // Reset all state to empty
+    setTrainingPlan(null);
+    setDietPlan(null);
+    setChatHistory([]);
+    setWeightHistory([]);
+    setMeasurementHistory([]);
+    setLoadHistory([]);
+    
+    // Close modal
+    setShowConfirmHardReset(false);
   };
 
   const saveTraining = (plan: TrainingPlan) => {
-    updateTrainingPlan(plan);
+    console.log("saveTraining called with plan:", plan);
+    setTrainingPlan(plan);
+    try {
+      localStorage.setItem('ironmind_training', JSON.stringify(plan));
+    } catch (e) {}
+
+    if (user) {
+      updateDoc(doc(db, 'users', user.uid), {
+        trainingPlan: plan
+      }).catch(err => console.error("Erro ao salvar treino no Firestore:", err));
+    }
+
+    console.log("Training plan updated, setting active tab to TREINO");
     setActiveTab(Tab.TREINO);
   };
 
@@ -254,20 +436,21 @@ export default function App() {
   };
 
   const tabs = [
-    { id: Tab.TREINADOR, label: 'Treinadora', icon: UserCircle2 },
-    { id: Tab.AQUECIMENTO, label: 'Aquec.', icon: Timer },
-    { id: Tab.TREINO, label: 'Treino', icon: Dumbbell },
-    { id: Tab.VIDEOS, label: 'Vídeos', icon: Play },
-    { id: Tab.CARDIO, label: 'Cardio', icon: Heart },
-    { id: Tab.DIETA, label: 'Dieta', icon: Utensils },
-    { id: Tab.SOM, label: 'Som', icon: Music },
-    { id: Tab.HISTORICO, label: 'Hist.', icon: TrendingUp },
+    { id: Tab.TREINADOR, label: 'TREINADOR', icon: UserCircle2, section: 'PRINCIPAL' },
+    
+    { id: Tab.AQUECIMENTO, label: 'AQUECIMENTO', icon: Timer, section: 'TREINO' },
+    { id: Tab.TREINO, label: 'TREINO', icon: Dumbbell, section: 'TREINO' },
+    { id: Tab.CARDIO, label: 'CARDIO', icon: Heart, section: 'TREINO' },
+    { id: Tab.VIDEOS, label: 'VÍDEOS', icon: Play, section: 'TREINO' },
+    { id: Tab.SOM, label: 'SOM', icon: Music, section: 'TREINO' },
+    
+    { id: Tab.DIETA, label: 'DIETA', icon: Utensils, section: 'NUTRIÇÃO' },
+    
+    { id: Tab.PERFIL, label: 'PERFIL', icon: UserCircle2, section: 'CONTA' },
+    { id: Tab.HISTORICO, label: 'HISTÓRICO', icon: TrendingUp, section: 'CONTA' },
   ];
 
   const handleSwipe = (direction: 'left' | 'right') => {
-    // Para navegação por swipe, ignoramos o histórico se estivermos lá ou se for o destino,
-    // ou deixamos fluir naturalmente se for o último? 
-    // Vamos permitir navegar para fora de qualquer aba.
     const currentIndex = tabs.findIndex(t => t.id === activeTab);
     if (currentIndex === -1) return;
 
@@ -278,77 +461,152 @@ export default function App() {
     }
   };
 
-  const handleCloseSplash = useCallback(() => {
-    setIsOpening(false);
-  }, []);
-
   return (
-    <div className={`flex flex-col h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden relative transition-colors duration-300`}>
+    <div className={`flex flex-col bg-slate-50 text-slate-900 font-sans overflow-hidden relative transition-colors duration-300`} style={{ height: '100%', minHeight: '-webkit-fill-available' }}>
       <AnimatePresence>
         {isOpening && (
           <SplashScreen onComplete={handleCloseSplash} />
         )}
       </AnimatePresence>
 
-      {/* Header & Navigation */}
-      <div className={`bg-white border-slate-200 border-b shadow-sm z-20`}>
-        <header className={`px-4 py-2.5 flex justify-between items-center bg-slate-100 border-slate-200 border-b`}>
-          <div className="flex items-center gap-4">
-            {/* 3D Stone Block Logo Container - Refined size for better balance */}
-            <div className={`group relative flex items-center gap-3.5 from-slate-200 to-slate-400 shadow-[4px_4px_0px_#475569] bg-gradient-to-br p-2 px-6 rounded-sm transform transition-all hover:translate-y-0.5 hover:translate-x-0.5 border border-slate-300 overflow-hidden`}>
+        {/* Header & Navigation */}
+        <div className={`bg-slate-50 border-b border-slate-200 shadow-sm z-20`}>
+          <header className={`px-4 py-3 flex justify-between items-center bg-slate-50`}>
+            {/* Logo */}
+            <div className="group relative flex items-center gap-2 bg-gradient-to-br from-slate-50 via-slate-200 to-slate-400 p-2 px-4 rounded-[2px] border-t border-l border-white border-r border-b border-slate-500 shadow-[2px_2px_0px_#0f172a,inset_1px_1px_1px_white] transition-all overflow-hidden shrink-0 scale-90 origin-left">
               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/concrete-wall.png')] opacity-20 pointer-events-none"></div>
-              <div className="relative w-8 h-8 bg-slate-900 rounded-px flex items-center justify-center shadow-inner text-white">
-                 <Dumbbell className="w-5 h-5 transform -rotate-12" />
+              <div className="relative w-8 h-8 bg-slate-900 rounded-[1px] flex items-center justify-center shadow-inner text-white shrink-0">
+                 <Dumbbell className="w-5 h-5" />
               </div>
-              <div className="flex flex-col leading-none">
-                <h1 className="font-[1000] text-2xl uppercase tracking-tighter flex items-center italic notranslate" translate="no">
-                   <span className="text-slate-900 drop-shadow-sm">Iron</span>
-                   <span className="text-blue-700 font-black drop-shadow-sm">Mind</span>
+              <div className="flex flex-col leading-none border-l border-slate-400/30 pl-2">
+                <h1 className="font-[1000] text-xl uppercase flex items-center justify-center gap-[1px] italic notranslate tracking-[-0.05em]" translate="no">
+                   <span className="text-slate-950">Iron</span>
+                   <span className="text-blue-700 font-black">Mind</span>
                 </h1>
-                <span className="text-[8px] font-black uppercase tracking-[0.35em] text-slate-800 -mt-0.5">Strength • Resilience</span>
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <div className={`px-3 py-1.5 rounded-xl border-2 bg-white border-slate-200 flex items-center gap-2 shadow-[2px_2px_0px_#1e293b]`}>
-               <Timer className="w-3.5 h-3.5 text-blue-500 animate-pulse" />
-               <span className={`text-[10px] font-mono font-black text-slate-700`}>{formatSessionTime(sessionTime)}</span>
-            </div>
-            <button 
-              onClick={() => setActiveTab(Tab.HISTORICO)}
-              className={`p-2 rounded-xl border-2 bg-white border-slate-200 text-slate-400 hover:text-blue-600 transition-all active:scale-95 shadow-[2px_2px_0px_#1e293b]`}
-              title="Ver Dashboard"
-            >
-              <TrendingUp className="w-4.5 h-4.5" />
-            </button>
-          </div>
-        </header>
-
-        <nav className="flex justify-between items-center px-0.5 pb-1">
-          {tabs.filter(t => t.id !== Tab.HISTORICO).map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-col items-center gap-0.5 py-1.5 transition-all relative rounded-lg flex-1 min-w-0 ${
-                  isActive ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'
-                }`}
+            
+            {/* Timer & Menu */}
+            <div className="flex items-center gap-4">
+              {/* Premium Pill Chronometer Refined */}
+              <div className="bg-white/10 backdrop-blur-md border border-blue-500/40 rounded-full px-3 py-1 flex items-center gap-2.5 shadow-[0_4px_20px_rgba(0,0,0,0.05)] cursor-default">
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
+                <span className="font-share text-base text-[#4488ff] leading-none tracking-tight drop-shadow-[0_0_6px_rgba(68,136,255,0.3)]">
+                  {formatSessionTime(sessionTime)}
+                </span>
+                <div className="h-3 w-px bg-slate-400/30" />
+                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Treino</span>
+              </div>
+              
+              {/* Premium Menu Button */}
+              <button 
+                onClick={() => setIsMenuOpen(true)}
+                className="relative w-11 h-11 bg-white border border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-1 hover:border-blue-500 hover:shadow-lg active:scale-90 transition-all group overflow-hidden"
               >
-                <Icon className={`w-4.5 h-4.5 ${isActive ? 'scale-110' : ''}`} />
-                <span className="text-[7px] uppercase font-[1000] tracking-tighter truncate w-full text-center px-0.25">{tab.label}</span>
-                {isActive && (
-                  <motion.div 
-                    layoutId="nav-active-bar"
-                    className="absolute -bottom-0.5 left-2 right-2 h-0.5 bg-blue-600 rounded-full shadow-[0_0_8px_rgba(37,99,235,0.4)]"
-                  />
-                )}
+                <div className="absolute inset-0 bg-blue-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
+                <div className="relative z-10 w-5 h-0.5 bg-slate-900 group-hover:bg-white rounded-full transition-colors" />
+                <div className="relative z-10 w-5 h-0.5 bg-slate-900 group-hover:bg-white rounded-full transition-colors" />
+                <div className="relative z-10 w-5 h-0.5 bg-slate-900 group-hover:bg-white rounded-full transition-colors" />
               </button>
-            );
-          })}
-        </nav>
-      </div>
+            </div>
+          </header>
+        </div>
+
+        {/* Navigation Sidebar */}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <>
+              {/* Overlay */}
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMenuOpen(false)}
+                className="fixed inset-0 bg-[#0d1b3e]/60 backdrop-blur-md z-40"
+              />
+              {/* Sidebar */}
+              <motion.div
+                initial={{ x: '-100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '-100%' }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="fixed top-0 left-0 h-full w-[300px] bg-[#0d1b3e] z-50 shadow-[20px_0_40px_rgba(0,0,0,0.4)] flex flex-col p-6 text-white border-r border-white/5"
+              >
+                 {/* Header Drawer */}
+                 <div className="flex justify-between items-center mb-8">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                       <Dumbbell className="w-5 h-5 text-blue-500" />
+                       <h2 className="font-[1000] text-lg uppercase tracking-tight italic" translate="no">Iron<span className="text-blue-500">Mind</span></h2>
+                    </div>
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1 ml-7">Strength · Resilience</span>
+                  </div>
+                  <button 
+                    onClick={() => setIsMenuOpen(false)} 
+                    className="w-10 h-10 rounded-full flex items-center justify-center bg-white/5 text-slate-400 hover:text-white transition-all border border-white/10"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                 </div>
+
+                 {/* User Card - High End */}
+                 <div className="flex items-center gap-4 mb-10 p-4 bg-white/5 rounded-2xl border border-white/10 shadow-xl">
+                   <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center font-black text-2xl shadow-[0_4px_20px_rgba(37,99,235,0.4)] border border-white/20">
+                     {profile?.name ? profile.name.charAt(0).toUpperCase() : 'U'}
+                   </div>
+                   <div className="flex flex-col">
+                     <p className="font-bebas text-2xl tracking-wide text-white leading-none uppercase">{profile?.name || 'Usuário'}</p>
+                     <div className="flex items-center gap-2 mt-1">
+                        <span className="px-2 py-0.5 rounded-[4px] text-[8px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase tracking-widest">Atleta</span>
+                        <div className="w-1 h-1 rounded-full bg-slate-500" />
+                        <span className="text-[8px] font-bold text-slate-400 uppercase">Season {new Date().getFullYear()}</span>
+                     </div>
+                   </div>
+                 </div>
+                 
+                 <div className="flex flex-col gap-6 flex-1 overflow-y-auto no-scrollbar pb-6">
+                  {['PRINCIPAL', 'TREINO', 'NUTRIÇÃO', 'CONTA'].map((sectionName) => (
+                    <div key={sectionName} className="flex flex-col gap-1">
+                      <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] px-4 mb-2">{sectionName}</h3>
+                      {tabs.filter(t => t.section === sectionName).map((tab) => {
+                        const Icon = tab.icon;
+                        const isActive = activeTab === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            onClick={() => { setActiveTab(tab.id); setIsMenuOpen(false); }}
+                            className={`group flex items-center justify-between py-3.5 px-4 rounded-xl transition-all relative overflow-hidden ${
+                              isActive 
+                                ? 'bg-gradient-to-r from-[#1a66ff] to-[#0044cc] text-white shadow-[0_8px_20px_rgba(0,68,204,0.4)] border border-white/20' 
+                                : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                            }`}
+                          >
+                            <div className="flex items-center gap-4">
+                              <Icon className={`w-5 h-5 transition-transform group-hover:scale-110 ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-blue-400'}`} />
+                              <span className="text-[12px] font-black uppercase tracking-widest">{tab.label}</span>
+                            </div>
+                            <ChevronRight className={`w-4 h-4 transition-transform ${isActive ? 'text-white translate-x-1' : 'text-slate-700 group-hover:text-white group-hover:translate-x-1'}`} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                 </div>
+
+                 {/* Footer Sair */}
+                 <div className="pt-4 border-t border-white/5 mt-auto">
+                    <button 
+                      onClick={() => { localStorage.clear(); window.location.reload(); }} 
+                      className="w-full flex items-center justify-center gap-3 py-4 bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white border border-rose-600/20 rounded-2xl transition-all group"
+                    >
+                      <X className="w-5 h-5 transition-transform group-hover:rotate-90" />
+                      <span className="text-[11px] font-black uppercase tracking-[0.2em]">Sair do Sistema</span>
+                    </button>
+                 </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative bg-slate-50">
@@ -359,8 +617,8 @@ export default function App() {
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.1}
           onDragEnd={(_, info) => {
-            const threshold = 100; // Aumentado de 50 para 100 para evitar disparos acidentais
-            const velocityThreshold = 20; // Aumentado de 10 para 20
+            const threshold = 100;
+            const velocityThreshold = 20;
             if (info.offset.x > threshold && info.velocity.x > velocityThreshold) handleSwipe('right');
             else if (info.offset.x < -threshold && info.velocity.x < -velocityThreshold) handleSwipe('left');
           }}
@@ -379,7 +637,7 @@ export default function App() {
                 </div>
                 <div>
                   <p className="font-black text-[11px] uppercase tracking-wider">Ciclo de 90 dias atingido!</p>
-                  <p className="text-[10px] opacity-90">Seu treino precisa ser renovado para novos ganhos.</p>
+                  <p className="text-[10px] opacity-90">Seu protocolo (Treino/Dieta) precisa ser renovado para novos ganhos.</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -390,7 +648,7 @@ export default function App() {
                   }}
                   className="bg-white text-blue-600 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest"
                 >
-                  Falar com Treinadora
+                  Falar com Treinador
                 </button>
                 <button onClick={() => setShowRenewalAlert(false)} className="p-1 hover:bg-white/10 rounded-lg">
                   <X className="w-4 h-4" />
@@ -407,7 +665,7 @@ export default function App() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ type: "spring", stiffness: 350, damping: 35 }}
-              className="h-full overflow-y-auto touch-pan-y"
+              className="h-full w-full overflow-hidden flex flex-col relative"
             >
             {activeTab === Tab.TREINADOR && (
               <TreinadorTab 
@@ -416,6 +674,11 @@ export default function App() {
                 onAcceptTraining={saveTraining}
                 onAcceptDiet={saveDiet}
                 onClearChat={() => setShowConfirmClearChat(true)}
+                userContext={{
+                  profile: profile,
+                  weight: weightHistory.length > 0 ? weightHistory[weightHistory.length - 1].weight : null,
+                  measurements: measurementHistory
+                }}
               />
             )}
             {activeTab === Tab.AQUECIMENTO && <WarmupTab />}
@@ -442,8 +705,8 @@ export default function App() {
                   setMeasurementHistory={setMeasurementHistory}
                   loadHistory={loadHistory}
                   setLoadHistory={setLoadHistory}
-                  userProfile={userProfile}
-                  setUserProfile={setUserProfile}
+                  userProfile={profile}
+                  setUserProfile={setProfile}
                   onClearHistory={() => setShowConfirmClearHistory(true)}
                   onClearChat={() => setShowConfirmClearChat(true)}
                   onClearTraining={() => setShowConfirmClearTraining(true)}
@@ -451,6 +714,9 @@ export default function App() {
                   onHardReset={() => setShowConfirmHardReset(true)}
                 />
               )}
+            {activeTab === Tab.PERFIL && (
+              <ProfileTab profile={profile} setProfile={setProfile} />
+            )}
             </motion.div>
           </AnimatePresence>
         </motion.div>
@@ -549,7 +815,7 @@ export default function App() {
                   <span>Isso apagará todo o histórico da conversa com o <span translate="no" className="notranslate">IronMind</span>.</span>
                 )}
                 {showConfirmClearHistory && 'Isso apagará permanentemente todo o seu histórico de biometria, medidas e cargas.'}
-                {showConfirmHardReset && 'AVISO: Isso apagará ABSOLUTAMENTE TUDO (Treinos, Dietas, Histórico e Configurações) e resetará o app para o estado inicial.'}
+                {showConfirmHardReset && 'AVISO: Isso apagará ABSOLUTAMENTE TUDO (Treinos, Dietas, Histórico de Conversas e Medidas). Sua conta continuará logada.'}
               </p>
               <div className="flex gap-3">
                 <button 
@@ -586,11 +852,14 @@ export default function App() {
 }
 
 function TrainingPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan, onOpenSplitSelector }: { plan: TrainingPlan | null, setActiveTab: (t: Tab) => void, onUpdatePlan: (p: TrainingPlan) => void, onClearPlan: () => void, onOpenSplitSelector: () => void }) {
+  console.log('TrainingPlanView rendering, plan:', plan);
+
   if (!plan) return <EmptyState type="treino" onClick={() => setActiveTab(Tab.TREINADOR)} onManualBuild={onOpenSplitSelector} />;
   return <TrainingTab plan={plan} onUpdatePlan={onUpdatePlan} onClearPlan={onClearPlan} onOpenSplitSelector={onOpenSplitSelector} />;
 }
 
 function DietPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan }: { plan: DietPlan | null, setActiveTab: (t: Tab) => void, onUpdatePlan: (p: DietPlan) => void, onClearPlan: () => void }) {
+  console.log('DietPlanView rendering, plan:', plan);
   return <DietTab plan={plan} onClearPlan={onClearPlan} onRequestNew={() => setActiveTab(Tab.TREINADOR)} />;
 }
 
@@ -604,7 +873,7 @@ function EmptyState({ type, onClick, onManualBuild }: { type: string, onClick: (
       <p className="text-slate-500 mb-6 text-[11px] max-w-[200px]">
         {type === 'treino' 
           ? 'Escolha uma das opções abaixo para começar sua jornada.' 
-          : `Peça à Treinadora para gerar seu ${type} agora.`}
+          : `Peça ao Treinador para gerar seu ${type} agora.`}
       </p>
       
       <div className="flex flex-col gap-3 w-full max-w-[200px]">
@@ -612,7 +881,7 @@ function EmptyState({ type, onClick, onManualBuild }: { type: string, onClick: (
           onClick={onClick}
           className="w-full px-6 py-3 bg-blue-600 text-white rounded-xl font-black uppercase tracking-widest text-[10px] shadow-md shadow-blue-100 flex items-center justify-center gap-2"
         >
-          Ir para Treinadora
+          Ir para Treinador
         </button>
 
         {type === 'treino' && onManualBuild && (
@@ -632,11 +901,11 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
   const [showButton, setShowButton] = useState(false);
 
   useEffect(() => {
-    // Timer principal para fechar (impacto mais ágil)
-    const timer = setTimeout(onComplete, 1600);
+    // Timer principal para fechar a splash (duração da animação 3D)
+    const timer = setTimeout(onComplete, 2600);
     
     // Fallback visual caso algo trave
-    const fallbackTimer = setTimeout(() => setShowButton(true), 1000);
+    const fallbackTimer = setTimeout(() => setShowButton(true), 2700);
     
     return () => {
       clearTimeout(timer);
@@ -648,64 +917,96 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
     <motion.div 
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.5 }}
-      style={{
-        background: 'radial-gradient(circle at center, #0f172a 0%, #020617 100%)'
-      }}
-      className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden"
+      transition={{ duration: 0.6, ease: "easeInOut" }}
+      className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-slate-950"
+      style={{ perspective: 1200 }}
     >
-      {/* Brilho Azulado de Fundo (Combinando com o Azul do Plano de Treino) */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-blue-600/20 blur-[100px] rounded-full" />
+      {/* Brilho de Fundo Cinematográfico */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/30 via-slate-950 to-slate-950 opacity-80" />
       
-      <div className="relative flex flex-col items-center">
-        {/* LOGO BOX - Inclinada e Sombreada */}
+      <div className="relative flex flex-col items-center justify-center" style={{ transformStyle: "preserve-3d" }}>
+        
+        {/* LOGO EM 3D */}
         <motion.div
-          initial={{ scale: 0.5, opacity: 0, rotate: -20 }}
-          animate={{ scale: 1, opacity: 1, rotate: 0 }}
-          transition={{ duration: 0.6, ease: "backOut" }}
-          className="relative mb-10"
+           initial={{ rotateX: 55, rotateZ: -30, y: -40, translateZ: -300, opacity: 0, scale: 0.8 }}
+           animate={{ rotateX: 0, rotateZ: 0, y: 0, translateZ: 0, opacity: 1, scale: 1 }}
+           transition={{ duration: 1.4, delay: 0.1, ease: [0.25, 1, 0.4, 1] }}
+           className="relative flex items-center gap-5 sm:gap-6"
+           style={{ transformStyle: "preserve-3d" }}
         >
-          {/* O Quadrado do Logo (Cores do seu App) */}
-          <div className="w-28 h-28 bg-slate-200 rounded-none flex items-center justify-center shadow-[12px_12px_0px_#2563eb] border-2 border-white/10 relative">
-            <Dumbbell className="w-14 h-14 text-slate-900 transform -rotate-12" />
+          {/* O Bloco de Concreto */}
+          <motion.div 
+            initial={{ translateZ: 80 }}
+            animate={{ translateZ: 0 }}
+            transition={{ duration: 1.2, delay: 0.8, ease: "easeOut" }}
+            className="w-20 h-20 sm:w-28 sm:h-28 bg-gradient-to-br from-slate-200 via-slate-300 to-slate-500 border-t-2 border-l-2 border-white border-r-2 border-b-2 border-slate-600 flex items-center justify-center shadow-[15px_15px_30px_rgba(0,0,0,0.8),inset_4px_4px_10px_white] relative rounded-[2px]"
+            style={{ transformStyle: "preserve-3d" }}
+          >
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/concrete-wall.png')] opacity-30 mix-blend-overlay pointer-events-none"></div>
+            
+            {/* O Haltere 'Flutuando' sob o bloco */}
+            <motion.div
+              initial={{ translateZ: 20 }}
+              animate={{ translateZ: [20, -5, 20] }}
+              transition={{ duration: 3, ease: "easeInOut", repeat: Infinity }}
+            >
+              <Dumbbell className="w-10 h-10 sm:w-14 sm:h-14 text-slate-900 transform -rotate-12 drop-shadow-[2px_2px_0px_rgba(255,255,255,0.7)]" />
+            </motion.div>
+            
+            {/* Camadas 3D Traseiras */}
+            <div className="absolute -inset-0.5 bg-slate-400 translate-x-[2px] translate-y-[2px] -z-10 rounded-[2px]"></div>
+            <div className="absolute -inset-0.5 bg-slate-500 translate-x-[4px] translate-y-[4px] -z-20 rounded-[2px]"></div>
+            <div className="absolute -inset-0.5 bg-slate-800 translate-x-[6px] translate-y-[6px] -z-30 rounded-[2px] blur-[2px]"></div>
+          </motion.div>
+
+          {/* Textos em 3D vindo da lateral */}
+          <div className="flex flex-col items-start leading-[0.9]" style={{ transformStyle: "preserve-3d" }}>
+            <motion.h1 
+              initial={{ x: -40, opacity: 0, translateZ: -100 }}
+              animate={{ x: 0, opacity: 1, translateZ: 0 }}
+              transition={{ duration: 0.9, delay: 0.5, ease: "easeOut" }}
+              className="font-[1000] text-5xl sm:text-7xl uppercase tracking-tighter flex items-center gap-[2px] italic notranslate" translate="no"
+            >
+               <span className="text-slate-100 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] [text-shadow:2px_2px_0px_#475569]">Iron</span>
+               <span className="text-blue-500 font-black drop-shadow-[0_0_20px_rgba(59,130,246,0.5)] [text-shadow:2px_2px_0px_#1e3a8a,0_0_30px_#2563eb]">Mind</span>
+            </motion.h1>
+            <motion.span 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.9, ease: "easeOut" }}
+              className="text-[9px] sm:text-[13px] font-black uppercase tracking-[0.55em] text-slate-400 mt-2 ml-1"
+            >
+              Strength • Resilience
+            </motion.span>
           </div>
         </motion.div>
 
-        {/* TEXTO IRONMIND */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.5 }}
-          className="text-center"
+        {/* LOADING BAR (Sync com o timer) - Flutuando e brilhando */}
+        <motion.div 
+          initial={{ opacity: 0, y: 30, rotateX: -45 }}
+          animate={{ opacity: 1, y: 0, rotateX: 0 }}
+          transition={{ delay: 1.1, duration: 0.6, ease: "easeOut" }}
+          className="mt-16 sm:mt-20 w-64 max-w-[80vw] h-1.5 bg-slate-800 rounded-full overflow-hidden border border-white/5 relative shadow-[0_15px_30px_rgba(0,0,0,0.8)]"
+          style={{ transformStyle: "preserve-3d", translateZ: 50 }}
         >
-          <h1 className="font-[1000] text-6xl uppercase tracking-tighter italic text-white leading-none notranslate" translate="no">
-            IRON<span className="text-blue-500">MIND</span>
-          </h1>
-          <p className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-500 mt-3">
-            EST. 2026 • ELITE TREINADORA
-          </p>
-        </motion.div>
-
-        {/* LOADING BAR (Sync com o timer) */}
-        <div className="mt-12 w-48 h-1 bg-white/5 rounded-full overflow-hidden border border-white/10">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: "100%" }}
-            transition={{ duration: 2, ease: "linear" }}
-            className="h-full bg-blue-500 shadow-[0_0_15px_rgba(37,99,235,0.6)]"
+            transition={{ duration: 1.5, delay: 0.9, ease: "easeInOut" }}
+            className="h-full bg-gradient-to-r from-blue-700 via-blue-400 to-slate-200 shadow-[0_0_15px_rgba(59,130,246,0.8)]"
           />
-        </div>
+        </motion.div>
 
-        {/* BOTÃO DE EMERGÊNCIA (Aparece se demorar mais que o esperado) */}
+        {/* BOTÃO DE EMERGÊNCIA */}
         <AnimatePresence>
           {showButton && (
             <motion.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              initial={{ opacity: 0, scale: 0.8, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
               onClick={onComplete}
-              className="mt-10 px-6 py-2 bg-blue-600 text-white rounded-lg font-black uppercase tracking-widest text-[9px] shadow-lg active:scale-95 transition-transform"
+              className="mt-8 px-8 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-[2px] font-black uppercase tracking-widest text-[10px] shadow-[0_0_20px_rgba(37,99,235,0.4)] active:scale-95 transition-all border border-blue-400"
             >
-              Entrar Agora
+              Iniciar Sistema 
             </motion.button>
           )}
         </AnimatePresence>
@@ -713,4 +1014,3 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
     </motion.div>
   );
 }
-

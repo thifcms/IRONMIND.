@@ -19,42 +19,16 @@ export default function CardioTab() {
   const [speed, setSpeed] = useState(6.0); // km/h
   const [incline, setIncline] = useState(0); // % for treadmill
   const [load, setLoad] = useState(5); // Resistance for bike
-  const [heartRate, setHeartRate] = useState(70);
-  const [bioStatus, setBioStatus] = useState<any>(null);
 
   useEffect(() => {
     let interval: any;
     if (isActive) {
       interval = setInterval(() => {
         setTime(prev => prev + 1);
-        
-        // Simular BPM aumentando
-        setHeartRate(prev => {
-          const target = 120 + (speed * 5);
-          if (prev < target) return prev + 1;
-          if (prev > target) return prev - 1;
-          return prev;
-        });
       }, 1000);
-    } else {
-        setHeartRate(70);
     }
     return () => clearInterval(interval);
   }, [isActive, speed]);
-
-  // Monitorar Bio-Status
-  useEffect(() => {
-    if (isActive) {
-        const status = bioMonitor.checkHeartRateZone(heartRate, 30);
-        setBioStatus(status);
-        
-        if (status.status === 'perigo') {
-            console.warn('BIO-MONITOR: ', status.msg);
-        }
-    } else {
-        setBioStatus(null);
-    }
-  }, [heartRate, isActive]);
 
   // Update PiP Canvas
   useEffect(() => {
@@ -102,7 +76,7 @@ export default function CardioTab() {
 
     ctx.fillStyle = '#94a3b8';
     let variantLabel = mode === 'bicicleta' ? `L:${load}` : `I:${incline}%`;
-    const footerText = `${variantLabel} • ${heartRate} BPM`;
+    const footerText = `${variantLabel}`;
     ctx.font = 'bold 32px monospace';
     ctx.fillText(footerText.toUpperCase(), centerX, centerY + 240);
 
@@ -113,7 +87,7 @@ export default function CardioTab() {
       ctx.arc(centerX, centerY + 300, 15, 0, Math.PI * 2);
       ctx.fill();
     }
-  }, [time, speed, incline, load, mode, isActive, heartRate]);
+  }, [time, speed, incline, load, mode, isActive]);
 
   // Handle PiP stream initialization
   useEffect(() => {
@@ -199,25 +173,6 @@ export default function CardioTab() {
         <video ref={videoRef} playsInline muted />
       </div>
 
-      {/* Bio-Monitor Floating Hud */}
-      <AnimatePresence>
-        {bioStatus && (
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            className={`absolute top-20 right-4 px-3 py-1.5 rounded-full backdrop-blur-md border flex items-center gap-2 z-20 ${
-              bioStatus.status === 'perigo' 
-              ? 'bg-red-500 text-white border-red-500 shadow-lg' 
-              : 'bg-emerald-500/20 border-emerald-500/50 text-emerald-500 dark:bg-emerald-500/10 dark:border-emerald-500/30'
-            }`}
-          >
-            {bioStatus.status === 'perigo' ? <AlertTriangle className="w-3 h-3 animate-pulse" /> : <Heart className="w-3 h-3 animate-bounce" />}
-            <span className="text-[9px] font-black uppercase tracking-tighter">{heartRate} BPM</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Mode Selection */}
       <div className="p-2 flex gap-2 flex-shrink-0">
         {(['corrida', 'esteira', 'bicicleta'] as CardioMode[]).map((m) => (
@@ -241,7 +196,7 @@ export default function CardioTab() {
       </div>
 
       {/* Main Stats Display */}
-      <div className="px-4 py-1 flex flex-col items-center gap-4 flex-1">
+      <div className="px-4 py-1 flex flex-col items-center gap-4 flex-1 overflow-y-auto min-h-0">
         <div className="relative w-32 h-32 flex items-center justify-center">
             {/* Animated Ring */}
             <svg className="absolute inset-0 w-full h-full -rotate-90">
@@ -346,7 +301,7 @@ export default function CardioTab() {
       </div>
 
       {/* Controls */}
-      <div className="px-4 py-4 space-y-3 bg-white dark:bg-[#121212] border-t border-slate-200 dark:border-slate-800">
+      <div className="px-4 py-4 space-y-3 bg-white dark:bg-[#121212] border-t border-slate-200 dark:border-slate-800 flex-shrink-0">
         <button 
             onClick={() => setIsActive(!isActive)}
             className={`w-full py-3.5 rounded-xl font-black uppercase tracking-[0.2em] text-[9px] transition-all ${

@@ -1,0 +1,96 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { onAuthStateChanged, User, getRedirectResult } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { getAuthInstance, getFirestoreInstance } from '../lib/firebase';
+
+interface AuthContextType {
+  user: User | null;
+  profile: any | null;
+  loading: boolean;
+  setProfile: (profile: any) => void;
+}
+
+const AuthContext = createContext<AuthContextType>({
+  user: null, profile: null, loading: true, setProfile: () => {},
+});
+
+export const useAuth = () => useContext(AuthContext);
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const auth = getAuthInstance();
+    if (!auth) { setLoading(false); return; }
+
+    const init = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          console.log("Login Google via redirect OK:", result.user.email);
+        }
+      } catch (err) {
+        console.error("Redirect error:", err);
+      }
+    };
+    init();
+
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
+      if (firebaseUser) {
+        try {
+          const db = getFirestoreInstance();
+          if (db) {
+            const docRef = doc(db, 'users', firebaseUser.uid);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists() && docSnap.data()?.name) {
+              setProfile(docSnap.data());
+            } else {
+              setProfile(null);
+            }
+          }
+        } catch (error) {
+          console.error("Erro perfil:", error);
+          setProfile(null);
+        }
+      } else {
+        setProfile(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const updateProfile = async (update: any) => {
+    const newProfile = typeof update === 'function' ? update(profile) : update;
+    setProfile(newProfile);
+    if (user && newProfile) {
+      try {
+        const db = getFirestoreInstance();
+        if (db) {
+          await Promise.race([
+            setDoc(doc(db, 'users', user.uid), newProfile, { merge: true }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+          ]);
+        }
+      } catch (error) {
+        console.error("Erro update perfil:", error);
+        throw error;
+      }
+    }
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, profile, loading, setProfile: updateProfile }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};

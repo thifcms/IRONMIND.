@@ -338,7 +338,7 @@
                     // Tabs
                     React.createElement('nav', { className: 'fixed bottom-0 left-0 right-0 max-w-md mx-auto glass border-t border-slate-100 flex justify-around p-2 z-40' },
                         [
-                        { id: Tab.TREINADOR, icon: MessageSquare, label: 'Treinadora' },
+                        { id: Tab.TREINADOR, icon: MessageSquare, label: 'Treinador' },
                             { id: Tab.TREINO, icon: Dumbbell, label: 'Treino' },
                             { id: Tab.VIDEOS, icon: Play, label: 'Vídeos' },
                             { id: Tab.DIETA, icon: Utensils, label: 'Dieta' },
@@ -382,8 +382,8 @@
                 try {
                     const genAI = new GoogleGenerativeAI(apiKey);
                     const model = genAI.getGenerativeModel({ 
-                        model: "gemini-1.5-flash",
-                        systemInstruction: "Você é a Treinadora IronMind, especialista em biomecânica e nutrição. Seja motivadora e técnica. Use sempre o feminino. Formate sua resposta como texto rico. Se detectar que o usuário quer um novo treino completo, forneça o JSON de um objeto TrainingPlan (id, name, createdAt, days:[{label, exercises:[{id, name, sets, reps, weight}]}]) cercado por triple-backticks json no final. O mesmo para DietPlan."
+                        model: "gemini-2.0-flash",
+                        systemInstruction: "Você é o Treinador IronMind, especialista em biomecânica e nutrição. Seja motivador e técnico. Use sempre o masculino. Formate sua resposta como texto rico. Se detectar que o usuário quer um novo treino completo, forneça o JSON de um objeto TrainingPlan (id, name, createdAt, days:[{label, exercises:[{id, name, sets, reps, weight}]}]) cercado por triple-backticks json no final. O mesmo para DietPlan."
                     });
 
                     const chat = model.startChat({
@@ -438,7 +438,7 @@
                             )
                         )
                     )),
-                    isLoading && React.createElement('div', { className: 'animate-pulse text-[9px] font-black uppercase text-slate-400 p-4' }, 'Treinadora está escrevendo...')
+                    isLoading && React.createElement('div', { className: 'animate-pulse text-[9px] font-black uppercase text-slate-400 p-4' }, 'Treinador está escrevendo...')
                 ),
                 React.createElement('div', { className: 'p-4 bg-white border-t space-y-2' },
                     React.createElement('form', { 
@@ -575,7 +575,7 @@
                   reader.onload = async (evt) => {
                     const base64 = evt.target.result;
                     const genAI = new GoogleGenerativeAI(apiKey);
-                    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+                    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
                     const result = await model.generateContent([
                       "Analise esta comida. Diga o prato, calorias estimadas e dê um veredito: Green (Saudável), Yellow (Atenção), Red (Fora da Dieta). Formate JSON: {food, calories, color, explanation}.",
                       { inlineData: { data: base64.split(',')[1], mimeType: file.type } }
@@ -789,7 +789,7 @@
             return React.createElement('div', { className: 'fixed inset-0 z-[1000] bg-slate-900/95 backdrop-blur-xl flex items-center justify-center p-8' },
                 React.createElement('div', { className: 'bg-white w-full max-w-sm rounded-[3rem] p-8 text-center' },
                     React.createElement('h3', { className: 'text-xl font-black uppercase italic mb-2' }, 'Conexão IronMind'),
-                    React.createElement('p', { className: 'text-[10px] text-slate-400 mb-6' }, 'Insira sua Gemini API Key para ativar a Treinadora.'),
+                    React.createElement('p', { className: 'text-[10px] text-slate-400 mb-6' }, 'Insira sua Gemini API Key para ativar o Treinador.'),
                     React.createElement('input', { type: 'password', value: v, onChange: e => setV(e.target.value), className: 'w-full p-4 bg-slate-50 border rounded-2xl mb-4 font-mono text-center', placeholder: 'SUA_CHAVE_AQUI' }),
                     React.createElement('button', { onClick: () => onSave(v), className: 'w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase shadow-xl mb-3' }, 'Ativar Sistema'),
                     React.createElement('button', { 
@@ -813,7 +813,7 @@
             return React.createElement('div', { className: 'flex flex-col items-center justify-center h-full p-10 text-center gap-4' },
                 React.createElement('div', { className: 'w-16 h-16 bg-slate-100 rounded-[2rem] flex items-center justify-center' }, React.createElement(Dumbbell, { className: 'w-8 h-8 text-slate-300' })),
                 React.createElement('h3', { className: 'font-black uppercase text-slate-900' }, `Sem ${type}`),
-                React.createElement('button', { onClick: onClick, className: 'bg-blue-600 text-white px-8 py-3 rounded-xl font-black uppercase text-[10px] shadow-lg' }, 'Falar com Treinadora'),
+                React.createElement('button', { onClick: onClick, className: 'bg-blue-600 text-white px-8 py-3 rounded-xl font-black uppercase text-[10px] shadow-lg' }, 'Falar com Treinador'),
                 onManualBuild && React.createElement('button', { onClick: onManualBuild, className: 'text-blue-600 font-black uppercase text-[9px]' }, 'Ou montar manualmente')
             );
         }

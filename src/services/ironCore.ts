@@ -27,10 +27,15 @@ export const ironCore = {
       orderBy('timestamp', 'desc')
     );
 
-    return onSnapshot(q, (snapshot) => {
-      const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      callback(logs);
-    });
+    return onSnapshot(q, 
+      (snapshot) => {
+        const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        callback(logs);
+      },
+      (err) => {
+        console.warn("Real-time training logs listener suspended:", err);
+      }
+    );
   },
 
   // Lógica de Progressão de Carga (IA baseada em volume/intensidade)

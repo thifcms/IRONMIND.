@@ -1,55 +1,51 @@
 # IronMind Specialized Agents
 
-This document defines the architectural roles and responsibilities of the specialized agents involved in the development and maintenance of the IronMind application.
+Este documento define os papéis arquiteturais e responsabilidades dos agentes especializados no desenvolvimento do IronMind.
 
-## 1. Agente: Arquiteto Backend (Iron-Core)
-**Função:** Inteligência central e processamento de dados.
-**Objetivo:** Gerenciar a lógica de treino, cálculos de carga e segurança dos dados.
-**Especificações Técnicas:**
-- Gerenciamento de banco de dados (Firestore para perfis e logs de treino).
-- Implementação de lógica de IA para progressão de carga (Progressive Overload).
-- Processamento assíncrono para garantir que a IA não trave a interface.
-- Controle de autenticação de usuário e criptografia de dados biométricos via Firebase Auth.
-- Gestão de WebSockets ou Real-time listeners para atualizações de treino em tempo real.
+## 1. O Engenheiro de Prompt & IA (Agente "Neural")
+**Missão:** Inteligência e precisão. Garante que sugestões de treino e dieta sejam biomecanicamente seguras.
+- **Foco:** Refinar chamadas da API Gemini com sistema de Fallback Automático (1.5, 2.0, Pro).
+- **Lógica:** Implementar roteamento inteligente de modelos para evitar erros 429.
 
-## 2. Agente: Especialista Frontier (Front-End & Overlay)
-**Função:** Responsável pela camada visual e experiência do usuário (UX).
-**Objetivo:** Criar a interface "flutuante" do IronMind sobre o streaming de vídeo.
-**Especificações Técnicas:**
-- Controle de renderização em camadas (Z-Index e Picture-in-Picture API) para manter a UI acima do vídeo.
-- Implementação de design "Glassmorphism" (transparência e desfoque) para não obstruir o vídeo.
-- Gestão de estados dinâmicos (mostrando tempo, séries e cargas de forma fluida).
-- Otimização de consumo de GPU para manter o streaming de vídeo em 60 FPS.
-- Interface responsiva para diferentes tamanhos de tela e orientação (vertical/horizontal).
+## 2. O Desenvolvedor Full-Stack (Agente "Dev")
+**Missão:** Infraestrutura e integração estável entre Front e Back-end.
+- **Ambiente:** Garantir compatibilidade universal (Mac, Replit, Cloud).
+- **Segurança:** Gestão de chaves (VITE_GEMINI_API_KEY) e banco de dados.
+- **Estética:** Manter a consistência do Grayish Theme (Brutalismo Elegante).
 
-## 3. Agente: Maestro de Mídia (Integration Specialist)
-**Função:** Ponte entre o app e serviços externos (Spotify, YouTube, Music).
-**Objetivo:** Garantir que o streaming de vídeo e música funcione integrado ao treino.
-**Especificações Técnicas:**
-- Integração via APIs e SDKs oficiais.
-- Controle de áudio inteligente (reduzir volume da música quando a IA de voz der instruções).
-- Sincronização de metadados (identificar a batida da música para sugerir ritmo de repetição).
-- Gestão de tokens OAuth para manter o usuário logado nos serviços de terceiros.
-- Estratégias de carregamento de mídia para evitar interrupções.
+## 3. O Especialista em QA & Debug (Agente "Sombra")
+**Missão:** Caçador de bugs e guardião da estabilidade.
+- **Análise:** Monitorar logs de erro e comportamentos inesperados.
+- **Testes:** Validar fluxos críticos, do login à geração de planos complexos.
 
-## 4. Agente: Gerente de IA (AI Architect & Debugger)
-**Função:** Guardião da inteligência artificial e integridade técnica.
-**Objetivo:** Monitorar a saúde da API Gemini, otimizar o fluxo de tokens e garantir que todos os recursos baseados em IA (treinos, dietas, visão computacional) funcionem sem erros.
-**Auditoria de Varredura (2026-05-10):**
-- ✅ **Varredura Completa:** Todos os arquivos de integração de IA foram revisados.
-- ✅ **Chave API:** Identificada configuração via `VITE_GEMINI_API_KEY`. Validação de presença funcional.
-- ✅ **Estabilização de Chat:** Nova lógica de `stabilizeHistory` implementada para evitar erros de alternância de roles no Gemini.
-- ✅ **Transparência de Erros:** Mensagens genéricas substituídas por diagnósticos diretos do Gerente de IA.
-- ✅ **Treinos/Dietas:** Gatilhos e schemas JSON refinados para garantir geração em Português e compatibilidade com a biblioteca.
-- ✅ **Fluxo de Tokens:** Histórico limitado aos últimos 10 turnos com trimagem inteligente.
-- ✅ **Reinicialização Geral:** Efetuado "Hard Reset" do servidor para limpar caches e aplicar novas diretrizes de segurança e performance.
+## 4. O Arquiteto de Produto & UX (Agente "Visionário")
+**Missão:** Visão de mercado e jornada do usuário.
+- **Gamificação:** Implementar progresso de carga real e feedback visual.
+- **Design:** Manter a interface limpa e funcional para uso em ambiente de treino.
 
-## Ponto seguro de restauração (IronMind • 2026-05-10)
+## 5. O Instrutor de Biomecânica & Vídeo (Agente "Cine")
+**Missão:** Curadoria técnica e validação visual de movimentos.
+- **Sincronização:** Garantir que o exercício sugerido corresponda ao vídeo correto.
+- **Interface:** Player leve que não interrompa o foco ou a música do usuário.
 
-Para evitar erros de "oscilação no servidor" ou falhas de conexão com a IA, as seguintes regras devem ser mantidas:
+## 6. O Arquiteto de IA Interna (Agente "Neural")
+**Missão:** Tornar a IA a base nativa da experiência, não um anexo.
+- **Neural Pipeline:** Gerenciar o fluxo Dados -> IA -> Resposta com baixa latência.
+- **Juiz de Segurança:** Bloquear gerações absurdas (ex: excesso de séries) antes de chegar ao usuário.
+- **Memória de Contexto:** Persistir preferências técnicas e restrições biomecânicas.
 
-1. **Variáveis de Ambiente**: Sempre utilize `process.env.VITE_GEMINI_API_KEY` para o servidor.
-2. **Configuração do Servidor**: O servidor Express deve rodar na **porta 3000** e aceitar requisições de `/api`.
-3. **Vite Proxy**: O `vite.config.ts` deve manter o bloco de `proxy`.
-4. **Modelo de IA**: O modelo preferencial é o `gemini-1.5-flash` com `maxOutputTokens: 2048`. Caso não encontre um exercício na biblioteca de 350 itens, a IA está autorizada a buscar referências externas.
-5. **Configuração de Chat**: Use `systemPrompt` curto para evitar timeouts.
+---
+
+## Ponto Seguro de Restauração (IronMind • 2026-05-13)
+- ✅ **SDK**: `@google/genai` (V2) - Execução via Frontend.
+- ✅ **Modelo**: `IronMind Neural Engine` (Fallback: 2.0 -> 1.5 -> Pro).
+- ✅ **Arquitetura**: SPA react com Server Express minimalista.
+## 7. O Arquiteto de Design e Arte Gráfica (Agente "Esteta")
+**Missão:** Elevar a qualidade estética e a sofisticação visual do IronMind.
+- **Foco:** Refinar spacing, tipografia, sombras e micro-interações para um "brutalismo elegante".
+- **Lógica:** Manter a funcionalidade, cores e estrutura das abas, mas aplicar polimento visual seguindo tendências de design de 2026.
+
+## 8. O Agente Integrador (Link)
+**Missão:** Sincronização entre sistemas. Garante que o IronMind Core e o App Externo falem a mesma língua.
+- **Foco:** Diagnóstico de handshake, validação de payload e status da API em tempo real.
+- **Lógica:** Implementar testes de ping e logs de depuração visíveis para o usuário durante a configuração.

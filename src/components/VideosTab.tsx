@@ -15,7 +15,7 @@ interface AIExerciseGuide {
 }
 
 export default function VideosTab({ plan }: { plan: TrainingPlan }) {
-  const allExercises = plan.days.flatMap(day => day.exercises);
+  const allExercises = plan.days ? plan.days.flatMap(day => day.exercises) : [];
   // Agrupar por nome para evitar duplicados na aba de vídeos
   const uniqueExercises = Array.from(new Map(allExercises.map(ex => [ex.name, ex])).values());
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
@@ -80,8 +80,8 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
   };
 
   return (
-    <div className="p-6 pb-20 space-y-6 bg-slate-50 overflow-y-auto h-full transition-colors duration-300 touch-pan-y">
-      <header className="flex items-center gap-4">
+    <div className="flex flex-col h-full bg-slate-50 overflow-hidden transition-colors duration-300">
+      <header className="flex items-center gap-4 p-6 bg-white border-b border-slate-200 shadow-sm z-10 shrink-0">
         <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
           <Video className="w-6 h-6 text-white" />
         </div>
@@ -91,22 +91,23 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-6">
-        {uniqueExercises.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-[2.5rem] border border-slate-100 italic text-slate-400 text-sm">
-            Nenhum exercício encontrado no seu plano atual.
-          </div>
-        ) : uniqueExercises.map((ex, idx) => {
-          let videoUrl = resolveVideoUrl(ex);
-          // Substitui por ID resolvido se existir
-          if (resolvedVideos[ex.name]) {
-            videoUrl = `https://www.youtube.com/watch?v=${resolvedVideos[ex.name]}`;
-          }
-          
-          const isResolving = resolvingVideo === ex.name;
+      <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-24 touch-pan-y">
+        <div className="grid grid-cols-1 gap-6">
+          {uniqueExercises.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-[2.5rem] border border-slate-100 italic text-slate-400 text-sm">
+              Nenhum exercício encontrado no seu plano atual.
+            </div>
+          ) : uniqueExercises.map((ex, idx) => {
+            let videoUrl = resolveVideoUrl(ex);
+            // Substitui por ID resolvido se existir
+            if (resolvedVideos[ex.name]) {
+              videoUrl = `https://www.youtube.com/watch?v=${resolvedVideos[ex.name]}`;
+            }
+            
+            const isResolving = resolvingVideo === ex.name;
 
-          return (
-            <div key={`${ex.name}-${idx}`} className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden hover:border-blue-200 transition-all shadow-sm group">
+            return (
+              <div key={`${ex.name}-${idx}`} className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden hover:border-blue-200 transition-all shadow-sm group">
               <div className="aspect-video bg-slate-900 flex items-center justify-center relative">
                 {isResolving ? (
                    <div className="flex flex-col items-center gap-4 text-white">
@@ -117,7 +118,7 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
                   videoUrl && (!isSearchUrl(videoUrl) || resolvedVideos[ex.name]) ? (
                     <div className="w-full h-full relative group/player">
                       <iframe
-                        src={formatVideoUrl(videoUrl)}
+                        src={formatVideoUrl(videoUrl) ?? undefined}
                         className="w-full h-full"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         referrerPolicy="no-referrer"
@@ -192,7 +193,7 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
                         className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-900/20 hover:bg-blue-700 transition-all flex items-center gap-2"
                       >
                         <Play className="w-3 h-3 fill-current" />
-                        {isSearchUrl(videoUrl) ? 'Abrir Busca no YouTube' : 'Pesquisar no YouTube'}
+                        {isSearchUrl(videoUrl) ? 'Abrir YouTube' : 'Pesquisar Animação'}
                       </a>
                       <button 
                         onClick={() => setActiveVideo(null)}
@@ -290,6 +291,7 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
           );
         })}
       </div>
+    </div>
 
       {/* Modal de Guia de IA */}
       <AnimatePresence>
@@ -368,7 +370,7 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
                 <div className="bg-blue-600 text-white p-5 rounded-3xl shadow-lg ring-4 ring-blue-100">
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="w-4 h-4 text-blue-200" />
-                    <span className="font-black uppercase tracking-widest text-[10px]">Pro Tip (Treinadora IronMind)</span>
+                    <span className="font-black uppercase tracking-widest text-[10px]">Pro Tip (Treinador IronMind)</span>
                   </div>
                   <p className="text-sm font-medium italic leading-relaxed">
                     "{selectedGuide.proTip}"

@@ -1,0 +1,216 @@
+import express from "express";
+import cors from "cors";
+import { createServer as createViteServer } from "vite";
+import path from "path";
+import dotenv from "dotenv";
+import { GoogleGenAI } from "@google/genai";
+
+dotenv.config();
+
+const app = express();
+const PORT = 3000;
+
+app.use(cors());
+app.use(express.json({ limit: '20mb' }));
+
+// Helper para instanciar a API do Gemini
+function getGeminiClient() {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("A chave GEMINI_API_KEY não foi configurada. Por favor, adicione sua chave nas configurações.");
+  }
+  return new GoogleGenAI({ apiKey });
+}
+
+// Fallback Automático: Rodízio de modelos
+const MODEL_FALLBACKS = [
+  "gemini-3.5-flash",
+  "gemini-3.1-flash-lite",
+  "gemini-3-flash-preview",
+  "gemini-flash-latest"
+];
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+async function callGeminiWithFallback(ai: GoogleGenAI, callFn: (modelName: string) => Promise<any>) {
+  let lastError: any = null;
+  let attempt = 0;
+  
+  while (attempt < 3) {
+    for (const model of MODEL_FALLBACKS) {
+      try {
+        console.log(`[IronMind Neural Engine] Tentando gerar com modelo: ${model} (Tentativa ${attempt + 1})`);
+        return await callFn(model);
+      } catch (error: any) {
+        console.warn(`[IronMind Neural Engine] Falha no modelo ${model}:`, error.message);
+        lastError = error;
+        
+        // Se for erro de rate limit, espera um pouco antes de tentar o próximo modelo
+        if (error.message?.includes('429') || error.status === 429) {
+           console.log("Detectado Rate Limit (429), aguardando antes de tentar outro modelo...");
+           await sleep(2000); // 2 segundos de cooldown
+        }
+      }
+    }
+    attempt++;
+    if (attempt < 3) {
+       console.log("Todos os modelos falharam na rodada. Aguardando 5s para tentar novamente...");
+       await sleep(5000);
+    }
+  }
+  
+  throw new Error(`Todos os modelos de fallback falharam após múltiplas tentativas. Último erro: ${lastError?.message}`);
+}
+
+app.get("/api/health", (req, res) => {
+  res.json({ 
+    status: "ok", 
+    message: "Servidor IronMind Ativo",
+    env: process.env.NODE_ENV
+  });
+});
+
+app.post("/api/chat", async (req, res) => {
+  try {
+    const ai = getGeminiClient();
+    const { messages, userProfile, systemInstruction } = req.body;
+    
+    let finalMessages = [...messages];
+    
+    // Injetar contexto no system instruction se possível
+    let sysInst = systemInstruction || "";
+    if (userProfile) {
+      const profileContext = `[Contexto do Usuário: Nome: ${userProfile.name}, Idade: ${userProfile.age}, Peso: ${userProfile.weight}kg, Altura: ${userProfile.height}cm, Objetivo: ${userProfile.objective}, Experiência: ${userProfile.experienceLevel}, Frequência: ${userProfile.daysPerWeek} dias/semana, Tempo: ${userProfile.timePerWorkout}min, Lesões: ${userProfile.injuries || 'Nenhuma'}, Dieta: ${userProfile.dietaryRestrictions || 'Nenhuma'}]`;
+      sysInst = `${sysInst}\n\n${profileContext}`;
+    }
+
+    const response = await callGeminiWithFallback(ai, async (model) => {
+      const chatContents = finalMessages.map((m: any) => ({
+        role: m.role,
+        parts: [{ text: m.parts && m.parts[0] ? m.parts[0].text : m.text || "" }]
+      }));
+
+      const out = await ai.models.generateContent({
+        model,
+        contents: chatContents,
+        config: {
+          systemInstruction: sysInst ? { role: "system", parts: [{ text: sysInst }] } : undefined,
+          temperature: 0.7,
+        }
+      });
+      return { text: out.text };
+    });
+
+    res.json(response);
+  } catch (error: any) {
+    console.error("Erro no /api/chat:", error.message);
+    res.status(503).json({ error: error.message });
+  }
+});
+
+app.post("/api/generate-proposal", async (req, res) => {
+  try {
+    const ai = getGeminiClient();
+    const { prompt, userProfile, systemInstruction } = req.body;
+    
+    let sysInst = systemInstruction || "Responda apenas em JSON de acordo com a formatação requerida.";
+    if (userProfile) {
+      const profileContext = `[Contexto do Usuário: Nome: ${userProfile.name}, Objetivo: ${userProfile.objective}, Experiência: ${userProfile.experienceLevel}, Frequência: ${userProfile.daysPerWeek} dias/semana, Tempo: ${userProfile.timePerWorkout}min, Lesões: ${userProfile.injuries || 'Nenhuma'}, Dieta: ${userProfile.dietaryRestrictions || 'Nenhuma'}]`;
+      sysInst = `${sysInst}\n\n${profileContext}`;
+    }
+    
+    const response = await callGeminiWithFallback(ai, async (model) => {
+      const out = await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+          systemInstruction: { role: "system", parts: [{ text: sysInst }] },
+          temperature: 0.1,
+          responseMimeType: "application/json"
+        }
+      });
+      
+      const text = out.text || "";
+      return JSON.parse(text); // Já devolvemos parseado
+    });
+
+    res.json(response);
+  } catch (error: any) {
+    console.error("Erro no /api/generate-proposal:", error.message);
+    res.status(503).json({ error: error.message });
+  }
+});
+
+app.post("/api/analyze-image", async (req, res) => {
+  try {
+    const ai = getGeminiClient();
+    const { imageBase64, prompt, userProfile } = req.body;
+    
+    let finalPrompt = prompt;
+    if (userProfile) {
+      const profileContext = `[Contexto do Usuário: Nome: ${userProfile.name}, Objetivo: ${userProfile.objective}]`;
+      finalPrompt = `${profileContext}\n${prompt}`;
+    }
+    
+    const response = await callGeminiWithFallback(ai, async (model) => {
+      const out = await ai.models.generateContent({
+        model,
+        contents: [
+          finalPrompt,
+          {
+            inlineData: {
+              data: imageBase64,
+              mimeType: "image/jpeg"
+            }
+          }
+        ],
+        config: {
+          temperature: 0.1,
+          responseMimeType: "application/json"
+        }
+      });
+      return JSON.parse(out.text || "{}");
+    });
+
+    res.json(response);
+  } catch (error: any) {
+    console.error("Erro no /api/analyze-image:", error.message);
+    res.status(503).json({ error: error.message });
+  }
+});
+
+app.get("/api/neural-link/diagnose", (req, res) => {
+  const hasKey = !!(process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY);
+  res.json({ 
+    online: hasKey, 
+    source: "local-gemini", 
+    status: hasKey ? "Neural Link UP (Local Engine)" : "SEM CHAVE configurada" 
+  });
+});
+
+app.post("/api/neural-link/config", (req, res) => {
+  // Ignorado na V10 pois usa as variáves de ambiente do servidor via AI Studio
+  res.json({ success: true, message: "Configuração ignorada (usando dotenv local)." });
+});
+
+async function startServer() {
+  if (process.env.NODE_ENV !== "production") {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+  });
+}
+
+startServer();
