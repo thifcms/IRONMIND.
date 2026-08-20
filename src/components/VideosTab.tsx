@@ -121,12 +121,11 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
                         src={formatVideoUrl(videoUrl) ?? undefined}
                         className="w-full h-full"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        referrerPolicy="no-referrer"
                         allowFullScreen
                       ></iframe>
                       
                       {/* Overlay controls for cases where embed fails or user wants external */}
-                      <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover/player:opacity-100 transition-opacity">
+                      <div className="absolute top-2 right-2 flex gap-2">
                         <button 
                           onClick={() => setActiveVideo(null)}
                           className="p-2 bg-black/60 backdrop-blur rounded-lg text-white"
@@ -136,7 +135,7 @@ export default function VideosTab({ plan }: { plan: TrainingPlan }) {
                         </button>
                       </div>
 
-                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 opacity-0 group-hover/player:opacity-100 transition-opacity whitespace-nowrap">
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 whitespace-nowrap">
                         <a 
                           href={videoUrl!}
                           target="_blank"
