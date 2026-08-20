@@ -21,7 +21,7 @@ if (typeof Object.hasOwn !== 'function') {
 
 dotenv.config();
 
-let EXTERNAL_COACH_URL = "https://ironmind-ai-572028997371.us-east1.run.app/api/chat";
+let EXTERNAL_COACH_URL = "https://ironmind-ai-core.onrender.com/api/chat";
 let EXTERNAL_COACH_API_KEY = "HUB_IRONMIND_2024_UPLINK";
 
 /**
