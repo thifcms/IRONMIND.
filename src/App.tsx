@@ -681,7 +681,7 @@ export default function App() {
                 }}
               />
             )}
-            {activeTab === Tab.AQUECIMENTO && <WarmupTab />}
+            {activeTab === Tab.AQUECIMENTO && <WarmupTab suggestion={trainingPlan?.warmup} />}
             {activeTab === Tab.TREINO && (
               <TrainingPlanView 
                 plan={trainingPlan} 
@@ -694,7 +694,7 @@ export default function App() {
             {activeTab === Tab.VIDEOS && (
               trainingPlan ? <VideosTab plan={trainingPlan} /> : <EmptyState type="vídeos" onClick={() => setActiveTab(Tab.TREINADOR)} />
             )}
-            {activeTab === Tab.CARDIO && <CardioTab />}
+            {activeTab === Tab.CARDIO && <CardioTab suggestions={trainingPlan?.cardio} />}
             {activeTab === Tab.DIETA && <DietPlanView plan={dietPlan} setActiveTab={setActiveTab} onUpdatePlan={updateDietPlan} onClearPlan={() => setShowConfirmClearDiet(true)} />}
             {activeTab === Tab.SOM && <MusicTab />}
             {activeTab === Tab.HISTORICO && (

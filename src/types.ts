@@ -15,6 +15,8 @@ export enum Tab {
   PERFIL = 'perfil'
 }
 
+export type ExerciseCategory = 'aquecimento' | 'treino' | 'cardio';
+
 export interface Exercise {
   id: string;
   name: string;
@@ -24,11 +26,23 @@ export interface Exercise {
   rest?: string;
   videoUrl?: string;
   notes?: string;
+  category?: ExerciseCategory;
 }
 
 export interface TrainingDay {
   label: string;
   exercises: Exercise[];
+}
+
+export interface WarmupSuggestion {
+  durationMinutes: number;
+  notes: string;
+}
+
+export interface CardioSuggestion {
+  mode: 'corrida' | 'esteira' | 'bicicleta';
+  durationMinutes: number;
+  notes: string;
 }
 
 export interface TrainingPlan {
@@ -37,6 +51,8 @@ export interface TrainingPlan {
   description: string;
   days: TrainingDay[];
   createdAt: number;
+  warmup?: WarmupSuggestion;
+  cardio?: CardioSuggestion[];
 }
 
 export interface DietMeal {

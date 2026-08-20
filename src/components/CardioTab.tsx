@@ -1,13 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bike, Footprints, Timer, Zap, MapPin, Youtube, Gauge, TrendingUp, Weight, Pause, Play, MonitorPlay, Activity, Heart, AlertTriangle } from 'lucide-react';
+import { Bike, Footprints, Timer, Zap, MapPin, Youtube, Gauge, TrendingUp, Weight, Pause, Play, MonitorPlay, Activity, Heart, AlertTriangle, Sparkles } from 'lucide-react';
 import { bioMonitor } from '../services/bioMonitor';
 import { mediaMaestro } from '../services/mediaMaestro';
+import { CardioSuggestion } from '../types';
 
 type CardioMode = 'corrida' | 'esteira' | 'bicicleta';
 
-export default function CardioTab() {
-  const [mode, setMode] = useState<CardioMode>('esteira');
+interface CardioTabProps {
+  suggestions?: CardioSuggestion[];
+}
+
+export default function CardioTab({ suggestions }: CardioTabProps) {
+  const [mode, setMode] = useState<CardioMode>(suggestions?.[0]?.mode || 'esteira');
+  const [dismissedSuggestion, setDismissedSuggestion] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [time, setTime] = useState(0);
   
@@ -172,6 +178,26 @@ export default function CardioTab() {
         <canvas ref={canvasRef} width={720} height={720} />
         <video ref={videoRef} playsInline muted />
       </div>
+
+      {suggestions && suggestions.length > 0 && !dismissedSuggestion && (
+        <div className="mx-2 mt-2 bg-blue-600 rounded-xl p-3 flex gap-3 items-start shadow-sm flex-shrink-0">
+          <Sparkles className="w-4 h-4 text-blue-200 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-[8px] font-black text-blue-200 uppercase tracking-widest mb-0.5">Sugestão do Treinador</p>
+            {suggestions.map((s, idx) => (
+              <p key={idx} className="text-[10px] text-white leading-tight font-medium">
+                {s.mode.charAt(0).toUpperCase() + s.mode.slice(1)} · {s.durationMinutes} min — {s.notes}
+              </p>
+            ))}
+          </div>
+          <button
+            onClick={() => setDismissedSuggestion(true)}
+            className="text-[8px] font-black text-blue-200 uppercase tracking-widest shrink-0"
+          >
+            Ok
+          </button>
+        </div>
+      )}
 
       {/* Mode Selection */}
       <div className="p-2 flex gap-2 flex-shrink-0">

@@ -618,30 +618,73 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
                                 rawDays = Object.values(planData).find(v => Array.isArray(v) && v.length > 0) as any[];
                               }
 
+                              // Normaliza categoria pra um dos 3 valores usados nas abas (aquecimento/treino/cardio).
+                              // Se a IA não marcar, tenta inferir pelo nome; senão assume 'treino' (comportamento antigo).
+                              const normalizeCategory = (ex: any): 'aquecimento' | 'treino' | 'cardio' => {
+                                const raw = String(ex.category || ex.categoria || '').toLowerCase().trim();
+                                if (raw.includes('aquec')) return 'aquecimento';
+                                if (raw.includes('cardio') || raw.includes('aerob')) return 'cardio';
+                                if (raw === 'treino' || raw === 'forca' || raw === 'força') return 'treino';
+                                const name = String(ex.name || ex.nome || '').toLowerCase();
+                                if (/esteira|corrida|bicicleta|bike|el[íi]ptico|hiit/.test(name)) return 'cardio';
+                                if (/mobilidade|ativa[cç][aã]o|alongamento/.test(name)) return 'aquecimento';
+                                return 'treino';
+                              };
+                              const inferCardioMode = (ex: any): 'corrida' | 'esteira' | 'bicicleta' => {
+                                const text = `${ex.name || ex.nome || ''} ${ex.notes || ex.observacoes || ''}`.toLowerCase();
+                                if (/bicicleta|bike/.test(text)) return 'bicicleta';
+                                if (/corrida|rua|outdoor/.test(text)) return 'corrida';
+                                return 'esteira';
+                              };
+
+                              const allDays = Array.isArray(rawDays) ? rawDays.map((day: any) => {
+                                let rawExercises = day.exercises || day.exercicios || day.atividades || day.rotina;
+                                if ((!Array.isArray(rawExercises) || rawExercises.length === 0) && day && typeof day === 'object') {
+                                  rawExercises = Object.values(day).find(v => Array.isArray(v) && v.length > 0) as any[];
+                                }
+                                return {
+                                  label: day.label || day.nome || day.titulo || "Treino",
+                                  exercises: Array.isArray(rawExercises) ? rawExercises.map((ex: any) => ({
+                                    id: ex.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11)),
+                                    name: ex.name || ex.nome || "Exercício",
+                                    sets: Number(ex.sets || ex.series) || 3,
+                                    reps: String(ex.reps || ex.repeticoes || "12"),
+                                    weight: ex.weight || ex.peso || "",
+                                    rest: String(ex.rest || ex.descanso || "60"),
+                                    videoUrl: ex.videoUrl || ex.video || "",
+                                    notes: ex.notes || ex.observacoes || ex.notas || "",
+                                    category: normalizeCategory(ex)
+                                  })) : []
+                                };
+                              }) : [];
+
+                              // Rota cada exercício pra aba respectiva: 'treino' fica nos dias normais,
+                              // 'aquecimento' e 'cardio' são agregados em blocos separados pras abas dedicadas.
+                              const warmupExercises = allDays.flatMap(d => d.exercises.filter(ex => ex.category === 'aquecimento'));
+                              const cardioExercises = allDays.flatMap(d => d.exercises.filter(ex => ex.category === 'cardio'));
+
+                              const warmup = warmupExercises.length > 0 ? {
+                                durationMinutes: Math.max(5, warmupExercises.length * 3),
+                                notes: warmupExercises.map(ex => ex.name).join(', ')
+                              } : undefined;
+
+                              const cardio = cardioExercises.length > 0 ? cardioExercises.map(ex => ({
+                                mode: inferCardioMode(ex),
+                                durationMinutes: Number(ex.reps) > 0 && Number(ex.reps) < 180 ? Number(ex.reps) : 15,
+                                notes: ex.notes || ex.name
+                              })) : undefined;
+
                               const trainingPlan: TrainingPlan = {
                                 id: planData?.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11)),
                                 name: planData?.name || planData?.nome || "Novo Treino",
                                 description: planData?.description || planData?.descricao || "",
-                                days: Array.isArray(rawDays) ? rawDays.map((day: any) => {
-                                  let rawExercises = day.exercises || day.exercicios || day.atividades || day.rotina;
-                                  if ((!Array.isArray(rawExercises) || rawExercises.length === 0) && day && typeof day === 'object') {
-                                    rawExercises = Object.values(day).find(v => Array.isArray(v) && v.length > 0) as any[];
-                                  }
-                                  return {
-                                    label: day.label || day.nome || day.titulo || "Treino",
-                                    exercises: Array.isArray(rawExercises) ? rawExercises.map((ex: any) => ({
-                                      id: ex.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11)),
-                                      name: ex.name || ex.nome || "Exercício",
-                                      sets: Number(ex.sets || ex.series) || 3,
-                                      reps: String(ex.reps || ex.repeticoes || "12"),
-                                      weight: ex.weight || ex.peso || "",
-                                      rest: String(ex.rest || ex.descanso || "60"),
-                                      videoUrl: ex.videoUrl || ex.video || "",
-                                      notes: ex.notes || ex.observacoes || ex.notas || ""
-                                    })) : []
-                                  };
-                                }) : [],
-                                createdAt: planData?.createdAt || Date.now()
+                                days: allDays.map(d => ({
+                                  label: d.label,
+                                  exercises: d.exercises.filter(ex => ex.category === 'treino')
+                                })),
+                                createdAt: planData?.createdAt || Date.now(),
+                                warmup,
+                                cardio
                               };
                               localStorage.setItem('ironmind_training', JSON.stringify(trainingPlan));
                               onAcceptTraining(trainingPlan);

@@ -1,11 +1,27 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Zap, Wind, RotateCcw, Play, Pause } from 'lucide-react';
+import { Zap, Wind, RotateCcw, Play, Pause, Sparkles } from 'lucide-react';
+import { WarmupSuggestion } from '../types';
 
-export default function WarmupTab() {
-  const [totalTime, setTotalTime] = useState(300); // Default 5 minutes
-  const [timeLeft, setTimeLeft] = useState(300);
+interface WarmupTabProps {
+  suggestion?: WarmupSuggestion;
+}
+
+export default function WarmupTab({ suggestion }: WarmupTabProps) {
+  const initialSeconds = suggestion ? suggestion.durationMinutes * 60 : 300;
+  const [totalTime, setTotalTime] = useState(initialSeconds); // Default 5 minutes, ou sugestão do treinador
+  const [timeLeft, setTimeLeft] = useState(initialSeconds);
   const [isActive, setIsActive] = useState(false);
+
+  // Se o treinador propuser um novo aquecimento, atualiza o timer (sem sobrescrever se já estiver em andamento)
+  useEffect(() => {
+    if (suggestion && !isActive) {
+      const seconds = suggestion.durationMinutes * 60;
+      setTotalTime(seconds);
+      setTimeLeft(seconds);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestion?.durationMinutes, suggestion?.notes]);
 
   useEffect(() => {
     let interval: any;
@@ -54,6 +70,16 @@ export default function WarmupTab() {
           </div>
         </div>
       </div>
+
+      {suggestion && (
+        <div className="bg-blue-600 rounded-xl p-3 flex gap-3 items-start shadow-sm">
+          <Sparkles className="w-4 h-4 text-blue-200 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-[8px] font-black text-blue-200 uppercase tracking-widest mb-0.5">Sugestão do Treinador</p>
+            <p className="text-[10px] text-white leading-tight font-medium">{suggestion.notes}</p>
+          </div>
+        </div>
+      )}
 
       {/* Time Selector */}
       <div className="flex justify-between items-center bg-white p-2 rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-14 relative">
