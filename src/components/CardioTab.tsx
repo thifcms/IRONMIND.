@@ -116,20 +116,50 @@ export default function CardioTab() {
   }, [time, speed, incline, load, mode, isActive, heartRate]);
 
   // Handle PiP stream initialization
+  const audioCtxRef = useRef<AudioContext | null>(null);
   useEffect(() => {
     const initializeStream = async () => {
       if (canvasRef.current && videoRef.current && !videoRef.current.srcObject) {
+        // Gera uma trilha de áudio quase inaudível e mescla com o stream do
+        // canvas — sem isso, o Android trata o PiP como "sem mídia ativa"
+        // quando o app (PWA) vai pro segundo plano, suspende o JavaScript
+        // da página e derruba a janela flutuante.
         try {
-          const stream = (canvasRef.current as any).captureStream(30);
-          videoRef.current.srcObject = stream;
-          // Pre-play muted video to have it ready for PiP
+          const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+          const audioCtx = new AudioContextClass();
+          const oscillator = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
+          gainNode.gain.value = 0.001;
+          oscillator.connect(gainNode);
+          const destination = audioCtx.createMediaStreamDestination();
+          gainNode.connect(destination);
+          oscillator.start();
+          audioCtxRef.current = audioCtx;
+
+          const videoStream = (canvasRef.current as any).captureStream(30);
+          const combinedStream = new MediaStream([
+            ...videoStream.getVideoTracks(),
+            ...destination.stream.getAudioTracks(),
+          ]);
+          videoRef.current.muted = false;
+          videoRef.current.srcObject = combinedStream;
           await videoRef.current.play().catch(() => {});
         } catch (e) {
-          console.error("Failed to initialize PiP stream", e);
+          console.error("Failed to initialize PiP stream with audio track", e);
+          try {
+            const stream = (canvasRef.current as any).captureStream(30);
+            videoRef.current.srcObject = stream;
+            await videoRef.current.play().catch(() => {});
+          } catch (e2) {
+            console.error("Failed to initialize PiP stream", e2);
+          }
         }
       }
     };
     initializeStream();
+    return () => {
+      audioCtxRef.current?.close().catch(() => {});
+    };
   }, []);
 
   const togglePiP = async () => {
@@ -137,6 +167,10 @@ export default function CardioTab() {
     if (!video) return;
 
     try {
+      if (audioCtxRef.current?.state === 'suspended') {
+        await audioCtxRef.current.resume().catch(() => {});
+      }
+
       if (document.pictureInPictureElement) {
         await document.exitPictureInPicture();
       } else {
@@ -146,6 +180,14 @@ export default function CardioTab() {
           await video.play();
         }
         await video.requestPictureInPicture();
+
+        if ('mediaSession' in navigator) {
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: 'IronMind Cardio',
+            artist: 'Treino em andamento',
+          });
+          navigator.mediaSession.playbackState = 'playing';
+        }
         
         // Maestro de Mídia: Ajustar áudio ao entrar em modo flutuante
         mediaMaestro.duckVolume(0.5);
@@ -202,7 +244,7 @@ export default function CardioTab() {
     <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0a0a0a] overflow-hidden relative transition-colors duration-300">
       <div className="opacity-0 pointer-events-none absolute -z-50 overflow-hidden w-px h-px">
         <canvas ref={canvasRef} width={720} height={720} />
-        <video ref={videoRef} playsInline muted />
+        <video ref={videoRef} playsInline />
       </div>
 
       {/* Bio-Monitor Floating Hud */}
