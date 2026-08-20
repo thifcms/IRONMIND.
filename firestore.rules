@@ -4,10 +4,19 @@ service cloud.firestore {
 
     match /users/{userId} {
       // Autoriza se: (a) o dono é literalmente o dono do documento (contas
-      // novas, onde o ID do doc == uid do Firebase Auth), OU (b) o campo
-      // authUid do documento aponta pro uid autenticado (contas antigas
-      // migradas, que mantêm o ID original do Firestore).
-      allow read, update, delete: if request.auth != null &&
+      // novas, onde o ID do doc == uid do Firebase Auth), (b) o campo
+      // authUid do documento aponta pro uid autenticado (contas antigas já
+      // migradas), OU (c) é uma conta com Firebase Auth criado mas ainda
+      // sem vínculo (authUid vazio) e o e-mail do token bate com o do
+      // documento — permite completar o vínculo sozinho, sem reabrir as
+      // regras manualmente. Como o e-mail do token só existe depois de uma
+      // autenticação real (senha comprovada pelo Firebase), isso é seguro.
+      allow read, update: if request.auth != null &&
+        (request.auth.uid == userId ||
+         request.auth.uid == resource.data.authUid ||
+         (resource.data.authUid == null && resource.data.email == request.auth.token.email));
+
+      allow delete: if request.auth != null &&
         (request.auth.uid == userId || request.auth.uid == resource.data.authUid);
 
       allow create: if request.auth != null &&

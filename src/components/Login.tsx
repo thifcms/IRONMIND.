@@ -53,7 +53,30 @@ export default function Login({ onRegister }: LoginProps) {
           setLoading(false);
           return;
         }
-        // Conta existe no Auth mas sem perfil vinculado no Firestore — trata como erro abaixo.
+
+        // Conta existe no Auth (senha já comprovada de verdade) mas ainda não
+        // está vinculada a nenhum perfil — tenta achar pelo e-mail e concluir
+        // o vínculo agora. As regras do Firestore permitem essa leitura/escrita
+        // especificamente quando o e-mail do token bate com o do documento e
+        // ele ainda não tem authUid, então isso funciona sem precisar abrir
+        // as regras manualmente.
+        const byEmailQuery = query(collection(db, 'users'), where('email', '==', email));
+        const byEmailSnap = await getDocs(byEmailQuery);
+        if (!byEmailSnap.empty) {
+          const legacyDoc = byEmailSnap.docs[0];
+          const legacyData = legacyDoc.data();
+          await updateDoc(doc(db, 'users', legacyDoc.id), {
+            authUid: fbUid,
+            password: deleteField()
+          });
+          legacyData.authUid = fbUid;
+          delete legacyData.password;
+          setProfile(legacyData);
+          setUser({ uid: legacyDoc.id, ...legacyData });
+          setLoading(false);
+          return;
+        }
+
         setError('Perfil não encontrado para esta conta.');
         setLoading(false);
         return;
