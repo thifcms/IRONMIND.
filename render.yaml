@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: ironmind-app
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      # server.ts escuta fixo na porta 3000 — isso diz ao Render pra rotear pra essa porta.
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
+      # Segredos: ficam em branco aqui de propósito (sync: false). O Render pede
+      # pra preencher manualmente no dashboard na primeira vez, e nunca fica no Git.
+      - key: VITE_GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: VITE_FIREBASE_API_KEY
+        sync: false
+      - key: VITE_FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: VITE_FIREBASE_PROJECT_ID
+        sync: false
+      - key: VITE_FIREBASE_STORAGE_BUCKET
+        sync: false
+      - key: VITE_FIREBASE_MESSAGING_SENDER_ID
+        sync: false
+      - key: VITE_FIREBASE_APP_ID
+        sync: false
+      - key: VITE_FIREBASE_FIRESTORE_DATABASE_ID
+        sync: false
+      - key: VITE_EMAILJS_SERVICE_ID
+        sync: false
+      - key: VITE_EMAILJS_TEMPLATE_ID
+        sync: false
+      - key: VITE_EMAILJS_PUBLIC_KEY
+        sync: false
