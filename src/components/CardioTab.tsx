@@ -10,6 +10,7 @@ export default function CardioTab() {
   const [mode, setMode] = useState<CardioMode>('esteira');
   const [isActive, setIsActive] = useState(false);
   const [time, setTime] = useState(0);
+  const [pipDebug, setPipDebug] = useState<string | null>(null);
   
   // PiP Refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -157,24 +158,16 @@ export default function CardioTab() {
 
   const togglePiP = async () => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video) throw new Error('Elemento de vídeo do visor não está pronto ainda.');
 
-    try {
-      if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture();
-      } else {
-        // Ensure video is playing before requesting PiP
-        // If it was interrupted, we try to play again
-        if (video.paused) {
-          await video.play();
-        }
-        await video.requestPictureInPicture();
-        
-        // Maestro de Mídia: Ajustar áudio ao entrar em modo flutuante
-        mediaMaestro.duckVolume(0.5);
+    if (document.pictureInPictureElement) {
+      await document.exitPictureInPicture();
+    } else {
+      if (video.paused) {
+        await video.play();
       }
-    } catch (error) {
-      console.error("Picture-in-Picture error:", error);
+      await video.requestPictureInPicture();
+      mediaMaestro.duckVolume(0.5);
     }
   };
 
@@ -203,28 +196,53 @@ export default function CardioTab() {
 
   const handleMediaClick = (url: string) => {
     if (!isActive) setIsActive(true);
+    setPipDebug(null);
 
     const video = videoRef.current;
+    let settled = false;
+
+    const openNow = () => window.open(url, '_blank');
+
+    if (!video) {
+      togglePiP().catch(err => setPipDebug(`Erro no PiP: ${err?.name || ''} ${err?.message || err}`)).finally(openNow);
+      return;
+    }
 
     // Sincroniza a abertura da URL com a confirmação REAL de que o PiP
     // entrou (evento 'enterpictureinpicture'), em vez de com a resolução
     // da Promise de requestPictureInPicture() -- a Promise resolve assim
     // que o pedido é aceito, não quando a janela do PiP já está de pé.
-    if (video) {
-      const onEnter = () => {
-        video.removeEventListener('enterpictureinpicture', onEnter);
-        window.open(url, '_blank');
-      };
-      video.addEventListener('enterpictureinpicture', onEnter);
+    const onEnter = () => {
+      if (settled) return;
+      settled = true;
+      video.removeEventListener('enterpictureinpicture', onEnter);
+      setPipDebug('Visor entrou (evento enterpictureinpicture confirmado).');
+      openNow();
+    };
+    video.addEventListener('enterpictureinpicture', onEnter);
 
-      togglePiP().catch(err => {
-        console.error("Erro ao ativar visor flutuante:", err);
-        video.removeEventListener('enterpictureinpicture', onEnter);
-        window.open(url, '_blank');
-      });
-    } else {
-      togglePiP().finally(() => window.open(url, '_blank'));
-    }
+    // Rede de segurança: se nem o evento nem o erro chegarem em 2.5s,
+    // abre mesmo assim e avisa -- pra nunca travar sem fazer nada.
+    const timeoutId = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      video.removeEventListener('enterpictureinpicture', onEnter);
+      setPipDebug('Visor não confirmou entrada em 2.5s (nem sucesso nem erro).');
+      openNow();
+    }, 2500);
+
+    togglePiP().catch(err => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      video.removeEventListener('enterpictureinpicture', onEnter);
+      const msg = `Erro no PiP: ${err?.name || ''} ${err?.message || err}`;
+      console.error(msg);
+      setPipDebug(msg);
+      openNow();
+    }).then(() => {
+      clearTimeout(timeoutId);
+    });
   };
 
   const stats = getStats();
@@ -409,6 +427,11 @@ export default function CardioTab() {
               <Youtube className="w-3 h-3 text-[#FF0000]" /> YOUTUBE
             </button>
         </div>
+        {pipDebug && (
+          <p className="text-[9px] font-mono text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-lg p-2 break-words mb-2">
+            {pipDebug}
+          </p>
+        )}
       </div>
     </div>
   );

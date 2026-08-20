@@ -112,21 +112,17 @@ export function usePiPLauncher() {
 
   const togglePiP = async () => {
     const video = videoElRef.current;
-    if (!video) return;
-    try {
-      if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture();
-      } else {
-        if (video.paused) await video.play();
-        await video.requestPictureInPicture();
-        mediaMaestro.duckVolume(0.5);
-      }
-    } catch (error) {
-      console.error("Picture-in-Picture error:", error);
+    if (!video) throw new Error('Elemento de vídeo do visor não está pronto ainda.');
+    if (document.pictureInPictureElement) {
+      await document.exitPictureInPicture();
+    } else {
+      if (video.paused) await video.play();
+      await video.requestPictureInPicture();
+      mediaMaestro.duckVolume(0.5);
     }
   };
 
-  const launch = (opener: () => void) => {
+  const launch = (opener: () => void, onDebug?: (msg: string) => void) => {
     activeRef.current = true;
     const video = videoElRef.current;
 
@@ -138,19 +134,40 @@ export function usePiPLauncher() {
     // causava bloqueio de pop-up (o listener de evento não consome o
     // "gesto do usuário" do mesmo jeito que um loop de espera consome).
     if (video) {
+      let settled = false;
       const onEnter = () => {
+        if (settled) return;
+        settled = true;
         video.removeEventListener('enterpictureinpicture', onEnter);
+        onDebug?.('Visor entrou (evento enterpictureinpicture confirmado).');
         opener();
       };
       video.addEventListener('enterpictureinpicture', onEnter);
 
-      togglePiP().catch(err => {
-        console.error("Erro ao ativar visor flutuante:", err);
+      // Rede de segurança: se nem o evento nem o erro chegarem em 2.5s,
+      // abre mesmo assim e avisa -- pra nunca travar sem fazer nada.
+      const timeoutId = setTimeout(() => {
+        if (settled) return;
+        settled = true;
         video.removeEventListener('enterpictureinpicture', onEnter);
+        onDebug?.('Visor não confirmou entrada em 2.5s (nem sucesso nem erro).');
         opener();
+      }, 2500);
+
+      togglePiP().catch(err => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        video.removeEventListener('enterpictureinpicture', onEnter);
+        const msg = `Erro no PiP: ${err?.name || ''} ${err?.message || err}`;
+        console.error(msg);
+        onDebug?.(msg);
+        opener();
+      }).then(() => {
+        clearTimeout(timeoutId);
       });
     } else {
-      togglePiP().finally(opener);
+      togglePiP().catch(err => onDebug?.(`Erro no PiP: ${err?.name || ''} ${err?.message || err}`)).finally(opener);
     }
   };
 
