@@ -11,6 +11,8 @@ interface TreinadorTabProps {
   history: ChatMessage[];
   setHistory: Dispatch<SetStateAction<ChatMessage[]>>;
   onAcceptTraining: (plan: TrainingPlan) => void;
+  onAcceptWarmup: (plan: TrainingPlan) => void;
+  onAcceptCardio: (plan: TrainingPlan) => void;
   onAcceptDiet: (plan: DietPlan) => void;
   onClearChat?: () => void;
   userContext?: {
@@ -179,7 +181,7 @@ function NeuralLinkDiagnostic({ onClose, onStatusChange }: { onClose: () => void
   );
 }
 
-export default function TreinadorTab({ history, setHistory, onAcceptTraining, onAcceptDiet, onClearChat, userContext }: TreinadorTabProps) {
+export default function TreinadorTab({ history, setHistory, onAcceptTraining, onAcceptWarmup, onAcceptCardio, onAcceptDiet, onClearChat, userContext }: TreinadorTabProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Conectando ao Motor Neural... aguarde.');
@@ -630,12 +632,6 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
                                 if (/mobilidade|ativa[cç][aã]o|alongamento/.test(name)) return 'aquecimento';
                                 return 'treino';
                               };
-                              const inferCardioMode = (ex: any): 'corrida' | 'esteira' | 'bicicleta' => {
-                                const text = `${ex.name || ex.nome || ''} ${ex.notes || ex.observacoes || ''}`.toLowerCase();
-                                if (/bicicleta|bike/.test(text)) return 'bicicleta';
-                                if (/corrida|rua|outdoor/.test(text)) return 'corrida';
-                                return 'esteira';
-                              };
 
                               const allDays = Array.isArray(rawDays) ? rawDays.map((day: any) => {
                                 let rawExercises = day.exercises || day.exercicios || day.atividades || day.rotina;
@@ -658,36 +654,42 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
                                 };
                               }) : [];
 
-                              // Rota cada exercício pra aba respectiva: 'treino' fica nos dias normais,
-                              // 'aquecimento' e 'cardio' são agregados em blocos separados pras abas dedicadas.
-                              const warmupExercises = allDays.flatMap(d => d.exercises.filter(ex => ex.category === 'aquecimento'));
-                              const cardioExercises = allDays.flatMap(d => d.exercises.filter(ex => ex.category === 'cardio'));
+                              // Rota cada exercício pra aba respectiva: cada categoria vira seu próprio
+                              // "protocolo" (mesmo formato TrainingPlan usado na aba Treino), preservando
+                              // a divisão por dia. Assim Aquecimento e Cardio funcionam exatamente como Treino.
+                              const buildSubPlan = (name: string, category: 'aquecimento' | 'cardio'): TrainingPlan | null => {
+                                const subDays = allDays
+                                  .map(d => ({ label: d.label, exercises: d.exercises.filter(ex => ex.category === category) }))
+                                  .filter(d => d.exercises.length > 0);
+                                if (subDays.length === 0) return null;
+                                return {
+                                  id: (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11)),
+                                  name,
+                                  description: '',
+                                  days: subDays,
+                                  createdAt: Date.now()
+                                };
+                              };
 
-                              const warmup = warmupExercises.length > 0 ? {
-                                durationMinutes: Math.max(5, warmupExercises.length * 3),
-                                notes: warmupExercises.map(ex => ex.name).join(', ')
-                              } : undefined;
-
-                              const cardio = cardioExercises.length > 0 ? cardioExercises.map(ex => ({
-                                mode: inferCardioMode(ex),
-                                durationMinutes: Number(ex.reps) > 0 && Number(ex.reps) < 180 ? Number(ex.reps) : 15,
-                                notes: ex.notes || ex.name
-                              })) : undefined;
+                              const planName = planData?.name || planData?.nome || "Novo Treino";
 
                               const trainingPlan: TrainingPlan = {
                                 id: planData?.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11)),
-                                name: planData?.name || planData?.nome || "Novo Treino",
+                                name: planName,
                                 description: planData?.description || planData?.descricao || "",
                                 days: allDays.map(d => ({
                                   label: d.label,
                                   exercises: d.exercises.filter(ex => ex.category === 'treino')
                                 })),
-                                createdAt: planData?.createdAt || Date.now(),
-                                warmup,
-                                cardio
+                                createdAt: planData?.createdAt || Date.now()
                               };
+                              const warmupPlan = buildSubPlan(`${planName} - Aquecimento`, 'aquecimento');
+                              const cardioPlan = buildSubPlan(`${planName} - Cardio`, 'cardio');
+
                               localStorage.setItem('ironmind_training', JSON.stringify(trainingPlan));
                               onAcceptTraining(trainingPlan);
+                              if (warmupPlan) onAcceptWarmup(warmupPlan);
+                              if (cardioPlan) onAcceptCardio(cardioPlan);
 
                               const newHistory = history.map((m, idx) => {
                                 if (idx === i) {

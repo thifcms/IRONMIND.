@@ -27,10 +27,8 @@ import { Tab, TrainingPlan, DietPlan, ChatMessage, WeightEntry, UserProfile, Mea
 import { loadChatHistory, saveChatHistory, chatWithCoach } from './services/geminiService';
 import TreinadorTab from './components/TreinadorTab';
 import TrainingTab from './components/TrainingTab';
-import CardioTab from './components/CardioTab';
 import DietTab from './components/DietTab';
 import MusicTab from './components/MusicTab';
-import WarmupTab from './components/WarmupTab';
 import VideosTab from './components/VideosTab';
 import HistoryTab from './components/HistoryTab';
 import ProfileTab from './components/ProfileTab';
@@ -50,6 +48,22 @@ export default function App() {
   const [trainingPlan, setTrainingPlan] = useState<TrainingPlan | null>(() => {
     try {
       const saved = localStorage.getItem('ironmind_training');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [warmupPlan, setWarmupPlan] = useState<TrainingPlan | null>(() => {
+    try {
+      const saved = localStorage.getItem('ironmind_warmup');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [cardioPlan, setCardioPlan] = useState<TrainingPlan | null>(() => {
+    try {
+      const saved = localStorage.getItem('ironmind_cardio');
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
@@ -82,6 +96,8 @@ export default function App() {
   });
   const [showRegister, setShowRegister] = useState(false);
   const [showConfirmClearTraining, setShowConfirmClearTraining] = useState(false);
+  const [showConfirmClearWarmup, setShowConfirmClearWarmup] = useState(false);
+  const [showConfirmClearCardio, setShowConfirmClearCardio] = useState(false);
   const [showConfirmClearDiet, setShowConfirmClearDiet] = useState(false);
   const [showConfirmClearChat, setShowConfirmClearChat] = useState(false);
   const [showConfirmClearHistory, setShowConfirmClearHistory] = useState(false);
@@ -138,6 +154,18 @@ export default function App() {
           setTrainingPlan(data.trainingPlan);
           try {
             localStorage.setItem('ironmind_training', JSON.stringify(data.trainingPlan));
+          } catch (e) {}
+        }
+        if (data.warmupPlan) {
+          setWarmupPlan(data.warmupPlan);
+          try {
+            localStorage.setItem('ironmind_warmup', JSON.stringify(data.warmupPlan));
+          } catch (e) {}
+        }
+        if (data.cardioPlan) {
+          setCardioPlan(data.cardioPlan);
+          try {
+            localStorage.setItem('ironmind_cardio', JSON.stringify(data.cardioPlan));
           } catch (e) {}
         }
         if (data.dietPlan) {
@@ -256,6 +284,40 @@ export default function App() {
     }
   };
 
+  const updateWarmupPlan = async (plan: TrainingPlan) => {
+    setWarmupPlan(plan);
+    try {
+      localStorage.setItem('ironmind_warmup', JSON.stringify(plan));
+    } catch (e) {}
+
+    if (user) {
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          warmupPlan: plan
+        });
+      } catch (err) {
+        console.error("Erro ao salvar aquecimento no Firestore:", err);
+      }
+    }
+  };
+
+  const updateCardioPlan = async (plan: TrainingPlan) => {
+    setCardioPlan(plan);
+    try {
+      localStorage.setItem('ironmind_cardio', JSON.stringify(plan));
+    } catch (e) {}
+
+    if (user) {
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          cardioPlan: plan
+        });
+      } catch (err) {
+        console.error("Erro ao salvar cardio no Firestore:", err);
+      }
+    }
+  };
+
   const updateDietPlan = async (plan: DietPlan) => {
     setDietPlan(plan);
     try {
@@ -323,6 +385,36 @@ export default function App() {
       }
     }
     setShowConfirmClearTraining(false);
+  };
+
+  const clearWarmupPlan = async () => {
+    setWarmupPlan(null);
+    localStorage.removeItem('ironmind_warmup');
+    if (user) {
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          warmupPlan: null
+        });
+      } catch (err) {
+        console.error("Erro ao limpar aquecimento no Firestore:", err);
+      }
+    }
+    setShowConfirmClearWarmup(false);
+  };
+
+  const clearCardioPlan = async () => {
+    setCardioPlan(null);
+    localStorage.removeItem('ironmind_cardio');
+    if (user) {
+      try {
+        await updateDoc(doc(db, 'users', user.uid), {
+          cardioPlan: null
+        });
+      } catch (err) {
+        console.error("Erro ao limpar cardio no Firestore:", err);
+      }
+    }
+    setShowConfirmClearCardio(false);
   };
 
   const clearDietPlan = async () => {
@@ -672,6 +764,8 @@ export default function App() {
                 history={chatHistory} 
                 setHistory={setChatHistory} 
                 onAcceptTraining={saveTraining}
+                onAcceptWarmup={updateWarmupPlan}
+                onAcceptCardio={updateCardioPlan}
                 onAcceptDiet={saveDiet}
                 onClearChat={() => setShowConfirmClearChat(true)}
                 userContext={{
@@ -681,7 +775,11 @@ export default function App() {
                 }}
               />
             )}
-            {activeTab === Tab.AQUECIMENTO && <WarmupTab suggestion={trainingPlan?.warmup} />}
+            {activeTab === Tab.AQUECIMENTO && (
+              warmupPlan
+                ? <TrainingTab plan={warmupPlan} onUpdatePlan={updateWarmupPlan} onClearPlan={() => setShowConfirmClearWarmup(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} />
+                : <EmptyState type="aquecimento" onClick={() => setActiveTab(Tab.TREINADOR)} />
+            )}
             {activeTab === Tab.TREINO && (
               <TrainingPlanView 
                 plan={trainingPlan} 
@@ -694,7 +792,11 @@ export default function App() {
             {activeTab === Tab.VIDEOS && (
               trainingPlan ? <VideosTab plan={trainingPlan} /> : <EmptyState type="vídeos" onClick={() => setActiveTab(Tab.TREINADOR)} />
             )}
-            {activeTab === Tab.CARDIO && <CardioTab suggestions={trainingPlan?.cardio} />}
+            {activeTab === Tab.CARDIO && (
+              cardioPlan
+                ? <TrainingTab plan={cardioPlan} onUpdatePlan={updateCardioPlan} onClearPlan={() => setShowConfirmClearCardio(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} />
+                : <EmptyState type="cardio" onClick={() => setActiveTab(Tab.TREINADOR)} />
+            )}
             {activeTab === Tab.DIETA && <DietPlanView plan={dietPlan} setActiveTab={setActiveTab} onUpdatePlan={updateDietPlan} onClearPlan={() => setShowConfirmClearDiet(true)} />}
             {activeTab === Tab.SOM && <MusicTab />}
             {activeTab === Tab.HISTORICO && (
@@ -789,7 +891,7 @@ export default function App() {
 
       {/* Confirmation Modals */}
       <AnimatePresence>
-        {(showConfirmClearTraining || showConfirmClearDiet || showConfirmClearChat || showConfirmClearHistory || showConfirmHardReset) && (
+        {(showConfirmClearTraining || showConfirmClearWarmup || showConfirmClearCardio || showConfirmClearDiet || showConfirmClearChat || showConfirmClearHistory || showConfirmHardReset) && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -810,6 +912,8 @@ export default function App() {
               </h3>
               <p className="text-[11px] text-slate-500 font-bold uppercase mb-6 leading-relaxed">
                 {showConfirmClearTraining && 'Isso apagará seu protocolo de treino atual e todo o histórico de carga associado.'}
+                {showConfirmClearWarmup && 'Isso apagará seu protocolo de aquecimento atual.'}
+                {showConfirmClearCardio && 'Isso apagará seu protocolo de cardio atual.'}
                 {showConfirmClearDiet && 'Isso apagará seu protocolo de dieta atual.'}
                 {showConfirmClearChat && (
                   <span>Isso apagará todo o histórico da conversa com o <span translate="no" className="notranslate">IronMind</span>.</span>
@@ -821,6 +925,8 @@ export default function App() {
                 <button 
                   onClick={() => {
                     setShowConfirmClearTraining(false);
+                    setShowConfirmClearWarmup(false);
+                    setShowConfirmClearCardio(false);
                     setShowConfirmClearDiet(false);
                     setShowConfirmClearChat(false);
                     setShowConfirmClearHistory(false);
@@ -833,6 +939,8 @@ export default function App() {
                 <button 
                   onClick={() => {
                     if (showConfirmClearTraining) clearTrainingPlan();
+                    if (showConfirmClearWarmup) clearWarmupPlan();
+                    if (showConfirmClearCardio) clearCardioPlan();
                     if (showConfirmClearDiet) clearDietPlan();
                     if (showConfirmClearChat) clearChatHistory();
                     if (showConfirmClearHistory) clearHistory();

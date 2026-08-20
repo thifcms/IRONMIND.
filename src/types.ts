@@ -34,25 +34,12 @@ export interface TrainingDay {
   exercises: Exercise[];
 }
 
-export interface WarmupSuggestion {
-  durationMinutes: number;
-  notes: string;
-}
-
-export interface CardioSuggestion {
-  mode: 'corrida' | 'esteira' | 'bicicleta';
-  durationMinutes: number;
-  notes: string;
-}
-
 export interface TrainingPlan {
   id: string;
   name: string;
   description: string;
   days: TrainingDay[];
   createdAt: number;
-  warmup?: WarmupSuggestion;
-  cardio?: CardioSuggestion[];
 }
 
 export interface DietMeal {
