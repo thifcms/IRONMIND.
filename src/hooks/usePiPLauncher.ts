@@ -128,12 +128,30 @@ export function usePiPLauncher() {
 
   const launch = (opener: () => void) => {
     activeRef.current = true;
-    togglePiP().then(() => {
-      opener();
-    }).catch(err => {
-      console.error("Erro ao ativar visor flutuante:", err);
-      opener();
-    });
+    const video = videoElRef.current;
+
+    // Sincroniza a abertura da URL com a confirmação REAL de que o PiP
+    // entrou (evento 'enterpictureinpicture'), em vez de com a resolução
+    // da Promise de requestPictureInPicture() -- a Promise resolve assim
+    // que o pedido é aceito, não quando a janela do PiP já está de pé.
+    // Isso corrige a ordem sem reintroduzir o polling com setTimeout que
+    // causava bloqueio de pop-up (o listener de evento não consome o
+    // "gesto do usuário" do mesmo jeito que um loop de espera consome).
+    if (video) {
+      const onEnter = () => {
+        video.removeEventListener('enterpictureinpicture', onEnter);
+        opener();
+      };
+      video.addEventListener('enterpictureinpicture', onEnter);
+
+      togglePiP().catch(err => {
+        console.error("Erro ao ativar visor flutuante:", err);
+        video.removeEventListener('enterpictureinpicture', onEnter);
+        opener();
+      });
+    } else {
+      togglePiP().finally(opener);
+    }
   };
 
   return { launch };

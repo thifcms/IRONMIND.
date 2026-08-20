@@ -203,14 +203,28 @@ export default function CardioTab() {
 
   const handleMediaClick = (url: string) => {
     if (!isActive) setIsActive(true);
-    
-    // Abrir o streaming e ativar o Visor Flutuante no mesmo gesto
-    togglePiP().then(() => {
+
+    const video = videoRef.current;
+
+    // Sincroniza a abertura da URL com a confirmação REAL de que o PiP
+    // entrou (evento 'enterpictureinpicture'), em vez de com a resolução
+    // da Promise de requestPictureInPicture() -- a Promise resolve assim
+    // que o pedido é aceito, não quando a janela do PiP já está de pé.
+    if (video) {
+      const onEnter = () => {
+        video.removeEventListener('enterpictureinpicture', onEnter);
         window.open(url, '_blank');
-    }).catch(err => {
+      };
+      video.addEventListener('enterpictureinpicture', onEnter);
+
+      togglePiP().catch(err => {
         console.error("Erro ao ativar visor flutuante:", err);
+        video.removeEventListener('enterpictureinpicture', onEnter);
         window.open(url, '_blank');
-    });
+      });
+    } else {
+      togglePiP().finally(() => window.open(url, '_blank'));
+    }
   };
 
   const stats = getStats();
