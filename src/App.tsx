@@ -36,8 +36,9 @@ import ProfileTab from './components/ProfileTab';
 import { useAuth } from './components/AuthProvider';
 import Login from './components/Login';
 import Register from './components/Register';
-import { getFirestoreInstance } from './lib/firebase';
+import { getFirestoreInstance, auth } from './lib/firebase';
 import { doc, getDoc, setDoc, updateDoc, collection, query, orderBy, limit, getDocs, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
 
 export default function App() {
   const db = getFirestoreInstance();
@@ -370,7 +371,7 @@ export default function App() {
     if (showRegister) return <Register onBack={() => setShowRegister(false)} />;
     return <Login onRegister={() => setShowRegister(true)} />;
   }
-  if (!profile) return <Register onBack={() => { localStorage.clear(); window.location.reload(); }} />; 
+  if (!profile) return <Register onBack={() => { signOut(auth).catch(() => {}); localStorage.clear(); window.location.reload(); }} />; 
 
   const clearTrainingPlan = async () => {
     setTrainingPlan(null);
@@ -688,7 +689,7 @@ export default function App() {
                  {/* Footer Sair */}
                  <div className="pt-4 border-t border-white/5 mt-auto">
                     <button 
-                      onClick={() => { localStorage.clear(); window.location.reload(); }} 
+                      onClick={() => { signOut(auth).catch(() => {}); localStorage.clear(); window.location.reload(); }} 
                       className="w-full flex items-center justify-center gap-3 py-4 bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white border border-rose-600/20 rounded-2xl transition-all group"
                     >
                       <X className="w-5 h-5 transition-transform group-hover:rotate-90" />

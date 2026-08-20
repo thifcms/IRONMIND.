@@ -6,8 +6,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, Calendar, Weight, Ruler, Dumbbell, Target, Info, AlertTriangle, Apple, Save, LogOut, Trash2, AlertCircle } from 'lucide-react';
-import { getFirestoreInstance } from '../lib/firebase';
+import { getFirestoreInstance, auth } from '../lib/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
+import { signOut, deleteUser } from 'firebase/auth';
 
 interface ProfileTabProps {
   profile: any;
@@ -90,6 +91,7 @@ export default function ProfileTab({ profile, setProfile }: ProfileTabProps) {
   };
 
   const handleLogout = () => {
+    signOut(auth).catch(() => {});
     localStorage.clear();
     sessionStorage.clear();
     window.location.href = '/';
@@ -117,7 +119,16 @@ export default function ProfileTab({ profile, setProfile }: ProfileTabProps) {
       const userDocRef = doc(db, 'users', userId);
       await deleteDoc(userDocRef);
 
-      // 2. Limpar tudo e recarregar
+      // 2. Apagar a conta real do Firebase Auth também (se a sessão atual for dela)
+      if (auth.currentUser) {
+        try {
+          await deleteUser(auth.currentUser);
+        } catch (delErr) {
+          console.warn("Não foi possível apagar a conta do Firebase Auth:", delErr);
+        }
+      }
+
+      // 3. Limpar tudo e recarregar
       localStorage.clear();
       sessionStorage.clear();
       setProfile(null);

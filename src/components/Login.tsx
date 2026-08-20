@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Mail, Lock, Dumbbell, ArrowRight, X } from 'lucide-react';
-import { getFirestoreInstance, app } from '../lib/firebase';
-import { collection, query, where, getDocs, setDoc, doc, updateDoc } from 'firebase/firestore';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { getFirestoreInstance, auth } from '../lib/firebase';
+import { collection, query, where, getDocs, setDoc, doc, updateDoc, deleteField } from 'firebase/firestore';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from './AuthProvider';
 import emailjs from '@emailjs/browser';
 
@@ -35,6 +35,34 @@ export default function Login({ onRegister }: LoginProps) {
     setError('');
 
     try {
+      // 1. Tenta login real via Firebase Auth primeiro.
+      try {
+        const credential = await signInWithEmailAndPassword(auth, email, password);
+        const fbUid = credential.user.uid;
+
+        // O documento do perfil pode ter um ID diferente do uid do Firebase Auth
+        // (contas antigas migradas mantêm o ID original) — por isso buscamos
+        // pelo campo authUid, que sempre aponta pro uid correto do Auth.
+        const linkedQuery = query(collection(db, 'users'), where('authUid', '==', fbUid));
+        const linkedSnap = await getDocs(linkedQuery);
+
+        if (!linkedSnap.empty) {
+          const userDoc = linkedSnap.docs[0];
+          setProfile(userDoc.data());
+          setUser({ uid: userDoc.id, ...userDoc.data() });
+          setLoading(false);
+          return;
+        }
+        // Conta existe no Auth mas sem perfil vinculado no Firestore — trata como erro abaixo.
+        setError('Perfil não encontrado para esta conta.');
+        setLoading(false);
+        return;
+      } catch (authErr: any) {
+        // Login via Firebase Auth falhou (senha errada, ou conta ainda não migrada).
+        // Segue pro fallback legado abaixo.
+      }
+
+      // 2. Fallback legado: conta ainda não migrada pro Firebase Auth.
       const usersRef = collection(db, 'users');
       const q = query(usersRef, where('email', '==', email));
       const querySnapshot = await getDocs(q);
@@ -61,34 +89,41 @@ export default function Login({ onRegister }: LoginProps) {
         // Ignored if btoa fails due to non-latin1 chars
       }
 
-      let plaintextMatch = userData.password === password;
+      const plaintextMatch = userData.password === password;
+      const shaMatch = userData.password === hashedPassword;
 
-      // Maintain legacy base64 or plaintext support for older accounts, or SHA-256 for new ones
-      if (userData.password !== hashedPassword && !legacyMatch && !plaintextMatch) {
-         // Ultimate fallback for accounts created with strict Firebase Auth before the auth migration
-         try {
-            const auth = getAuth(app);
-            await signInWithEmailAndPassword(auth, email, password);
-            // Firebase Auth allowed them in. We should sync their password hash to Firestore now.
-            try {
-              await updateDoc(doc(db, 'users', userDoc.id), { password: hashedPassword });
-            } catch (e) {
-              console.warn("Transferred Firebase Auth user but failed to write password to firestore.");
-            }
-         } catch (fallbackErr) {
-            setError('Senha inválida.');
-            setLoading(false);
-            return;
-         }
+      if (!shaMatch && !legacyMatch && !plaintextMatch) {
+        setError('Senha inválida.');
+        setLoading(false);
+        return;
       }
 
-      // Automatically upgrade password to SHA-256 if it was using legacy or plaintext
-      if (legacyMatch || plaintextMatch) {
+      // Senha bateu no esquema antigo — migra a conta pro Firebase Auth agora,
+      // silenciosamente, e remove a senha do Firestore (ela não deve mais viver lá).
+      try {
+        let migratedUid: string;
         try {
-          await updateDoc(doc(db, 'users', userDoc.id), { password: hashedPassword });
-        } catch (e) {
-          console.warn("Failed to upgrade password hash", e);
+          const credential = await createUserWithEmailAndPassword(auth, email, password);
+          migratedUid = credential.user.uid;
+        } catch (createErr: any) {
+          if (createErr.code === 'auth/email-already-in-use') {
+            // Já foi migrada numa sessão anterior que não terminou de limpar o Firestore.
+            const credential = await signInWithEmailAndPassword(auth, email, password);
+            migratedUid = credential.user.uid;
+          } else {
+            throw createErr;
+          }
         }
+        await updateDoc(doc(db, 'users', userDoc.id), {
+          authUid: migratedUid,
+          password: deleteField()
+        });
+        userData.authUid = migratedUid;
+        delete userData.password;
+      } catch (migrateErr) {
+        // Não bloqueia o login se a migração falhar (ex: sem conexão) —
+        // só tenta de novo no próximo login.
+        console.warn("Falha ao migrar conta para Firebase Auth:", migrateErr);
       }
 
       setProfile(userData);
@@ -178,6 +213,11 @@ export default function Login({ onRegister }: LoginProps) {
 
         await updateDoc(doc(db, 'users', resetUserId), {
           password: hashedPassword,
+          // Depois de um reset pelo fluxo antigo, a senha do Firebase Auth (se existir)
+          // fica desatualizada. Removemos o vínculo authUid pra forçar o próximo login
+          // a usar o fallback legado (com a senha nova) em vez de tentar o Auth
+          // desatualizado — evita usuário ficar preso.
+          authUid: deleteField(),
           resetCode: null,
           resetExpires: null
         });

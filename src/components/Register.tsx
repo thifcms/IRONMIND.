@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Mail, Lock, User, Calendar, Weight, Ruler, ChevronRight, ChevronLeft, Dumbbell, Target, Info, AlertTriangle, Apple } from 'lucide-react';
-import { getFirestoreInstance } from '../lib/firebase';
+import { getFirestoreInstance, auth } from '../lib/firebase';
 import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from './AuthProvider';
 
 interface RegisterProps {
@@ -45,18 +46,32 @@ export default function Register({ onBack }: RegisterProps) {
     setError('');
 
     try {
-      const uid = crypto.randomUUID();
+      // Confere duplicidade de e-mail no Firestore antes de criar a conta
+      // (mensagem de erro mais amigável do que deixar o Firebase Auth recusar).
+      // Nota: como criar a conta agora exige o Firebase Auth (rede obrigatória),
+      // não é mais possível cadastrar em modo totalmente offline como antes.
+      const usersRef = collection(db, 'users');
+      const dupQuery = query(usersRef, where('email', '==', formData.email));
+      const dupSnapshot = await Promise.race([
+        getDocs(dupQuery),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Tempo limite excedido ao conectar. Verifique sua internet e tente novamente.')), 10000))
+      ]);
+      if (!dupSnapshot.empty) {
+        setError('Este e-mail já está cadastrado.');
+        setLoading(false);
+        return;
+      }
 
-      const msgUint8 = new TextEncoder().encode(formData.password);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashedPassword = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      // Cria a conta de verdade no Firebase Authentication — a senha nunca
+      // é salva no Firestore, fica só sob custódia do Firebase Auth.
+      const credential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      const uid = credential.user.uid;
 
       // Save profile to Firestore
       const profile = {
         uid,
+        authUid: uid,
         email: formData.email,
-        password: hashedPassword, // SHA-256 encryption
         name: formData.name,
         age: Number(formData.age),
         weight: Number(formData.weight),
@@ -82,31 +97,13 @@ export default function Register({ onBack }: RegisterProps) {
         );
 
         await Promise.race([
-          (async () => {
-            // Check if email already exists
-            const usersRef = collection(db, 'users');
-            const q = query(usersRef, where('email', '==', formData.email));
-            const querySnapshot = await getDocs(q);
-
-            if (!querySnapshot.empty) {
-              throw new Error('Este e-mail já está cadastrado.');
-            }
-
-            await setDoc(doc(db, 'users', uid), profile);
-          })(),
+          setDoc(doc(db, 'users', uid), profile),
           timeoutPromise
         ]);
       } catch (err: any) {
         console.warn("Aviso do Firestore:", err);
-        
-        if (err.message === 'Este e-mail já está cadastrado.') {
-          setError(err.message);
-          setLoading(false);
-          return;
-        } else {
-          // Se falhar (timeout ou offline), avisa o usuário mas continua com o backup local
-          alert(err.message || "Aviso: Sem conexão. Seu cadastro foi salvo no modo offline (local).");
-        }
+        // Se falhar (timeout ou offline), avisa o usuário mas continua com o backup local
+        alert(err.message || "Aviso: Sem conexão. Seu cadastro foi salvo no modo offline (local).");
       }
 
       // Update global context so the App unmounts the Register component
@@ -114,7 +111,13 @@ export default function Register({ onBack }: RegisterProps) {
       setProfile(profile);
     } catch (err: any) {
       console.error("Error saving profile:", err);
-      setError(err.message || 'Erro ao finalizar o cadastro. Tente novamente.');
+      if (err.code === 'auth/email-already-in-use') {
+        setError('Este e-mail já está cadastrado.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Senha muito fraca — use pelo menos 6 caracteres.');
+      } else {
+        setError(err.message || 'Erro ao finalizar o cadastro. Tente novamente.');
+      }
       setLoading(false);
     }
   };

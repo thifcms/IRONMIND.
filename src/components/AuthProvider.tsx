@@ -4,8 +4,9 @@
  */
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { getFirestoreInstance } from '../lib/firebase';
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { getFirestoreInstance, auth } from '../lib/firebase';
 
 interface AuthContextType {
   user: any | null;
@@ -27,12 +28,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      setUser(parsedUser);
-      const fetchProfile = async () => {
+    // Fonte de verdade da sessão é o Firebase Auth. Contas ainda não migradas
+    // (login antigo por senha no Firestore) continuam funcionando via o
+    // fallback de localStorage, mas toda conta que já passou pelo Firebase
+    // Auth é carregada por aqui, de forma segura.
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      if (fbUser) {
         try {
+          const db = getFirestoreInstance();
+          if (db) {
+            // O documento do perfil pode ter um ID diferente do uid do Auth
+            // (contas migradas mantêm o ID original do Firestore) — busca
+            // sempre pelo campo authUid, que é a ligação confiável entre os dois.
+            const q = query(collection(db, 'users'), where('authUid', '==', fbUser.uid));
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+              const docSnap = snap.docs[0];
+              const data = docSnap.data();
+              const fullUser = { uid: docSnap.id, ...data };
+              setUser(fullUser);
+              setProfile(data);
+              localStorage.setItem('user', JSON.stringify(fullUser));
+              localStorage.setItem('profile', JSON.stringify(data));
+              localStorage.setItem('ironmind_user', JSON.stringify(data));
+            }
+          }
+        } catch (error) {
+          console.error("Erro ao carregar perfil:", error);
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
+      // Sem sessão no Firebase Auth — checa se existe uma sessão legada
+      // (conta que ainda não fez login desde a migração).
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
           const db = getFirestoreInstance();
           if (db) {
             const docRef = doc(db, 'users', parsedUser.uid);
@@ -45,15 +80,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
         } catch (error) {
-          console.error("Erro ao carregar perfil:", error);
-        } finally {
-          setLoading(false);
+          console.error("Erro ao carregar perfil legado:", error);
         }
-      };
-      fetchProfile();
-    } else {
+      }
       setLoading(false);
-    }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const setUserAndStorage = (user: any | null) => {
