@@ -27,6 +27,9 @@ import { Tab, TrainingPlan, DietPlan, ChatMessage, WeightEntry, UserProfile, Mea
 import { loadChatHistory, saveChatHistory, chatWithCoach } from './services/geminiService';
 import TreinadorTab from './components/TreinadorTab';
 import TrainingTab from './components/TrainingTab';
+import WarmupTab from './components/WarmupTab';
+import CardioTab from './components/CardioTab';
+import MediaQuickLaunch from './components/MediaQuickLaunch';
 import DietTab from './components/DietTab';
 import MusicTab from './components/MusicTab';
 import VideosTab from './components/VideosTab';
@@ -46,6 +49,8 @@ export default function App() {
   const db = getFirestoreInstance();
   const { user, profile, loading, setProfile } = useAuth();
   const [biometricLocked, setBiometricLocked] = useState(() => isBiometricEnabledOnThisDevice());
+  const [aquecimentoSubTab, setAquecimentoSubTab] = useState<'classico' | 'sugestao'>('classico');
+  const [cardioSubTab, setCardioSubTab] = useState<'classico' | 'sugestao'>('classico');
   const [activeTab, setActiveTab] = useState<Tab>(Tab.TREINADOR);
   const [isOpening, setIsOpening] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -792,9 +797,35 @@ export default function App() {
               />
             )}
             {activeTab === Tab.AQUECIMENTO && (
-              warmupPlan
-                ? <TrainingTab plan={warmupPlan} onUpdatePlan={updateWarmupPlan} onClearPlan={() => setShowConfirmClearWarmup(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} />
-                : <EmptyState type="aquecimento" onClick={() => setActiveTab(Tab.TREINADOR)} />
+              <div className="h-full flex flex-col overflow-hidden">
+                <div className="flex gap-2 p-3 pb-0 flex-shrink-0">
+                  <button
+                    onClick={() => setAquecimentoSubTab('classico')}
+                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                      aquecimentoSubTab === 'classico' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    Como Antes
+                  </button>
+                  <button
+                    onClick={() => setAquecimentoSubTab('sugestao')}
+                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                      aquecimentoSubTab === 'sugestao' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    Sugestão do Treinador
+                  </button>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  {aquecimentoSubTab === 'classico' ? (
+                    <WarmupTab />
+                  ) : (
+                    warmupPlan
+                      ? <TrainingTab plan={warmupPlan} onUpdatePlan={updateWarmupPlan} onClearPlan={() => setShowConfirmClearWarmup(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} />
+                      : <EmptyState type="aquecimento" onClick={() => setActiveTab(Tab.TREINADOR)} />
+                  )}
+                </div>
+              </div>
             )}
             {activeTab === Tab.TREINO && (
               <TrainingPlanView 
@@ -809,9 +840,42 @@ export default function App() {
               trainingPlan ? <VideosTab plan={trainingPlan} /> : <EmptyState type="vídeos" onClick={() => setActiveTab(Tab.TREINADOR)} />
             )}
             {activeTab === Tab.CARDIO && (
-              cardioPlan
-                ? <TrainingTab plan={cardioPlan} onUpdatePlan={updateCardioPlan} onClearPlan={() => setShowConfirmClearCardio(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} />
-                : <EmptyState type="cardio" onClick={() => setActiveTab(Tab.TREINADOR)} />
+              <div className="h-full flex flex-col overflow-hidden">
+                <div className="flex gap-2 p-3 pb-0 flex-shrink-0">
+                  <button
+                    onClick={() => setCardioSubTab('classico')}
+                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                      cardioSubTab === 'classico' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    Como Antes
+                  </button>
+                  <button
+                    onClick={() => setCardioSubTab('sugestao')}
+                    className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                      cardioSubTab === 'sugestao' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    Sugestão do Treinador
+                  </button>
+                </div>
+                <div className="flex-1 overflow-hidden flex flex-col">
+                  {cardioSubTab === 'classico' ? (
+                    <CardioTab />
+                  ) : (
+                    cardioPlan ? (
+                      <>
+                        <div className="flex-1 overflow-hidden">
+                          <TrainingTab plan={cardioPlan} onUpdatePlan={updateCardioPlan} onClearPlan={() => setShowConfirmClearCardio(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} />
+                        </div>
+                        <MediaQuickLaunch />
+                      </>
+                    ) : (
+                      <EmptyState type="cardio" onClick={() => setActiveTab(Tab.TREINADOR)} />
+                    )
+                  )}
+                </div>
+              </div>
             )}
             {activeTab === Tab.DIETA && <DietPlanView plan={dietPlan} setActiveTab={setActiveTab} onUpdatePlan={updateDietPlan} onClearPlan={() => setShowConfirmClearDiet(true)} />}
             {activeTab === Tab.SOM && <MusicTab />}
