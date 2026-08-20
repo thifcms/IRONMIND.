@@ -820,16 +820,14 @@ export default function App() {
                   {aquecimentoSubTab === 'classico' ? (
                     <WarmupTab />
                   ) : (
-                    warmupPlan ? (
-                      <>
-                        <div className="flex-1 overflow-hidden">
-                          <TrainingTab plan={warmupPlan} onUpdatePlan={updateWarmupPlan} onClearPlan={() => setShowConfirmClearWarmup(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} />
-                        </div>
-                        <MediaQuickLaunch />
-                      </>
-                    ) : (
-                      <EmptyState type="aquecimento" onClick={() => setActiveTab(Tab.TREINADOR)} />
-                    )
+                    <>
+                      <div className="flex-1 overflow-hidden">
+                        {warmupPlan
+                          ? <TrainingTab plan={warmupPlan} onUpdatePlan={updateWarmupPlan} onClearPlan={() => setShowConfirmClearWarmup(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} />
+                          : <EmptyState type="aquecimento" onClick={() => setActiveTab(Tab.TREINADOR)} />}
+                      </div>
+                      <MediaQuickLaunch />
+                    </>
                   )}
                 </div>
               </div>
@@ -870,16 +868,14 @@ export default function App() {
                   {cardioSubTab === 'classico' ? (
                     <CardioTab />
                   ) : (
-                    cardioPlan ? (
-                      <>
-                        <div className="flex-1 overflow-hidden">
-                          <TrainingTab plan={cardioPlan} onUpdatePlan={updateCardioPlan} onClearPlan={() => setShowConfirmClearCardio(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} />
-                        </div>
-                        <MediaQuickLaunch />
-                      </>
-                    ) : (
-                      <EmptyState type="cardio" onClick={() => setActiveTab(Tab.TREINADOR)} />
-                    )
+                    <>
+                      <div className="flex-1 overflow-hidden">
+                        {cardioPlan
+                          ? <TrainingTab plan={cardioPlan} onUpdatePlan={updateCardioPlan} onClearPlan={() => setShowConfirmClearCardio(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} />
+                          : <EmptyState type="cardio" onClick={() => setActiveTab(Tab.TREINADOR)} />}
+                      </div>
+                      <MediaQuickLaunch />
+                    </>
                   )}
                 </div>
               </div>
