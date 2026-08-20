@@ -32,8 +32,24 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(err => {
+          navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((registration) => {
+            // Verifica se há uma versão nova assim que a página abre...
+            registration.update();
+            // ...e periodicamente enquanto o app fica aberto (ex: durante um treino longo).
+            setInterval(() => registration.update(), 5 * 60 * 1000);
+          }).catch(err => {
             console.error('Falha ao registrar Service Worker: ', err);
+          });
+
+          // Quando um novo Service Worker assume o controle (skipWaiting + clients.claim
+          // no sw.js), recarrega a página automaticamente pra buscar o bundle novo.
+          // O guard 'refreshing' evita loop de reload, e a checagem de 'controller'
+          // evita recarregar no primeiro carregamento (quando ainda não havia controller).
+          let refreshing = false;
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
           });
         });
       }
