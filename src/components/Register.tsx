@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Mail, Lock, User, Calendar, Weight, Ruler, ChevronRight, ChevronLeft, Dumbbell, Target, Info, AlertTriangle, Apple } from 'lucide-react';
 import { getFirestoreInstance, auth } from '../lib/firebase';
-import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from './AuthProvider';
 
@@ -46,22 +46,6 @@ export default function Register({ onBack }: RegisterProps) {
     setError('');
 
     try {
-      // Confere duplicidade de e-mail no Firestore antes de criar a conta
-      // (mensagem de erro mais amigável do que deixar o Firebase Auth recusar).
-      // Nota: como criar a conta agora exige o Firebase Auth (rede obrigatória),
-      // não é mais possível cadastrar em modo totalmente offline como antes.
-      const usersRef = collection(db, 'users');
-      const dupQuery = query(usersRef, where('email', '==', formData.email));
-      const dupSnapshot = await Promise.race([
-        getDocs(dupQuery),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Tempo limite excedido ao conectar. Verifique sua internet e tente novamente.')), 10000))
-      ]);
-      if (!dupSnapshot.empty) {
-        setError('Este e-mail já está cadastrado.');
-        setLoading(false);
-        return;
-      }
-
       // Cria a conta de verdade no Firebase Authentication — a senha nunca
       // é salva no Firestore, fica só sob custódia do Firebase Auth.
       const credential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
