@@ -18,7 +18,7 @@ export function usePiPLauncher() {
   const videoElRef = useRef<HTMLVideoElement | null>(null);
   const elapsedRef = useRef(0);
   const activeRef = useRef(false);
-  const intervalRef = useRef<any>(null);
+  const workerRef = useRef<Worker | null>(null);
 
   useEffect(() => {
     const canvas = document.createElement('canvas');
@@ -86,13 +86,26 @@ export function usePiPLauncher() {
     };
     initializeStream();
 
-    intervalRef.current = setInterval(() => {
+    // O Chrome pausa o redesenho do canvas quando a aba vai pra segundo
+    // plano (bug conhecido: canvas.captureStream() fica vazio/congelado
+    // nessa hora -- https://issues.chromium.org/issues/41270855). Como é
+    // justamente quando trocamos de app que o visor mais precisa
+    // continuar vivo, o "relógio" que dispara o redesenho roda num Web
+    // Worker (thread separada, que o Chrome não pausa da mesma forma)
+    // em vez de um setInterval direto na aba.
+    const workerCode = `setInterval(() => postMessage('tick'), 1000);`;
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    const workerUrl = URL.createObjectURL(blob);
+    const worker = new Worker(workerUrl);
+    worker.onmessage = () => {
       if (activeRef.current) elapsedRef.current += 1;
       draw();
-    }, 1000);
+    };
+    workerRef.current = worker;
 
     return () => {
-      clearInterval(intervalRef.current);
+      worker.terminate();
+      URL.revokeObjectURL(workerUrl);
       video.remove();
     };
   }, []);

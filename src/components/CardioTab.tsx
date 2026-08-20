@@ -22,25 +22,48 @@ export default function CardioTab() {
   const [heartRate, setHeartRate] = useState(70);
   const [bioStatus, setBioStatus] = useState<any>(null);
 
+  // Refs pra ler o valor mais recente de dentro do worker sem precisar
+  // recriar o worker toda vez que isActive/speed mudam.
+  const isActiveRef = useRef(isActive);
+  const speedRef = useRef(speed);
+  useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
+  useEffect(() => { speedRef.current = speed; }, [speed]);
+
+  // O Chrome pausa o redesenho do canvas (e os setInterval comuns) quando
+  // a aba vai pra segundo plano -- bug conhecido do Chromium
+  // (canvas.captureStream() fica vazio/congelado nessa hora,
+  // https://issues.chromium.org/issues/41270855). Como é justamente
+  // quando trocamos de app que o visor mais precisa continuar vivo, o
+  // "relógio" do cronômetro roda num Web Worker (thread separada, que o
+  // Chrome não pausa da mesma forma) em vez de um setInterval direto.
+  const workerRef = useRef<Worker | null>(null);
   useEffect(() => {
-    let interval: any;
-    if (isActive) {
-      interval = setInterval(() => {
-        setTime(prev => prev + 1);
-        
-        // Simular BPM aumentando
-        setHeartRate(prev => {
-          const target = 120 + (speed * 5);
-          if (prev < target) return prev + 1;
-          if (prev > target) return prev - 1;
-          return prev;
-        });
-      }, 1000);
-    } else {
-        setHeartRate(70);
-    }
-    return () => clearInterval(interval);
-  }, [isActive, speed]);
+    const workerCode = `setInterval(() => postMessage('tick'), 1000);`;
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    const workerUrl = URL.createObjectURL(blob);
+    const worker = new Worker(workerUrl);
+    workerRef.current = worker;
+
+    worker.onmessage = () => {
+      if (!isActiveRef.current) return;
+      setTime(prev => prev + 1);
+      setHeartRate(prev => {
+        const target = 120 + (speedRef.current * 5);
+        if (prev < target) return prev + 1;
+        if (prev > target) return prev - 1;
+        return prev;
+      });
+    };
+
+    return () => {
+      worker.terminate();
+      URL.revokeObjectURL(workerUrl);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isActive) setHeartRate(70);
+  }, [isActive]);
 
   // Monitorar Bio-Status
   useEffect(() => {
