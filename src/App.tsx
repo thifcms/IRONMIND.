@@ -855,7 +855,7 @@ export default function App() {
                       cardioSubTab === 'classico' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'
                     }`}
                   >
-                    Como Antes
+                    Aeróbico
                   </button>
                   <button
                     onClick={() => setCardioSubTab('sugestao')}
