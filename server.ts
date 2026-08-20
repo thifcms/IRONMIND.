@@ -98,6 +98,11 @@ export function setExternalCoachApiKey(apiKey: string) {
 
 async function startServer() {
   const app = express();
+  // Render (e a maioria dos hosts) terminam o HTTPS num proxy na frente do
+  // app e falam HTTP puro por dentro. Sem isso, req.protocol sempre vem
+  // "http", mesmo em produção — quebrando qualquer coisa que dependa da
+  // origem real (como a verificação da biometria/WebAuthn).
+  app.set('trust proxy', 1);
   const PORT = 3000;
 
   app.use(cors());
