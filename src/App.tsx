@@ -805,7 +805,7 @@ export default function App() {
                       aquecimentoSubTab === 'classico' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'
                     }`}
                   >
-                    Como Antes
+                    Aquecimento
                   </button>
                   <button
                     onClick={() => setAquecimentoSubTab('sugestao')}
@@ -816,13 +816,20 @@ export default function App() {
                     Sugestão do Treinador
                   </button>
                 </div>
-                <div className="flex-1 overflow-hidden">
+                <div className="flex-1 overflow-hidden flex flex-col">
                   {aquecimentoSubTab === 'classico' ? (
                     <WarmupTab />
                   ) : (
-                    warmupPlan
-                      ? <TrainingTab plan={warmupPlan} onUpdatePlan={updateWarmupPlan} onClearPlan={() => setShowConfirmClearWarmup(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} />
-                      : <EmptyState type="aquecimento" onClick={() => setActiveTab(Tab.TREINADOR)} />
+                    warmupPlan ? (
+                      <>
+                        <div className="flex-1 overflow-hidden">
+                          <TrainingTab plan={warmupPlan} onUpdatePlan={updateWarmupPlan} onClearPlan={() => setShowConfirmClearWarmup(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} />
+                        </div>
+                        <MediaQuickLaunch />
+                      </>
+                    ) : (
+                      <EmptyState type="aquecimento" onClick={() => setActiveTab(Tab.TREINADOR)} />
+                    )
                   )}
                 </div>
               </div>
