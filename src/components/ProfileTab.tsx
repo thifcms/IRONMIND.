@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Calendar, Weight, Ruler, Dumbbell, Target, Info, AlertTriangle, Apple, Save, LogOut, Trash2, AlertCircle } from 'lucide-react';
+import { User, Calendar, Weight, Ruler, Dumbbell, Target, Info, AlertTriangle, Apple, Save, LogOut, Trash2, AlertCircle, Fingerprint } from 'lucide-react';
 import { getFirestoreInstance, auth } from '../lib/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { signOut, deleteUser } from 'firebase/auth';
+import { isBiometricAvailable, isBiometricEnabledOnThisDevice, registerBiometric, disableBiometric, getLocalCredentialId } from '../services/biometricAuth';
 
 interface ProfileTabProps {
   profile: any;
@@ -27,6 +28,32 @@ export default function ProfileTab({ profile, setProfile }: ProfileTabProps) {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [biometricSupported, setBiometricSupported] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(() => isBiometricEnabledOnThisDevice());
+  const [biometricLoading, setBiometricLoading] = useState(false);
+  const [biometricError, setBiometricError] = useState('');
+
+  useEffect(() => {
+    isBiometricAvailable().then(setBiometricSupported);
+  }, []);
+
+  const handleToggleBiometric = async () => {
+    setBiometricError('');
+    setBiometricLoading(true);
+    try {
+      if (biometricEnabled) {
+        await disableBiometric(profile.uid, getLocalCredentialId() || undefined);
+        setBiometricEnabled(false);
+      } else {
+        await registerBiometric(profile.uid, profile.email);
+        setBiometricEnabled(true);
+      }
+    } catch (err: any) {
+      setBiometricError(err.message || 'Não foi possível concluir. Tente novamente.');
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
   const [formData, setFormData] = useState({
     name: toScalar(profile?.name, ''),
     age: toScalar(profile?.age, ''),
@@ -166,6 +193,31 @@ export default function ProfileTab({ profile, setProfile }: ProfileTabProps) {
       </div>
 
       <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-4 pb-24 space-y-6 touch-pan-y">
+        {biometricSupported && (
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 bg-blue-600/10 rounded-2xl flex items-center justify-center shrink-0">
+                <Fingerprint className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-[11px] font-black text-slate-900 uppercase tracking-widest leading-tight">Biometria neste aparelho</p>
+                <p className="text-[10px] text-slate-500 leading-tight mt-0.5">Destranca o app com digital/rosto, sem digitar a senha</p>
+                {biometricError && <p className="text-[10px] text-red-500 font-bold mt-1">{biometricError}</p>}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleBiometric}
+              disabled={biometricLoading}
+              className={`shrink-0 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50 ${
+                biometricEnabled ? 'bg-rose-600/10 text-rose-600 border border-rose-600/20' : 'bg-blue-600 text-white'
+              }`}
+            >
+              {biometricLoading ? '...' : biometricEnabled ? 'Desativar' : 'Ativar'}
+            </button>
+          </div>
+        )}
+
         <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-6 shadow-sm">
           {/* Dados Básicos */}
           <div className="space-y-4">

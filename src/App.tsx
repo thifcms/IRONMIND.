@@ -36,6 +36,8 @@ import ProfileTab from './components/ProfileTab';
 import { useAuth } from './components/AuthProvider';
 import Login from './components/Login';
 import Register from './components/Register';
+import BiometricLock from './components/BiometricLock';
+import { isBiometricEnabledOnThisDevice } from './services/biometricAuth';
 import { getFirestoreInstance, auth } from './lib/firebase';
 import { doc, getDoc, setDoc, updateDoc, collection, query, orderBy, limit, getDocs, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
@@ -43,6 +45,7 @@ import { signOut } from 'firebase/auth';
 export default function App() {
   const db = getFirestoreInstance();
   const { user, profile, loading, setProfile } = useAuth();
+  const [biometricLocked, setBiometricLocked] = useState(() => isBiometricEnabledOnThisDevice());
   const [activeTab, setActiveTab] = useState<Tab>(Tab.TREINADOR);
   const [isOpening, setIsOpening] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -372,6 +375,15 @@ export default function App() {
     return <Login onRegister={() => setShowRegister(true)} />;
   }
   if (!profile) return <Register onBack={() => { signOut(auth).catch(() => {}); localStorage.clear(); window.location.reload(); }} />; 
+  if (biometricLocked) {
+    return (
+      <BiometricLock
+        userId={user.uid}
+        onUnlocked={() => setBiometricLocked(false)}
+        onUseLoginInstead={() => { signOut(auth).catch(() => {}); localStorage.clear(); window.location.reload(); }}
+      />
+    );
+  }
 
   const clearTrainingPlan = async () => {
     setTrainingPlan(null);

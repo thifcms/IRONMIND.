@@ -3,6 +3,12 @@ import cors from "cors";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import dotenv from "dotenv";
+import {
+  generateRegistrationOptions,
+  verifyRegistrationResponse,
+  generateAuthenticationOptions,
+  verifyAuthenticationResponse,
+} from "@simplewebauthn/server";
 
 // Polyfill Object.hasOwn for older environments
 if (typeof Object.hasOwn !== 'function') {
@@ -189,6 +195,154 @@ async function startServer() {
     if (url) EXTERNAL_COACH_URL = url;
     if (apiKey) EXTERNAL_COACH_API_KEY = apiKey;
     res.json({ success: true, message: "Configuração atualizada." });
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // WebAuthn (biometria como tranca local do app)
+  //
+  // O servidor só faz a parte criptográfica (gerar desafio, verificar
+  // assinatura) — não guarda nada no Firestore. Quem lê/grava a
+  // credencial no Firestore é sempre o cliente autenticado, respeitando
+  // as regras de segurança normalmente. Isso evita precisar de uma
+  // Service Account do Firebase (bloqueada por política da organização).
+  // ─────────────────────────────────────────────────────────────
+  const rpName = "IronMind";
+  const getRpID = (req: express.Request) => (req.hostname || "localhost");
+  const getOrigin = (req: express.Request) => `${req.protocol}://${req.get('host')}`;
+
+  // Desafios pendentes, em memória, com expiração curta (5 min).
+  const pendingChallenges = new Map<string, { challenge: string; expires: number }>();
+  const cleanupExpiredChallenges = () => {
+    const now = Date.now();
+    for (const [key, val] of pendingChallenges.entries()) {
+      if (val.expires < now) pendingChallenges.delete(key);
+    }
+  };
+
+  app.post("/api/webauthn/register-options", async (req, res) => {
+    try {
+      cleanupExpiredChallenges();
+      const { userId, email } = req.body;
+      if (!userId || !email) return res.status(400).json({ error: "userId e email são obrigatórios." });
+
+      const options = await generateRegistrationOptions({
+        rpName,
+        rpID: getRpID(req),
+        userName: email,
+        userID: new TextEncoder().encode(userId),
+        attestationType: 'none',
+        authenticatorSelection: {
+          residentKey: 'preferred',
+          userVerification: 'required',
+        },
+      });
+
+      const flowId = crypto.randomUUID();
+      pendingChallenges.set(flowId, { challenge: options.challenge, expires: Date.now() + 5 * 60 * 1000 });
+
+      res.json({ flowId, options });
+    } catch (error: any) {
+      console.error("Erro em /api/webauthn/register-options:", error);
+      res.status(500).json({ error: error.message || "Erro ao gerar opções de registro." });
+    }
+  });
+
+  app.post("/api/webauthn/register-verify", async (req, res) => {
+    try {
+      cleanupExpiredChallenges();
+      const { flowId, response } = req.body;
+      const pending = flowId && pendingChallenges.get(flowId);
+      if (!pending) return res.status(400).json({ error: "Desafio expirado ou inválido. Tente novamente." });
+      pendingChallenges.delete(flowId);
+
+      const verification = await verifyRegistrationResponse({
+        response,
+        expectedChallenge: pending.challenge,
+        expectedOrigin: getOrigin(req),
+        expectedRPID: getRpID(req),
+      });
+
+      if (!verification.verified || !verification.registrationInfo) {
+        return res.status(400).json({ error: "Não foi possível verificar a biometria." });
+      }
+
+      const { credential } = verification.registrationInfo;
+      res.json({
+        verified: true,
+        credential: {
+          id: credential.id,
+          publicKey: Buffer.from(credential.publicKey).toString('base64url'),
+          counter: credential.counter,
+          transports: credential.transports || [],
+        }
+      });
+    } catch (error: any) {
+      console.error("Erro em /api/webauthn/register-verify:", error);
+      res.status(500).json({ error: error.message || "Erro ao verificar registro." });
+    }
+  });
+
+  app.post("/api/webauthn/login-options", async (req, res) => {
+    try {
+      cleanupExpiredChallenges();
+      const { credentials } = req.body; // [{ id, transports }]
+      if (!Array.isArray(credentials) || credentials.length === 0) {
+        return res.status(400).json({ error: "Nenhuma credencial de biometria encontrada para esta conta." });
+      }
+
+      const options = await generateAuthenticationOptions({
+        rpID: getRpID(req),
+        userVerification: 'required',
+        allowCredentials: credentials.map((c: any) => ({ id: c.id, transports: c.transports })),
+      });
+
+      const flowId = crypto.randomUUID();
+      pendingChallenges.set(flowId, { challenge: options.challenge, expires: Date.now() + 5 * 60 * 1000 });
+
+      res.json({ flowId, options });
+    } catch (error: any) {
+      console.error("Erro em /api/webauthn/login-options:", error);
+      res.status(500).json({ error: error.message || "Erro ao gerar opções de login." });
+    }
+  });
+
+  app.post("/api/webauthn/login-verify", async (req, res) => {
+    try {
+      cleanupExpiredChallenges();
+      const { flowId, response, credential } = req.body; // credential = { id, publicKey (base64url), counter }
+      const pending = flowId && pendingChallenges.get(flowId);
+      if (!pending) return res.status(400).json({ error: "Desafio expirado ou inválido. Tente novamente." });
+      pendingChallenges.delete(flowId);
+
+      if (!credential || !credential.publicKey) {
+        return res.status(400).json({ error: "Credencial não informada." });
+      }
+
+      const verification = await verifyAuthenticationResponse({
+        response,
+        expectedChallenge: pending.challenge,
+        expectedOrigin: getOrigin(req),
+        expectedRPID: getRpID(req),
+        credential: {
+          id: credential.id,
+          publicKey: Buffer.from(credential.publicKey, 'base64url'),
+          counter: credential.counter || 0,
+          transports: credential.transports || [],
+        },
+      });
+
+      if (!verification.verified) {
+        return res.status(401).json({ error: "Biometria não confere." });
+      }
+
+      res.json({
+        verified: true,
+        newCounter: verification.authenticationInfo.newCounter
+      });
+    } catch (error: any) {
+      console.error("Erro em /api/webauthn/login-verify:", error);
+      res.status(500).json({ error: error.message || "Erro ao verificar biometria." });
+    }
   });
 
   if (process.env.NODE_ENV !== "production") {
