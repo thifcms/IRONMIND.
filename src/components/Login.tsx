@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Mail, Lock, Dumbbell, ArrowRight, X } from 'lucide-react';
 import { getFirestoreInstance, auth } from '../lib/firebase';
 import { collection, query, where, getDocs, setDoc, doc, updateDoc, deleteField } from 'firebase/firestore';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { useAuth } from './AuthProvider';
 import emailjs from '@emailjs/browser';
 
@@ -145,6 +145,22 @@ export default function Login({ onRegister }: LoginProps) {
 
     try {
       if (resetStep === 'email') {
+        // 1. Tenta o reset nativo e seguro do Firebase Auth primeiro — só funciona
+        // se a conta já foi migrada (tem authUid). O próprio Firebase cuida do
+        // link seguro por e-mail, sem depender do nosso EmailJS.
+        try {
+          await sendPasswordResetEmail(auth, forgotEmail);
+          setForgotResult('Enviamos um link de redefinição de senha para seu e-mail. Verifique também a caixa de spam.');
+          setLoading(false);
+          return;
+        } catch (fbErr: any) {
+          if (fbErr.code !== 'auth/user-not-found') {
+            console.warn('Reset nativo do Firebase falhou, tentando fallback legado:', fbErr);
+          }
+          // Continua pro fallback legado abaixo (conta ainda não migrada, ou realmente não existe).
+        }
+
+        // 2. Fallback legado: conta ainda não passou pelo Firebase Auth.
         const usersRef = collection(db, 'users');
         const q = query(usersRef, where('email', '==', forgotEmail));
         const querySnapshot = await getDocs(q);
