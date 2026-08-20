@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bike, Footprints, Timer, Zap, MapPin, Gauge, TrendingUp, Weight, Pause, Play, MonitorPlay, Activity, Heart, AlertTriangle } from 'lucide-react';
+import { Bike, Footprints, Timer, Zap, MapPin, Youtube, Gauge, TrendingUp, Weight, Pause, Play, MonitorPlay, Activity, Heart, AlertTriangle } from 'lucide-react';
 import { bioMonitor } from '../services/bioMonitor';
 import { mediaMaestro } from '../services/mediaMaestro';
 
@@ -178,21 +178,15 @@ export default function CardioTab() {
     return { distance, calories };
   };
 
-  const [mediaHint, setMediaHint] = useState<string | null>(null);
-
-  const handleMediaClick = () => {
+  const handleMediaClick = (url: string) => {
     if (!isActive) setIsActive(true);
-
-    // Só ativa o Visor Flutuante -- não abre mais nada sozinho.
-    // Abrir uma URL logo em seguida (ainda mais se o Android redirecionar
-    // pro app nativo) tira o navegador de primeiro plano de forma brusca
-    // e pode derrubar o PiP antes dele se firmar. Agora é a pessoa quem
-    // abre o Netflix/Youtube manualmente, com o visor já estável.
+    
+    // Abrir o streaming e ativar o Visor Flutuante no mesmo gesto
     togglePiP().then(() => {
-      setMediaHint('Visor ativado! Agora abra o Netflix ou o Youtube.');
-      setTimeout(() => setMediaHint(null), 4000);
+        window.open(url, '_blank');
     }).catch(err => {
-      console.error("Erro ao ativar visor flutuante:", err);
+        console.error("Erro ao ativar visor flutuante:", err);
+        window.open(url, '_blank');
     });
   };
 
@@ -366,17 +360,18 @@ export default function CardioTab() {
 
         <div className="flex gap-2 pb-2">
             <button 
-              onClick={handleMediaClick}
+              onClick={() => handleMediaClick('https://www.netflix.com')}
               className="flex-1 bg-slate-50 dark:bg-[#1a1a1a] border border-slate-200 dark:border-slate-800 py-3 rounded-lg flex items-center justify-center font-black text-[8px] tracking-[0.1em] text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
             >
-              ATIVAR VISOR FLUTUANTE
+              NETFLIX
+            </button>
+            <button 
+              onClick={() => handleMediaClick('https://www.youtube.com')}
+              className="flex-1 bg-slate-50 dark:bg-[#1a1a1a] border border-slate-200 dark:border-slate-800 py-3 rounded-lg flex items-center justify-center gap-1.5 font-black text-[8px] tracking-[0.1em] text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
+            >
+              <Youtube className="w-3 h-3 text-[#FF0000]" /> YOUTUBE
             </button>
         </div>
-        {mediaHint && (
-          <p className="text-center text-[9px] font-bold text-blue-600 dark:text-blue-400 pb-1 animate-pulse">
-            {mediaHint}
-          </p>
-        )}
       </div>
     </div>
   );
