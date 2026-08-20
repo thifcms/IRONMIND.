@@ -113,13 +113,13 @@ export function usePiPLauncher() {
     }
   };
 
-  const launch = (opener: () => void) => {
+  const launch = (opener?: () => void) => {
     activeRef.current = true;
     togglePiP().then(() => {
-      opener();
+      opener?.();
     }).catch(err => {
       console.error("Erro ao ativar visor flutuante:", err);
-      opener();
+      opener?.();
     });
   };
 
