@@ -694,6 +694,9 @@ export default function App() {
                       <X className="w-5 h-5 transition-transform group-hover:rotate-90" />
                       <span className="text-[11px] font-black uppercase tracking-[0.2em]">Sair do Sistema</span>
                     </button>
+                    <p className="text-center text-[8px] font-bold text-slate-600 uppercase tracking-[0.2em] mt-4">
+                      Versão {__APP_VERSION__}
+                    </p>
                  </div>
               </motion.div>
             </>
