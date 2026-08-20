@@ -51,6 +51,10 @@ export default function MediaQuickLaunch() {
     ctx.font = '900 230px monospace';
     ctx.fillText(formatTime(time), centerX, centerY + 80);
 
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = 'bold 26px Inter, sans-serif';
+    ctx.fillText('TOQUE AQUI PRA VOLTAR', centerX, centerY + 180);
+
     if (isActive) {
       ctx.fillStyle = (Math.floor(Date.now() / 500) % 2 === 0) ? '#10b981' : '#064e3b';
       ctx.beginPath();

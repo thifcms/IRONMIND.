@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Zap, Wind, RotateCcw, Play, Pause } from 'lucide-react';
+import MediaQuickLaunch from './MediaQuickLaunch';
 
 export default function WarmupTab() {
   const [totalTime, setTotalTime] = useState(300); // Default 5 minutes
@@ -103,6 +104,8 @@ export default function WarmupTab() {
           O aquecimento previne lesões. Não pule!
         </p>
       </div>
+
+      <MediaQuickLaunch />
     </div>
   );
 }
