@@ -1,3 +1,0 @@
-/* Copy of TreinadorTab.tsx before modification */
-import { useState, useRef, useEffect, Dispatch, SetStateAction } from 'react';
-/* ... (omitting actual content for brevity in thought, but tool will do it) */
