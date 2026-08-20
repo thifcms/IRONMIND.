@@ -132,18 +132,6 @@ export default function CardioTab() {
     initializeStream();
   }, []);
 
-  // Fecha o visor flutuante sozinho quando a pessoa volta pro IronMind
-  // (troca de app e retorna) — evita ficar com o PiP grudado na tela.
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && document.pictureInPictureElement) {
-        document.exitPictureInPicture().catch(() => {});
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
-
   const togglePiP = async () => {
     const video = videoRef.current;
     if (!video) return;

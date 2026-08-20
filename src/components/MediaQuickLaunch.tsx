@@ -75,18 +75,6 @@ export default function MediaQuickLaunch() {
     initializeStream();
   }, []);
 
-  // Fecha o visor flutuante sozinho quando a pessoa volta pro IronMind
-  // (troca de app e retorna) — evita ficar com o PiP grudado na tela.
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && document.pictureInPictureElement) {
-        document.exitPictureInPicture().catch(() => {});
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, []);
-
   const formatTime = (s: number) => {
     const mins = Math.floor(s / 60);
     const secs = s % 60;

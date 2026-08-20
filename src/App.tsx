@@ -51,6 +51,20 @@ export default function App() {
   const [biometricLocked, setBiometricLocked] = useState(() => isBiometricEnabledOnThisDevice());
   const [aquecimentoSubTab, setAquecimentoSubTab] = useState<'classico' | 'sugestao'>('classico');
   const [cardioSubTab, setCardioSubTab] = useState<'classico' | 'sugestao'>('classico');
+
+  // Fecha o visor flutuante (PiP) sozinho sempre que o IronMind deixa de
+  // estar em primeiro plano (saiu pra outro app) ou volta a estar — em
+  // nível de app inteiro, pra funcionar mesmo se a pessoa trocar de aba
+  // enquanto estava fora.
+  useEffect(() => {
+    const closeIfPiP = () => {
+      if (document.pictureInPictureElement) {
+        document.exitPictureInPicture().catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', closeIfPiP);
+    return () => document.removeEventListener('visibilitychange', closeIfPiP);
+  }, []);
   const [activeTab, setActiveTab] = useState<Tab>(Tab.TREINADOR);
   const [isOpening, setIsOpening] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
