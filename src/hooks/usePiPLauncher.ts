@@ -3,10 +3,9 @@ import { mediaMaestro } from '../services/mediaMaestro';
 
 /**
  * Visor flutuante (Picture-in-Picture) reutilizável: mostra um cronômetro
- * com "TOQUE AQUI PRA VOLTAR" enquanto a pessoa está em outro app
- * (Netflix, YouTube, Deezer, etc). Usa elementos de canvas/video criados
- * fora do React (não precisam de JSX), então qualquer componente pode
- * usar isso só chamando launch(...).
+ * enquanto a pessoa está em outro app (Netflix, YouTube, Deezer, etc).
+ * Usa elementos de canvas/video criados fora do React (não precisam de
+ * JSX), então qualquer componente pode usar isso só chamando launch(...).
  *
  * Mecanismo deliberadamente simples (sem trilha de áudio, sem Media
  * Session, sem espera de confirmação) -- é o mesmo padrão básico que a
@@ -66,10 +65,6 @@ export function usePiPLauncher() {
       const mins = Math.floor(elapsedRef.current / 60).toString().padStart(2, '0');
       const secs = (elapsedRef.current % 60).toString().padStart(2, '0');
       ctx.fillText(`${mins}:${secs}`, centerX, centerY + 80);
-
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = 'bold 26px Inter, sans-serif';
-      ctx.fillText('TOQUE AQUI PRA VOLTAR', centerX, centerY + 180);
 
       if (activeRef.current) {
         ctx.fillStyle = (Math.floor(Date.now() / 500) % 2 === 0) ? '#10b981' : '#064e3b';
