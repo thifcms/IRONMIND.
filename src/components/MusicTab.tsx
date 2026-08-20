@@ -1,22 +1,27 @@
 import { Music2, Play, ExternalLink, Disc } from 'lucide-react';
+import { usePiPLauncher } from '../hooks/usePiPLauncher';
 
 export default function MusicTab() {
+  const { launch } = usePiPLauncher();
+
   const openApp = (app: typeof apps[0]) => {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const storeLink = isIOS ? app.appStore : app.playStore;
-    const deepLink = app.deepLink;
+    launch(() => {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const storeLink = isIOS ? app.appStore : app.playStore;
+      const deepLink = app.deepLink;
 
-    // Tentativa de abrir o app via Deep Link
-    const start = Date.now();
-    window.location.href = deepLink;
+      // Tentativa de abrir o app via Deep Link
+      const start = Date.now();
+      window.location.href = deepLink;
 
-    // Se em 2 segundos a página ainda estiver em foco, 
-    // assumimos que o app não abriu e redirecionamos para a loja
-    setTimeout(() => {
-      if (Date.now() - start < 2500) {
-        window.open(storeLink, '_blank');
-      }
-    }, 2000);
+      // Se em 2 segundos a página ainda estiver em foco, 
+      // assumimos que o app não abriu e redirecionamos para a loja
+      setTimeout(() => {
+        if (Date.now() - start < 2500) {
+          window.open(storeLink, '_blank');
+        }
+      }, 2000);
+    });
   };
 
   const apps = [
