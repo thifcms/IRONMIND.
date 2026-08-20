@@ -120,7 +120,15 @@ export function usePiPLauncher() {
 
   const launch = (opener: () => void) => {
     activeRef.current = true;
-    togglePiP().then(() => {
+    togglePiP().then(async () => {
+      // Espera de verdade a confirmação de que o PiP ativou antes de abrir
+      // o app externo -- sem isso, às vezes o app novo abre rápido demais
+      // e "disputa" com o nosso PiP por qual fica em qual tela (o efeito
+      // "abre invertido" que foi reportado).
+      const start = Date.now();
+      while (!document.pictureInPictureElement && Date.now() - start < 1500) {
+        await new Promise(r => setTimeout(r, 50));
+      }
       opener();
     }).catch(err => {
       console.error("Erro ao ativar visor flutuante:", err);
