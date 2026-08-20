@@ -182,10 +182,14 @@ export default function CardioTab() {
     if (!isActive) setIsActive(true);
     
     // Abrir o streaming e ativar o Visor Flutuante no mesmo gesto
-    togglePiP().then(() => {
-        // Pequeno atraso pra garantir que o PiP terminou de "flutuar" antes
-        // do app novo assumir a tela (senão ele cobre o visor).
-        setTimeout(() => window.open(url, '_blank'), 500);
+    togglePiP().then(async () => {
+        // Espera de verdade a confirmação de que o PiP ativou (em vez de
+        // só adivinhar um tempo fixo), com teto de 2s.
+        const start = Date.now();
+        while (!document.pictureInPictureElement && Date.now() - start < 2000) {
+          await new Promise(r => setTimeout(r, 100));
+        }
+        setTimeout(() => window.open(url, '_blank'), 400);
     }).catch(err => {
         console.error("Erro ao ativar visor flutuante:", err);
         window.open(url, '_blank');

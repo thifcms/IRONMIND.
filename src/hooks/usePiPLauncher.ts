@@ -113,15 +113,22 @@ export function usePiPLauncher() {
   };
 
   /**
-   * Ativa o visor flutuante e só então abre o app externo — com um
-   * pequeno atraso entre as duas coisas, pra dar tempo do PiP terminar
-   * de "flutuar" de verdade antes do app novo assumir a tela (senão o
-   * app novo cobre o visor, que só termina de aparecer depois).
+   * Ativa o visor flutuante e só então abre o app externo. Em vez de um
+   * atraso fixo (que pode não bastar em alguns aparelhos), espera de
+   * verdade a confirmação de que o PiP entrou em atividade
+   * (document.pictureInPictureElement preenchido) antes de prosseguir,
+   * com um teto de 2s pra não travar se algo não ativar.
    */
   const launch = (opener: () => void) => {
     activeRef.current = true;
-    togglePiP().then(() => {
-      setTimeout(opener, 500);
+    togglePiP().then(async () => {
+      const start = Date.now();
+      while (!document.pictureInPictureElement && Date.now() - start < 2000) {
+        await new Promise(r => setTimeout(r, 100));
+      }
+      // Buffer extra depois de confirmado, pra garantir que o SO já
+      // desenhou o overlay antes do app novo assumir a tela.
+      setTimeout(opener, 400);
     }).catch(err => {
       console.error("Erro ao ativar visor flutuante:", err);
       opener();
