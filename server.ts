@@ -377,6 +377,23 @@ async function startServer() {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
   });
+
+  // ─────────────────────────────────────────────────────────────
+  // Self-ping: evita a hibernação do Render free tier (~15min sem
+  // tráfego). Mesmo padrão usado na IA (ironmind-ai-core) e no
+  // Audit AI. Só roda se APP_URL estiver configurada (endereço
+  // público deste próprio serviço).
+  // ─────────────────────────────────────────────────────────────
+  const selfUrl = process.env.APP_URL;
+  if (selfUrl) {
+    setInterval(() => {
+      fetch(`${selfUrl.replace(/\/$/, '')}/api/health`)
+        .then(() => console.log(`[Self-Ping] OK às ${new Date().toISOString()}`))
+        .catch((err) => console.warn("[Self-Ping] Falhou:", err.message));
+    }, 10 * 60 * 1000); // 10 minutos
+  } else {
+    console.warn("[Self-Ping] APP_URL não configurada — este serviço pode hibernar no Render free tier.");
+  }
 }
 
 startServer();
