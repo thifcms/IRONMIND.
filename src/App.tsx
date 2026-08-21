@@ -21,7 +21,8 @@ import {
   ChevronRight,
   LogOut,
   LayoutDashboard,
-  Cpu
+  Cpu,
+  HeartPulse
 } from 'lucide-react';
 import { Tab, TrainingPlan, DietPlan, ChatMessage, WeightEntry, UserProfile, MeasurementEntry, LoadEntry } from './types';
 import { loadChatHistory, saveChatHistory, chatWithCoach } from './services/geminiService';
@@ -66,6 +67,7 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', closeIfPiP);
   }, []);
   const [activeTab, setActiveTab] = useState<Tab>(Tab.TREINADOR);
+  const [bodyDietBannerDismissed, setBodyDietBannerDismissed] = useState(() => localStorage.getItem('ironmind_bodydiet_banner_dismissed') === 'true');
   const [isOpening, setIsOpening] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [trainingPlan, setTrainingPlan] = useState<TrainingPlan | null>(() => {
@@ -635,6 +637,32 @@ export default function App() {
             </div>
           </header>
         </div>
+
+        {/* Sugestão pra completar Corpo & Dieta (dispensável, aparece só até preencher ou dispensar) */}
+        {profile && !profile.bodyDietProfile && !bodyDietBannerDismissed && (
+          <div className="px-4 pt-3 shrink-0 bg-slate-50">
+            <div className="flex items-center gap-3 bg-blue-600/10 border border-blue-600/30 rounded-2xl p-3">
+              <HeartPulse className="w-5 h-5 text-blue-600 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-black text-blue-700 uppercase tracking-widest leading-tight">Complete sua avaliação de Corpo & Dieta</p>
+                <p className="text-[9px] text-blue-600/80 leading-tight mt-0.5">O treinador usa isso pra montar treinos e dieta sob medida.</p>
+              </div>
+              <button
+                onClick={() => { setActiveTab(Tab.PERFIL); }}
+                className="shrink-0 px-3 py-2 bg-blue-600 text-white rounded-lg font-black text-[9px] uppercase tracking-widest"
+              >
+                Preencher
+              </button>
+              <button
+                onClick={() => { localStorage.setItem('ironmind_bodydiet_banner_dismissed', 'true'); setBodyDietBannerDismissed(true); }}
+                className="shrink-0 p-1.5 text-blue-600/60"
+                aria-label="Dispensar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Navigation Sidebar */}
         <AnimatePresence>

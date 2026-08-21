@@ -5,11 +5,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Calendar, Weight, Ruler, Dumbbell, Target, Info, AlertTriangle, Apple, Save, LogOut, Trash2, AlertCircle, Fingerprint } from 'lucide-react';
+import { User, Calendar, Weight, Ruler, Dumbbell, Target, Info, AlertTriangle, Apple, Save, LogOut, Trash2, AlertCircle, Fingerprint, HeartPulse } from 'lucide-react';
 import { getFirestoreInstance, auth } from '../lib/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { signOut, deleteUser } from 'firebase/auth';
 import { isBiometricAvailable, isBiometricEnabledOnThisDevice, registerBiometric, disableBiometric, getLocalCredentialId } from '../services/biometricAuth';
+import BodyDietProfileTab, { BodyDietProfile } from './BodyDietProfileTab';
 
 interface ProfileTabProps {
   profile: any;
@@ -28,6 +29,7 @@ export default function ProfileTab({ profile, setProfile }: ProfileTabProps) {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [activeSubTab, setActiveSubTab] = useState<'dados' | 'corpoDieta'>('dados');
   const [biometricSupported, setBiometricSupported] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(() => isBiometricEnabledOnThisDevice());
   const [biometricLoading, setBiometricLoading] = useState(false);
@@ -169,6 +171,10 @@ export default function ProfileTab({ profile, setProfile }: ProfileTabProps) {
   };
 
 
+  const handleSaveBodyDiet = async (bodyDietProfile: BodyDietProfile) => {
+    await setProfile({ ...profile, bodyDietProfile });
+  };
+
   return (
     <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
       {/* Header */}
@@ -192,6 +198,34 @@ export default function ProfileTab({ profile, setProfile }: ProfileTabProps) {
         </button>
       </div>
 
+      {/* Sub-abas */}
+      <div className="flex gap-2 p-3 pb-0 shrink-0 bg-slate-50">
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('dados')}
+          className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 font-black text-[9px] uppercase tracking-widest transition-all ${
+            activeSubTab === 'dados' ? 'bg-blue-600 text-white shadow-md shadow-blue-100' : 'bg-white text-slate-400 border border-slate-200'
+          }`}
+        >
+          <User className="w-3.5 h-3.5" /> Dados Pessoais
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('corpoDieta')}
+          className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 font-black text-[9px] uppercase tracking-widest transition-all ${
+            activeSubTab === 'corpoDieta' ? 'bg-blue-600 text-white shadow-md shadow-blue-100' : 'bg-white text-slate-400 border border-slate-200'
+          }`}
+        >
+          <HeartPulse className="w-3.5 h-3.5" /> Corpo & Dieta
+        </button>
+      </div>
+
+      {activeSubTab === 'corpoDieta' ? (
+        <BodyDietProfileTab
+          initial={profile?.bodyDietProfile}
+          onSave={handleSaveBodyDiet}
+        />
+      ) : (
       <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-4 pb-24 space-y-6 touch-pan-y">
         {biometricSupported && (
           <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm flex items-center justify-between gap-4">
@@ -438,6 +472,7 @@ export default function ProfileTab({ profile, setProfile }: ProfileTabProps) {
           </button>
         </div>
       </form>
+      )}
 
       {/* Delete Confirmation Modal */}
       <AnimatePresence>

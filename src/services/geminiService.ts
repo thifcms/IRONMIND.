@@ -132,10 +132,82 @@ function getProfileContext(userProfileFromParams?: any): { profileObj: any, cont
 - Duração das Sessões: ${timePerWorkout} minutos por treino
 - Lesões/Dores/Limitações Coorporais: ${injuries}
 - Restrições Alimentares/Dieta: ${dietRestrictions}
+${buildBodyDietContext(profileData.bodyDietProfile)}
 
 Você DEVE usar rigorosamente essas informações para gerar os treinos e dietas altamente personalizados, adaptados para o peso, objetivo, limitações físicas e nível especificados. Não proponha exercícios conflitantes com as lesões listadas ou alimentos conflitantes com as restrições alimentares.`;
 
   return { profileObj: profileData, contextText };
+}
+
+const REGION_LABELS: Record<string, string> = {
+  abdomen: 'Abdômen', bracos: 'Braços', pernas: 'Pernas', gluteos: 'Glúteos', peito_ombros: 'Peito/Ombros',
+};
+const LEVEL_LABELS: Record<number, string> = { 1: 'baixo/pouco definido', 2: 'médio', 3: 'alto/bem definido' };
+
+/**
+ * Monta o bloco de contexto da Avaliação de Corpo & Dieta (aba Perfil ->
+ * Corpo & Dieta), quando o usuário já preencheu. Usado tanto pra sugestão
+ * de treino quanto de dieta -- o mesmo treinador de IA lê tudo isso.
+ */
+function buildBodyDietContext(bd: any): string {
+  if (!bd) return '';
+
+  const lines: string[] = ['\n[AVALIAÇÃO DE CORPO E DIETA (preenchida pelo usuário)]:'];
+
+  if (bd.sexo) lines.push(`- Sexo: ${bd.sexo}`);
+
+  if (bd.medidas) {
+    const m = bd.medidas;
+    const parts = [
+      m.cintura && `cintura ${m.cintura}cm`,
+      m.quadril && `quadril ${m.quadril}cm`,
+      m.peito && `peito ${m.peito}cm`,
+      m.braco && `braço ${m.braco}cm`,
+      m.coxa && `coxa ${m.coxa}cm`,
+    ].filter(Boolean);
+    if (parts.length) lines.push(`- Medidas: ${parts.join(', ')}`);
+  }
+
+  if (bd.tipoCorpoAtual) lines.push(`- Tipo de corpo (autopercepção): ${bd.tipoCorpoAtual}`);
+
+  if (bd.autopercepcaoAtual) {
+    const parts = Object.entries(bd.autopercepcaoAtual).map(([regiao, lvl]) =>
+      `${REGION_LABELS[regiao] || regiao}: ${LEVEL_LABELS[lvl as number] || lvl}`
+    );
+    if (parts.length) lines.push(`- Como se vê hoje, por região: ${parts.join('; ')}`);
+  }
+
+  if (bd.metaCorpo) {
+    const parts = Object.entries(bd.metaCorpo).map(([regiao, lvl]) =>
+      `${REGION_LABELS[regiao] || regiao}: ${LEVEL_LABELS[lvl as number] || lvl}`
+    );
+    if (parts.length) lines.push(`- Meta de corpo, por região (PRIORIZE exercícios pra essas regiões): ${parts.join('; ')}`);
+  }
+
+  if (bd.dieta) {
+    const d = bd.dieta;
+    if (d.alimentosPreferidos) lines.push(`- Alimentos preferidos: ${d.alimentosPreferidos}`);
+    if (d.facilidadeHorarios) lines.push(`- Facilidade pra manter horário das refeições: ${d.facilidadeHorarios}`);
+    const supps = [...(d.suplementos || [])];
+    if (d.suplementoOutro) supps.push(d.suplementoOutro);
+    if (supps.length) lines.push(`- Suplementos em uso: ${supps.join(', ')}`);
+    if (d.aguaLitrosDia) lines.push(`- Ingestão de água: ${d.aguaLitrosDia}L/dia`);
+  }
+
+  if (bd.sono) {
+    const s = bd.sono;
+    const parts = [s.qualidade && `qualidade ${s.qualidade}`, s.horasPorNoite && `${s.horasPorNoite}h/noite`].filter(Boolean);
+    if (parts.length) lines.push(`- Sono: ${parts.join(', ')}`);
+  }
+
+  if (bd.preTreino?.quer) {
+    const regioes = (bd.preTreino.regioes || []).map((r: string) => REGION_LABELS[r] || r).join(', ');
+    lines.push(`- Quer bloco de ativação muscular pré-treino${regioes ? `, focado em: ${regioes}` : ''}.`);
+  }
+
+  if (lines.length === 1) return ''; // nada preenchido
+  lines.push('\nUse essa avaliação pra priorizar exercícios nas regiões da meta de corpo, respeitar a facilidade/dificuldade de horários na dieta sugerida, considerar os suplementos já em uso (não repetir sugestão do que já usa), e incluir ativação muscular pré-treino se solicitado.');
+  return lines.join('\n');
 }
 
 
