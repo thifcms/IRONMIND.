@@ -32,5 +32,19 @@ service cloud.firestore {
           get(/databases/$(database)/documents/users/$(userId)).data.authUid == request.auth.uid;
       }
     }
+
+    // Desafios temporários do login biométrico (WebAuthn), com expiração
+    // de 5 minutos controlada pelo próprio servidor na leitura. Sem
+    // Service Account (bloqueada pela política da organização), o
+    // servidor só consegue gravar/ler aqui via API REST com a chave
+    // pública -- por isso a regra é aberta. Isso é seguro porque: (1) o
+    // conteúdo é só um "desafio" criptográfico aleatório, inútil sem a
+    // assinatura biométrica correspondente; (2) o ID do documento
+    // (flowId) é um UUID aleatório, inviável de adivinhar; (3) expira em
+    // minutos. Mesmas propriedades de segurança que o Map em memória que
+    // isso substituiu.
+    match /webauthnChallenges/{flowId} {
+      allow read, write, delete: if true;
+    }
   }
 }

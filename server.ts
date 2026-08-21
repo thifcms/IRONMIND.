@@ -206,27 +206,81 @@ async function startServer() {
   // WebAuthn (biometria como tranca local do app)
   //
   // O servidor só faz a parte criptográfica (gerar desafio, verificar
-  // assinatura) — não guarda nada no Firestore. Quem lê/grava a
-  // credencial no Firestore é sempre o cliente autenticado, respeitando
-  // as regras de segurança normalmente. Isso evita precisar de uma
-  // Service Account do Firebase (bloqueada por política da organização).
+  // assinatura) — não usa o Firebase Admin SDK (bloqueado por política
+  // da organização, que impede criar chaves de Service Account). O
+  // desafio pendente agora é guardado no Firestore via API REST (com a
+  // chave pública do app, igual o IronMind AI já faz), em vez de em
+  // memória local -- isso permite o servidor hibernar/reiniciar (ou
+  // rodar em múltiplas instâncias, como no Netlify) sem perder desafios
+  // em andamento no meio de um login.
   // ─────────────────────────────────────────────────────────────
   const rpName = "IronMind";
   const getRpID = (req: express.Request) => (req.hostname || "localhost");
   const getOrigin = (req: express.Request) => `${req.protocol}://${req.get('host')}`;
 
-  // Desafios pendentes, em memória, com expiração curta (5 min).
-  const pendingChallenges = new Map<string, { challenge: string; expires: number }>();
-  const cleanupExpiredChallenges = () => {
-    const now = Date.now();
-    for (const [key, val] of pendingChallenges.entries()) {
-      if (val.expires < now) pendingChallenges.delete(key);
+  let fbConfig: { projectId: string; apiKey: string; databaseId: string } | null = null;
+  const loadFbConfig = () => {
+    if (fbConfig) return fbConfig;
+    try {
+      const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+      const raw = JSON.parse(require("fs").readFileSync(configPath, "utf8"));
+      fbConfig = {
+        projectId: process.env.FIREBASE_PROJECT_ID || raw.projectId,
+        apiKey: process.env.FIREBASE_API_KEY || raw.apiKey,
+        databaseId: process.env.FIRESTORE_DATABASE_ID || raw.firestoreDatabaseId,
+      };
+    } catch (e) {
+      console.error("[WebAuthn] Falha ao carregar firebase-applet-config.json:", e);
+      throw new Error("Configuração do Firestore ausente.");
     }
+    return fbConfig;
+  };
+  const challengeDocUrl = (flowId: string) => {
+    const cfg = loadFbConfig();
+    return `https://firestore.googleapis.com/v1/projects/${cfg.projectId}/databases/${cfg.databaseId}/documents/webauthnChallenges/${flowId}?key=${cfg.apiKey}`;
+  };
+
+  const setChallenge = async (flowId: string, challenge: string, expiresAt: number) => {
+    try {
+      const res = await fetch(challengeDocUrl(flowId), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fields: {
+            challenge: { stringValue: challenge },
+            expires: { integerValue: String(expiresAt) },
+          },
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        console.error(`[WebAuthn] Falha ao gravar desafio no Firestore (HTTP ${res.status}):`, body);
+      }
+    } catch (err) {
+      console.error("[WebAuthn] Erro de rede ao gravar desafio no Firestore:", err);
+    }
+  };
+
+  const getChallenge = async (flowId: string): Promise<{ challenge: string } | null> => {
+    try {
+      const res = await fetch(challengeDocUrl(flowId));
+      if (!res.ok) return null;
+      const data: any = await res.json();
+      const challenge = data.fields?.challenge?.stringValue;
+      const expires = Number(data.fields?.expires?.integerValue);
+      if (!challenge || !expires || expires < Date.now()) return null;
+      return { challenge };
+    } catch {
+      return null;
+    }
+  };
+
+  const deleteChallenge = async (flowId: string) => {
+    await fetch(challengeDocUrl(flowId), { method: "DELETE" }).catch(() => {});
   };
 
   app.post("/api/webauthn/register-options", async (req, res) => {
     try {
-      cleanupExpiredChallenges();
       const { userId, email } = req.body;
       if (!userId || !email) return res.status(400).json({ error: "userId e email são obrigatórios." });
 
@@ -243,7 +297,7 @@ async function startServer() {
       });
 
       const flowId = crypto.randomUUID();
-      pendingChallenges.set(flowId, { challenge: options.challenge, expires: Date.now() + 5 * 60 * 1000 });
+      await setChallenge(flowId, options.challenge, Date.now() + 5 * 60 * 1000);
 
       res.json({ flowId, options });
     } catch (error: any) {
@@ -254,11 +308,10 @@ async function startServer() {
 
   app.post("/api/webauthn/register-verify", async (req, res) => {
     try {
-      cleanupExpiredChallenges();
       const { flowId, response } = req.body;
-      const pending = flowId && pendingChallenges.get(flowId);
+      const pending = flowId && await getChallenge(flowId);
       if (!pending) return res.status(400).json({ error: "Desafio expirado ou inválido. Tente novamente." });
-      pendingChallenges.delete(flowId);
+      await deleteChallenge(flowId);
 
       const verification = await verifyRegistrationResponse({
         response,
@@ -289,7 +342,6 @@ async function startServer() {
 
   app.post("/api/webauthn/login-options", async (req, res) => {
     try {
-      cleanupExpiredChallenges();
       const { credentials } = req.body; // [{ id, transports }]
       if (!Array.isArray(credentials) || credentials.length === 0) {
         return res.status(400).json({ error: "Nenhuma credencial de biometria encontrada para esta conta." });
@@ -302,7 +354,7 @@ async function startServer() {
       });
 
       const flowId = crypto.randomUUID();
-      pendingChallenges.set(flowId, { challenge: options.challenge, expires: Date.now() + 5 * 60 * 1000 });
+      await setChallenge(flowId, options.challenge, Date.now() + 5 * 60 * 1000);
 
       res.json({ flowId, options });
     } catch (error: any) {
@@ -313,11 +365,10 @@ async function startServer() {
 
   app.post("/api/webauthn/login-verify", async (req, res) => {
     try {
-      cleanupExpiredChallenges();
       const { flowId, response, credential } = req.body; // credential = { id, publicKey (base64url), counter }
-      const pending = flowId && pendingChallenges.get(flowId);
+      const pending = flowId && await getChallenge(flowId);
       if (!pending) return res.status(400).json({ error: "Desafio expirado ou inválido. Tente novamente." });
-      pendingChallenges.delete(flowId);
+      await deleteChallenge(flowId);
 
       if (!credential || !credential.publicKey) {
         return res.status(400).json({ error: "Credencial não informada." });
