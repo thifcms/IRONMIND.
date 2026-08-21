@@ -23,7 +23,8 @@ import {
   LayoutDashboard,
   Cpu,
   HeartPulse,
-  ClipboardCheck
+  ClipboardCheck,
+  Droplets
 } from 'lucide-react';
 import { Tab, TrainingPlan, DietPlan, ChatMessage, WeightEntry, UserProfile, MeasurementEntry, LoadEntry, CheckinEntry } from './types';
 import { loadChatHistory, saveChatHistory, chatWithCoach } from './services/geminiService';
@@ -37,6 +38,7 @@ import MusicTab from './components/MusicTab';
 import VideosTab from './components/VideosTab';
 import HistoryTab from './components/HistoryTab';
 import CheckinTab from './components/CheckinTab';
+import WaterTab from './components/WaterTab';
 import ProfileTab from './components/ProfileTab';
 
 import { useAuth } from './components/AuthProvider';
@@ -242,6 +244,12 @@ export default function App() {
   const handleAddCheckin = useCallback((entry: CheckinEntry) => {
     setCheckinHistory(prev => [...prev, entry]);
   }, []);
+
+  const handleSetTodayWaterCount = useCallback((count: number) => {
+    const d = new Date();
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    setProfile({ ...profile, waterIntake: { ...(profile?.waterIntake || {}), [key]: count } });
+  }, [profile, setProfile]);
 
   const ADESAO_LABEL: Record<string, string> = { facil: 'fácil', medio: 'média', dificil: 'difícil' };
 
@@ -607,6 +615,7 @@ export default function App() {
     { id: Tab.SOM, label: 'SOM', icon: Music, section: 'TREINO' },
     
     { id: Tab.DIETA, label: 'DIETA', icon: Utensils, section: 'NUTRIÇÃO' },
+    { id: Tab.AGUA, label: 'ÁGUA', icon: Droplets, section: 'NUTRIÇÃO' },
     
     { id: Tab.PERFIL, label: 'PERFIL', icon: UserCircle2, section: 'CONTA' },
     { id: Tab.HISTORICO, label: 'HISTÓRICO', icon: TrendingUp, section: 'CONTA' },
@@ -960,6 +969,13 @@ export default function App() {
               </div>
             )}
             {activeTab === Tab.DIETA && <DietPlanView plan={dietPlan} setActiveTab={setActiveTab} onUpdatePlan={updateDietPlan} onClearPlan={() => setShowConfirmClearDiet(true)} />}
+            {activeTab === Tab.AGUA && (
+              <WaterTab
+                profile={profile}
+                waterIntake={profile?.waterIntake || {}}
+                onSetTodayCount={handleSetTodayWaterCount}
+              />
+            )}
             {activeTab === Tab.SOM && <MusicTab />}
             {activeTab === Tab.HISTORICO && (
                 <HistoryTab 

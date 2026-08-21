@@ -13,6 +13,7 @@ export enum Tab {
   SOM = 'som',
   HISTORICO = 'historico',
   CHECKIN = 'checkin',
+  AGUA = 'agua',
   PERFIL = 'perfil'
 }
 
