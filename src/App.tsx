@@ -151,15 +151,19 @@ export default function App() {
 
     const userDoc = doc(db, 'users', user.uid);
     
-    // Listen to chat history
-    const chatQuery = query(collection(userDoc, 'chats'), orderBy('timestamp', 'asc'), limit(50));
+    // Listen to chat history -- pega as ULTIMAS (mais recentes) mensagens,
+    // não as primeiras. orderBy(desc) + limit, depois inverte pra ordem
+    // cronológica. Antes usava orderBy(asc) + limit, que travava nas 50
+    // mensagens MAIS ANTIGAS pra sempre (o treinador nunca via nada novo
+    // depois de passar de 50 mensagens no total).
+    const chatQuery = query(collection(userDoc, 'chats'), orderBy('timestamp', 'desc'), limit(50));
     const unsubChat = onSnapshot(chatQuery, 
       (snap) => {
         const msgs = snap.docs.map(d => ({
           role: d.data().role,
           text: d.data().text,
           proposal: d.data().proposal
-        } as ChatMessage));
+        } as ChatMessage)).reverse();
         if (msgs.length > 0) {
           setChatHistory(msgs);
         } else {
@@ -225,7 +229,7 @@ export default function App() {
       const chatCol = collection(userDoc, 'chats');
       await setDoc(doc(chatCol), { ...userMsg, timestamp: new Date().toISOString() });
 
-      const response = await chatWithCoach(chatHistory, message, profile, user.uid);
+      const response = await chatWithCoach(chatHistory, message, { ...profile, checkinHistory }, user.uid);
       
       // Save response to Firestore
       await setDoc(doc(chatCol), { ...response, timestamp: new Date().toISOString() });
@@ -233,7 +237,7 @@ export default function App() {
     } catch (e) {
       console.error("Handshake Link Error:", e);
     }
-  }, [chatHistory, user, profile]);
+  }, [chatHistory, user, profile, checkinHistory]);
 
   const handleAddCheckin = useCallback((entry: CheckinEntry) => {
     setCheckinHistory(prev => [...prev, entry]);

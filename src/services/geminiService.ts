@@ -133,6 +133,7 @@ function getProfileContext(userProfileFromParams?: any): { profileObj: any, cont
 - Lesões/Dores/Limitações Coorporais: ${injuries}
 - Restrições Alimentares/Dieta: ${dietRestrictions}
 ${buildBodyDietContext(profileData.bodyDietProfile)}
+${buildCheckinContext(profileData.checkinHistory)}
 
 Você DEVE usar rigorosamente essas informações para gerar os treinos e dietas altamente personalizados, adaptados para o peso, objetivo, limitações físicas e nível especificados. Não proponha exercícios conflitantes com as lesões listadas ou alimentos conflitantes com as restrições alimentares.`;
 
@@ -208,6 +209,35 @@ function buildBodyDietContext(bd: any): string {
   if (lines.length === 1) return ''; // nada preenchido
   lines.push('\nUse essa avaliação pra priorizar exercícios nas regiões da meta de corpo, respeitar a facilidade/dificuldade de horários na dieta sugerida, considerar os suplementos já em uso (não repetir sugestão do que já usa), e incluir ativação muscular pré-treino se solicitado.');
   return lines.join('\n');
+}
+
+/**
+ * Resumo compacto dos últimos check-ins semanais (aba Check-in), pra o
+ * treinador enxergar a TENDÊNCIA (energia caindo, dor recorrente, adesão
+ * piorando) mesmo que essas mensagens já tenham "rolado pra fora" do
+ * histórico de chat bruto (que só guarda as últimas ~50 mensagens).
+ */
+function buildCheckinContext(checkinHistory: any[] | undefined): string {
+  if (!checkinHistory || checkinHistory.length === 0) return '';
+
+  const recentes = [...checkinHistory].slice(-6); // últimos 6 check-ins
+  const linhas = recentes.map((c) => {
+    const data = new Date(c.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    const partes = [
+      `${data}: treino ${c.adesaoTreino}`,
+      `dieta ${c.adesaoDieta}`,
+      `energia ${c.energia}/5`,
+      c.peso ? `peso ${c.peso}kg` : null,
+      c.dorOuDificuldade ? `dor/dificuldade: "${c.dorOuDificuldade}"` : null,
+    ].filter(Boolean);
+    return `  - ${partes.join(', ')}`;
+  });
+
+  return `
+[HISTÓRICO DE CHECK-INS SEMANAIS (mais recentes primeiro no chat, mas listados aqui em ordem cronológica)]:
+${linhas.join('\n')}
+
+Observe a TENDÊNCIA ao longo dessas semanas (energia subindo/caindo, adesão piorando/melhorando, dor recorrente na mesma região) -- não só o check-in mais recente isolado -- e ajuste sua recomendação considerando essa evolução.`;
 }
 
 
