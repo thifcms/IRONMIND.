@@ -12,6 +12,7 @@ export enum Tab {
   TREINADOR = 'treinador',
   SOM = 'som',
   HISTORICO = 'historico',
+  CHECKIN = 'checkin',
   PERFIL = 'perfil'
 }
 
@@ -89,6 +90,16 @@ export interface LoadEntry {
   date: number;
   exercise: string;
   weight: number;
+}
+
+export interface CheckinEntry {
+  date: number;
+  adesaoTreino: 'facil' | 'medio' | 'dificil';
+  adesaoDieta: 'facil' | 'medio' | 'dificil';
+  energia: 1 | 2 | 3 | 4 | 5;
+  peso?: number;
+  dorOuDificuldade?: string;
+  observacoes?: string;
 }
 
 export interface UserProfile {

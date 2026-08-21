@@ -22,9 +22,10 @@ import {
   LogOut,
   LayoutDashboard,
   Cpu,
-  HeartPulse
+  HeartPulse,
+  ClipboardCheck
 } from 'lucide-react';
-import { Tab, TrainingPlan, DietPlan, ChatMessage, WeightEntry, UserProfile, MeasurementEntry, LoadEntry } from './types';
+import { Tab, TrainingPlan, DietPlan, ChatMessage, WeightEntry, UserProfile, MeasurementEntry, LoadEntry, CheckinEntry } from './types';
 import { loadChatHistory, saveChatHistory, chatWithCoach } from './services/geminiService';
 import TreinadorTab from './components/TreinadorTab';
 import TrainingTab from './components/TrainingTab';
@@ -35,6 +36,7 @@ import DietTab from './components/DietTab';
 import MusicTab from './components/MusicTab';
 import VideosTab from './components/VideosTab';
 import HistoryTab from './components/HistoryTab';
+import CheckinTab from './components/CheckinTab';
 import ProfileTab from './components/ProfileTab';
 
 import { useAuth } from './components/AuthProvider';
@@ -105,6 +107,7 @@ export default function App() {
   const [sessionTime, setSessionTime] = useState(0);
   const [showRenewalAlert, setShowRenewalAlert] = useState(false);
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
+  const [checkinHistory, setCheckinHistory] = useState<CheckinEntry[]>([]);
   const [measurementHistory, setMeasurementHistory] = useState<MeasurementEntry[]>([]);
   const [loadHistory, setLoadHistory] = useState<LoadEntry[]>([]);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => {
@@ -200,6 +203,7 @@ export default function App() {
           } catch (e) {}
         }
         if (data.weightHistory) setWeightHistory(data.weightHistory);
+        if (data.checkinHistory) setCheckinHistory(data.checkinHistory);
         if (data.measurementHistory) setMeasurementHistory(data.measurementHistory);
         if (data.loadHistory) setLoadHistory(data.loadHistory);
       }
@@ -231,6 +235,24 @@ export default function App() {
     }
   }, [chatHistory, user, profile]);
 
+  const handleAddCheckin = useCallback((entry: CheckinEntry) => {
+    setCheckinHistory(prev => [...prev, entry]);
+  }, []);
+
+  const ADESAO_LABEL: Record<string, string> = { facil: 'fácil', medio: 'média', dificil: 'difícil' };
+
+  const handleAskCoachToAdjust = useCallback((entry: CheckinEntry) => {
+    const partes = [
+      `Fiz meu check-in semanal. Adesão ao treino: ${ADESAO_LABEL[entry.adesaoTreino]}. Adesão à dieta: ${ADESAO_LABEL[entry.adesaoDieta]}. Nível de energia: ${entry.energia}/5.`,
+      entry.peso ? `Peso atual: ${entry.peso}kg.` : '',
+      entry.dorOuDificuldade ? `Dor/dificuldade relatada: ${entry.dorOuDificuldade}.` : '',
+      entry.observacoes ? `Observações: ${entry.observacoes}.` : '',
+      'Com base nisso, ajusta meu próximo treino e/ou dieta -- explica rapidamente o que vai mudar e por quê.',
+    ].filter(Boolean);
+    setActiveTab(Tab.TREINADOR);
+    talkToIronMindAI(partes.join(' '));
+  }, [talkToIronMindAI]);
+
   // Sync biometrics to Firestore
   useEffect(() => {
     if (!user || weightHistory.length === 0) return;
@@ -240,6 +262,16 @@ export default function App() {
     }, 2000);
     return () => clearTimeout(handler);
   }, [weightHistory, user]);
+
+  // Sync check-ins semanais para o Firestore
+  useEffect(() => {
+    if (!user || checkinHistory.length === 0) return;
+    const handler = setTimeout(() => {
+      updateDoc(doc(db, 'users', user.uid), { checkinHistory })
+        .catch(err => console.warn("Failsafe: error syncing checkin history:", err));
+    }, 2000);
+    return () => clearTimeout(handler);
+  }, [checkinHistory, user]);
 
   useEffect(() => {
     if (!user || measurementHistory.length === 0) return;
@@ -574,6 +606,7 @@ export default function App() {
     
     { id: Tab.PERFIL, label: 'PERFIL', icon: UserCircle2, section: 'CONTA' },
     { id: Tab.HISTORICO, label: 'HISTÓRICO', icon: TrendingUp, section: 'CONTA' },
+    { id: Tab.CHECKIN, label: 'CHECK-IN', icon: ClipboardCheck, section: 'CONTA' },
   ];
 
   const handleSwipe = (direction: 'left' | 'right') => {
@@ -941,6 +974,14 @@ export default function App() {
                   onHardReset={() => setShowConfirmHardReset(true)}
                 />
               )}
+            {activeTab === Tab.CHECKIN && (
+              <CheckinTab
+                history={checkinHistory}
+                onAddCheckin={handleAddCheckin}
+                onAskCoachToAdjust={handleAskCoachToAdjust}
+                lastWeight={weightHistory.length > 0 ? weightHistory[weightHistory.length - 1].weight : null}
+              />
+            )}
             {activeTab === Tab.PERFIL && (
               <ProfileTab profile={profile} setProfile={setProfile} />
             )}
