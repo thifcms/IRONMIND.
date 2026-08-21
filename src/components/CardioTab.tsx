@@ -156,25 +156,6 @@ export default function CardioTab() {
     initializeStream();
   }, []);
 
-  const waitVideoReady = async (video: HTMLVideoElement, timeoutMs = 2000) => {
-    if (video.readyState >= 2 && video.videoWidth > 0) return; // HAVE_CURRENT_DATA
-    await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        video.removeEventListener('loadeddata', onReady);
-        reject(new Error('Vídeo do visor não carregou os primeiros quadros a tempo.'));
-      }, timeoutMs);
-      const onReady = () => {
-        if (video.readyState >= 2 && video.videoWidth > 0) {
-          clearTimeout(timer);
-          video.removeEventListener('loadeddata', onReady);
-          resolve();
-        }
-      };
-      video.addEventListener('loadeddata', onReady);
-      onReady();
-    });
-  };
-
   const togglePiP = async () => {
     const video = videoRef.current;
     if (!video) throw new Error('Elemento de vídeo do visor não está pronto ainda.');
@@ -185,10 +166,12 @@ export default function CardioTab() {
       if (!document.pictureInPictureEnabled) {
         throw new Error('document.pictureInPictureEnabled = false (navegador/página bloqueou PiP).');
       }
+      // Sem await antes do requestPictureInPicture -- qualquer espera aqui
+      // pode consumir a janela de "gesto do usuário" que o navegador
+      // exige pra liberar o PiP sem bloquear.
       if (video.paused) {
-        await video.play();
+        video.play().catch(() => {});
       }
-      await waitVideoReady(video);
       await video.requestPictureInPicture();
       mediaMaestro.duckVolume(0.5);
     }

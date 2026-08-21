@@ -115,26 +115,6 @@ export function usePiPLauncher() {
     };
   }, []);
 
-  const waitVideoReady = async (video: HTMLVideoElement, timeoutMs = 2000) => {
-    if (video.readyState >= 2 && video.videoWidth > 0) return; // HAVE_CURRENT_DATA
-    await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        video.removeEventListener('loadeddata', onReady);
-        reject(new Error('Vídeo do visor não carregou os primeiros quadros a tempo.'));
-      }, timeoutMs);
-      const onReady = () => {
-        if (video.readyState >= 2 && video.videoWidth > 0) {
-          clearTimeout(timer);
-          video.removeEventListener('loadeddata', onReady);
-          resolve();
-        }
-      };
-      video.addEventListener('loadeddata', onReady);
-      // Pode já ter ficado pronto entre a checagem inicial e o listener
-      onReady();
-    });
-  };
-
   const togglePiP = async () => {
     const video = videoElRef.current;
     if (!video) throw new Error('Elemento de vídeo do visor não está pronto ainda.');
@@ -144,8 +124,11 @@ export function usePiPLauncher() {
       if (!document.pictureInPictureEnabled) {
         throw new Error('document.pictureInPictureEnabled = false (navegador/página bloqueou PiP).');
       }
-      if (video.paused) await video.play();
-      await waitVideoReady(video);
+      // Sem await antes do requestPictureInPicture -- qualquer espera aqui
+      // (mesmo a checagem de vídeo pronto) pode consumir a janela de
+      // "gesto do usuário" que o navegador exige pra liberar o PiP sem
+      // bloquear, o mesmo problema que já vimos com o window.open().
+      if (video.paused) video.play().catch(() => {});
       await video.requestPictureInPicture();
       mediaMaestro.duckVolume(0.5);
     }
