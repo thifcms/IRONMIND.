@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { Calendar, TrendingUp, Award, Clock, Scale, Ruler, Plus, Dumbbell, Activity, AlertCircle } from 'lucide-react';
+import { Calendar, TrendingUp, Award, Clock, Scale, Ruler, Plus, Dumbbell, Activity, AlertCircle, Sparkles } from 'lucide-react';
 import { WeightEntry, UserProfile, MeasurementEntry, LoadEntry } from '../types';
 
 interface HistoryTabProps {
@@ -43,6 +43,52 @@ export default function HistoryTab({
   
   const [newLoadExercise, setNewLoadExercise] = useState('');
   const [newLoadWeight, setNewLoadWeight] = useState('');
+  const [selectedChartExercise, setSelectedChartExercise] = useState<string>('');
+
+  // Progressão automática de carga: olha as duas ultimas cargas de cada
+  // exercicio e sugere o proximo peso. Se so tem 1 registro, sugere
+  // manter (ainda nao ha tendencia). Se a ultima manteve ou subiu em
+  // relacao a anterior, sugere +2.5kg (incremento minimo tipico de
+  // anilha). Se caiu (ex: deload ou fadiga), sugere manter a ultima
+  // carga em vez de aumentar, pra consolidar antes de progredir de novo.
+  const exerciseNames = useMemo(() => {
+    const set = new Set<string>();
+    (loadHistory || []).forEach(l => set.add(l.exercise));
+    return Array.from(set);
+  }, [loadHistory]);
+
+  const suggestNextLoad = (exercise: string): { weight: number; reason: string } | null => {
+    const entries = (loadHistory || [])
+      .filter(l => l.exercise === exercise)
+      .sort((a, b) => a.date - b.date);
+    if (entries.length === 0) return null;
+    const last = entries[entries.length - 1];
+    if (entries.length === 1) {
+      return { weight: last.weight, reason: 'Primeiro registro -- mantenha essa carga na próxima sessão pra criar uma base de comparação.' };
+    }
+    const prev = entries[entries.length - 2];
+    if (last.weight >= prev.weight) {
+      return { weight: Math.round((last.weight + 2.5) * 2) / 2, reason: 'Você segurou ou subiu a carga da última vez -- hora de progredir mais um pouco.' };
+    }
+    return { weight: last.weight, reason: 'A carga caiu na última sessão (fadiga ou deload) -- consolide nesse peso antes de subir de novo.' };
+  };
+
+  const loadChartData = useMemo(() => {
+    if (!selectedChartExercise) return [];
+    return (loadHistory || [])
+      .filter(l => l.exercise === selectedChartExercise)
+      .sort((a, b) => a.date - b.date)
+      .map(l => ({
+        date: new Date(l.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+        peso: l.weight,
+      }));
+  }, [loadHistory, selectedChartExercise]);
+
+  React.useEffect(() => {
+    if (!selectedChartExercise && exerciseNames.length > 0) {
+      setSelectedChartExercise(exerciseNames[exerciseNames.length - 1]);
+    }
+  }, [exerciseNames, selectedChartExercise]);
 
   const addWeightEntry = () => {
     const weight = parseFloat(newWeight);
@@ -265,6 +311,39 @@ export default function HistoryTab({
             )}
           </div>
         </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-900">Peso ao Longo do Tempo</h3>
+          </div>
+          <div className="h-40 w-full flex items-center justify-center bg-slate-50 border border-dashed border-slate-200 rounded-xl">
+            {bmiData.length === 0 ? (
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider text-center p-4">Registre um novo peso acima pra ver a evolução aqui</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={bmiData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" opacity={0.1} vertical={false} />
+                  <XAxis dataKey="date" stroke="#94a3b8" fontSize={8} tickLine={false} axisLine={false} />
+                  <YAxis domain={['dataMin - 1', 'dataMax + 1']} hide />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '12px',
+                      fontSize: '10px',
+                      border: 'none',
+                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                      backgroundColor: '#1e293b',
+                      color: '#f8fafc'
+                    }}
+                    formatter={(value: any) => [`${value} kg`, 'Peso']}
+                    itemStyle={{ color: '#f8fafc' }}
+                    labelStyle={{ fontWeight: 'bold', color: '#f8fafc' }}
+                  />
+                  <Line type="monotone" dataKey="weight" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 3, fill: '#0ea5e9' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
       </section>
 
       {/* Medidas Corporais */}
@@ -363,6 +442,68 @@ export default function HistoryTab({
           </div>
         </div>
       </section>
+
+      {/* Progressão de Carga */}
+      {exerciseNames.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-4 h-4 text-blue-600" />
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-900">Progressão de Carga</h3>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <select
+              value={selectedChartExercise}
+              onChange={(e) => setSelectedChartExercise(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {exerciseNames.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+
+            <div className="h-40 w-full flex items-center justify-center bg-slate-50 border border-dashed border-slate-200 rounded-xl">
+              {loadChartData.length < 2 ? (
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider text-center p-4">Registre pelo menos 2 cargas desse exercício pra ver o gráfico</p>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={loadChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" opacity={0.1} vertical={false} />
+                    <XAxis dataKey="date" stroke="#94a3b8" fontSize={8} tickLine={false} axisLine={false} />
+                    <YAxis domain={['dataMin - 2', 'dataMax + 2']} hide />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: '12px',
+                        fontSize: '10px',
+                        border: 'none',
+                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                        backgroundColor: '#1e293b',
+                        color: '#f8fafc'
+                      }}
+                      formatter={(value: any) => [`${value} kg`, 'Carga']}
+                      itemStyle={{ color: '#f8fafc' }}
+                      labelStyle={{ fontWeight: 'bold', color: '#f8fafc' }}
+                    />
+                    <Line type="monotone" dataKey="peso" stroke="#7c3aed" strokeWidth={3} dot={{ r: 3, fill: '#7c3aed' }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            {selectedChartExercise && suggestNextLoad(selectedChartExercise) && (
+              <div className="flex items-start gap-2.5 p-3 bg-blue-600/10 border border-blue-600/20 rounded-xl">
+                <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-blue-700">
+                    Sugestão pra próxima sessão: {suggestNextLoad(selectedChartExercise)!.weight} kg
+                  </p>
+                  <p className="text-[9px] text-blue-600/80 mt-0.5">{suggestNextLoad(selectedChartExercise)!.reason}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Footer Design */}
       <div className="bg-blue-600 p-4 rounded-2xl flex items-center gap-3 shadow-lg shadow-blue-100">
