@@ -31,8 +31,13 @@ export function usePiPLauncher() {
     video.style.position = 'fixed';
     video.style.opacity = '0';
     video.style.pointerEvents = 'none';
-    video.style.width = '1px';
-    video.style.height = '1px';
+    // O vídeo precisa de um tamanho de verdade na tela -- 1x1px pode
+    // fazer o Chrome desenhar a janela do PiP nesse mesmo tamanho
+    // minúsculo (praticamente invisível), mesmo com o conteúdo do
+    // canvas sendo 720x720. Fica invisível por causa do opacity:0 e
+    // fora da área visível pelo "left: -9999px", não pelo tamanho.
+    video.style.width = '300px';
+    video.style.height = '300px';
     video.style.left = '-9999px';
     document.body.appendChild(video);
 

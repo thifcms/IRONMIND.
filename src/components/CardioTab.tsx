@@ -249,9 +249,14 @@ export default function CardioTab() {
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0a0a0a] overflow-hidden relative transition-colors duration-300">
-      <div className="opacity-0 pointer-events-none absolute -z-50 overflow-hidden w-px h-px">
+      {/* O vídeo precisa de um tamanho de verdade na tela -- 1x1px podia
+          fazer o Chrome desenhar a janela do PiP nesse mesmo tamanho
+          minúsculo (praticamente invisível), mesmo o canvas sendo
+          720x720. Continua invisível por causa do opacity-0, não pelo
+          tamanho do container. */}
+      <div className="opacity-0 pointer-events-none fixed -left-[9999px] top-0 w-[300px] h-[300px] overflow-hidden -z-50">
         <canvas ref={canvasRef} width={720} height={720} />
-        <video ref={videoRef} playsInline muted />
+        <video ref={videoRef} playsInline muted className="w-full h-full" />
       </div>
 
       {/* Bio-Monitor Floating Hud */}
