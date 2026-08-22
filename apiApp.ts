@@ -211,8 +211,17 @@ const app = express();
   // em andamento no meio de um login.
   // ─────────────────────────────────────────────────────────────
   const rpName = "IronMind";
-  const getRpID = (req: express.Request) => (req.hostname || "localhost");
-  const getOrigin = (req: express.Request) => `${req.protocol}://${req.get('host')}`;
+  // RP ID e origem do WebAuthn precisam ser o dominio que a PESSOA ve no
+  // navegador (o frontend), nao o dominio do backend que recebe essa
+  // requisicao -- isso e uma exigencia de seguranca do proprio WebAuthn
+  // (o navegador rejeita se nao bater). Com frontend e backend agora em
+  // dominios diferentes (GitHub Pages vs Netlify), nao da mais pra
+  // deduzir isso pelo req.hostname do servidor -- precisa vir de uma
+  // variavel de ambiente configurada com o dominio real do frontend.
+  // Sem a variavel, cai no comportamento antigo (mesmo dominio pros
+  // dois, como era no Render).
+  const getRpID = (req: express.Request) => process.env.WEBAUTHN_RP_ID || req.hostname || "localhost";
+  const getOrigin = (req: express.Request) => process.env.WEBAUTHN_ORIGIN || `${req.protocol}://${req.get('host')}`;
 
   let fbConfig: { projectId: string; apiKey: string; databaseId: string } | null = null;
   const loadFbConfig = () => {
