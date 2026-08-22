@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, Check, Droplets, Moon, Utensils, Pill, Zap } from 'lucide-react';
-import { BODY_TYPES, BODY_REGIONS } from './bodyDietIcons';
+import { BODY_TYPES, BODY_REGIONS, RegionLevelIcon } from './bodyDietIcons';
 
 export interface BodyDietProfile {
   sexo?: 'masculino' | 'feminino' | 'outro';
@@ -228,11 +228,14 @@ export default function BodyDietProfileTab({ initial, onSave, onSkip }: Props) {
                               key={lvl}
                               type="button"
                               onClick={() => setTarget(lvl as 1 | 2 | 3)}
-                              className={`py-3 px-1.5 rounded-lg border-2 transition-all text-center ${
-                                target?.[region.id] === lvl ? 'bg-blue-600 border-blue-600' : 'bg-slate-50 dark:bg-[#1a1a1a] border-slate-200 dark:border-slate-800'
+                              className={`flex flex-col items-center gap-1.5 py-3 rounded-lg border-2 transition-all ${
+                                target?.[region.id] === lvl ? 'bg-blue-600/10 border-blue-600' : 'bg-slate-50 dark:bg-[#1a1a1a] border-slate-200 dark:border-slate-800'
                               }`}
                             >
-                              <span className={`text-[9px] font-bold leading-tight ${target?.[region.id] === lvl ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`}>
+                              <div className={`w-11 h-11 ${target?.[region.id] === lvl ? 'text-blue-600' : 'text-slate-400 dark:text-slate-500'}`}>
+                                <RegionLevelIcon level={lvl as 1 | 2 | 3} />
+                              </div>
+                              <span className={`text-[8px] font-bold leading-tight text-center px-1 ${target?.[region.id] === lvl ? 'text-blue-600' : 'text-slate-500 dark:text-slate-400'}`}>
                                 {(REGION_LEVEL_LABELS[region.id] || ['Baixo', 'Médio', 'Alto'])[lvl - 1]}
                               </span>
                             </button>

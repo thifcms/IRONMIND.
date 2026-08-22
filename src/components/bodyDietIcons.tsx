@@ -108,46 +108,31 @@ export const BODY_REGIONS: { id: string; label: string }[] = [
 ];
 
 /**
- * Ícone de nível (1, 2 ou 3) por região -- mini-silhueta genérica do
- * corpo, com a região em questão desenhada maior/mais definida
- * conforme o nível (em vez de barras abstratas).
+ * Medidor circular de nível (1, 2 ou 3) -- "desenho" abstrato tipo
+ * indicador/gauge, preenchido proporcionalmente ao nível. Funciona
+ * igual pra qualquer região, grande e fácil de diferenciar visualmente,
+ * sem precisar desenhar partes do corpo.
  */
-export function RegionLevelIcon({ level, region, className = base }: { level: 1 | 2 | 3; region?: string; className?: string }) {
-  const scale = { 1: 0.55, 2: 0.78, 3: 1 }[level];
-  const opacity = { 1: 0.45, 2: 0.7, 3: 1 }[level];
+export function RegionLevelIcon({ level, className = base }: { level: 1 | 2 | 3; className?: string }) {
+  const pct = { 1: 0.33, 2: 0.66, 3: 1 }[level];
+  const r = 26;
+  const circumference = 2 * Math.PI * r;
+  const dashOffset = circumference * (1 - pct);
 
-  // Corpo-base (sempre igual, suave) + destaque na região, escalado pelo nível
   return (
-    <svg viewBox="0 0 60 90" className={className}>
-      {/* silhueta base, sempre visível e sutil */}
-      <g fill="currentColor" opacity={0.25}>
-        <circle cx="30" cy="10" r="7" />
-        <path d="M20 22 L40 22 L38 50 L36 80 L32 80 L30 52 L28 80 L24 80 L22 50 Z" />
-      </g>
-      {/* destaque na região, cresce com o nível */}
-      <g fill="currentColor" opacity={opacity}>
-        {region === 'bracos' && (
-          <>
-            <rect x={20 - 3 * scale} y="24" width={3 * scale + 2} height={26 * scale} rx="2" />
-            <rect x="37" y="24" width={3 * scale + 2} height={26 * scale} rx="2" />
-          </>
-        )}
-        {region === 'pernas' && (
-          <>
-            <rect x="24" y={52} width={4 * scale + 1.5} height={28 * scale} rx="2" />
-            <rect x="31" y={52} width={4 * scale + 1.5} height={28 * scale} rx="2" />
-          </>
-        )}
-        {region === 'gluteos' && (
-          <ellipse cx="30" cy="55" rx={9 * scale} ry={7 * scale} />
-        )}
-        {region === 'peito_ombros' && (
-          <path d={`M${20 - 3 * scale} 24 L${40 + 3 * scale} 24 L${38 + scale} ${30 + 5 * scale} L${22 - scale} ${30 + 5 * scale} Z`} />
-        )}
-        {(!region || region === 'abdomen') && (
-          <rect x="26" y="32" width="8" height={16 * scale} rx="2" />
-        )}
-      </g>
+    <svg viewBox="0 0 60 60" className={className}>
+      <circle cx="30" cy="30" r={r} fill="none" stroke="currentColor" strokeWidth="6" opacity={0.15} />
+      <circle
+        cx="30" cy="30" r={r}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="6"
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={dashOffset}
+        transform="rotate(-90 30 30)"
+      />
+      <text x="30" y="36" textAnchor="middle" fontSize="20" fontWeight="900" fill="currentColor">{level}</text>
     </svg>
   );
 }
