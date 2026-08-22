@@ -1,13 +1,14 @@
 {
   "name": "IronMind PWA",
   "short_name": "IronMind",
-  "start_url": "/",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "background_color": "#1a1b1e",
   "theme_color": "#2563eb",
   "icons": [
     {
-      "src": "/icon.svg",
+      "src": "./icon.svg",
       "sizes": "192x192 512x512 any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
