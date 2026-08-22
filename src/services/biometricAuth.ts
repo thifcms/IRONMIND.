@@ -1,6 +1,7 @@
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 import { collection, doc, getDocs, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { getFirestoreInstance } from '../lib/firebase';
+import { apiUrl } from './apiBase';
 
 /**
  * Biometria como tranca local do app (não é login remoto).
@@ -45,7 +46,7 @@ export async function isBiometricAvailable(): Promise<boolean> {
 
 /** Ativa a biometria: registra uma credencial nova e salva no Firestore do próprio usuário. */
 export async function registerBiometric(userId: string, email: string): Promise<void> {
-  const optsRes = await fetch('/api/webauthn/register-options', {
+  const optsRes = await fetch(apiUrl('/api/webauthn/register-options'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId, email }),
@@ -55,7 +56,7 @@ export async function registerBiometric(userId: string, email: string): Promise<
 
   const attestationResponse = await startRegistration({ optionsJSON: options });
 
-  const verifyRes = await fetch('/api/webauthn/register-verify', {
+  const verifyRes = await fetch(apiUrl('/api/webauthn/register-verify'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ flowId, response: attestationResponse }),
@@ -83,7 +84,7 @@ export async function unlockWithBiometric(userId: string): Promise<boolean> {
 
   const storedCredentials = credsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
 
-  const optsRes = await fetch('/api/webauthn/login-options', {
+  const optsRes = await fetch(apiUrl('/api/webauthn/login-options'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ credentials: storedCredentials.map(c => ({ id: c.id, transports: c.transports })) }),
@@ -96,7 +97,7 @@ export async function unlockWithBiometric(userId: string): Promise<boolean> {
   const matched = storedCredentials.find(c => c.id === assertionResponse.id);
   if (!matched) throw new Error('Credencial de biometria não reconhecida.');
 
-  const verifyRes = await fetch('/api/webauthn/login-verify', {
+  const verifyRes = await fetch(apiUrl('/api/webauthn/login-verify'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

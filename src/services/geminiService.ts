@@ -1,4 +1,5 @@
 import { ChatMessage, TrainingPlan, DietPlan } from "../types";
+import { apiUrl } from './apiBase';
 
 // Chave para persistência no localStorage
 const STORAGE_KEY = 'ironmind_chat_history';
@@ -22,7 +23,7 @@ DIRETRIZES DE IA (AGENTE NEURAL):
  */
 export async function updateNeuralLinkUrl(url?: string, apiKey?: string): Promise<any> {
   try {
-    const res = await fetch("/api/neural-link/config", {
+    const res = await fetch(apiUrl("/api/neural-link/config"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url, apiKey })
@@ -39,7 +40,7 @@ export async function updateNeuralLinkUrl(url?: string, apiKey?: string): Promis
  */
 export async function diagnoseNeuralLink(): Promise<any> {
   try {
-    const res = await fetch("/api/neural-link/diagnose");
+    const res = await fetch(apiUrl("/api/neural-link/diagnose"));
     return await res.json();
   } catch (error) {
     console.error("Diagnostic Error:", error);
@@ -269,7 +270,7 @@ export async function chatWithCoach(history: ChatMessage[], message: string, use
       }
     });
 
-    const res = await fetch("/api/chat", {
+    const res = await fetch(apiUrl("/api/chat"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ 
@@ -328,7 +329,7 @@ export async function generateProposal(type: 'training' | 'diet', context: strin
 
     const prompt = `Com base neste contexto: "${context}", gere uma proposta estruturada de ${isTraining ? 'treino' : 'dieta'} seguindo estritamente este formato JSON: ${schemaRef}`;
     
-    const res = await fetch("/api/generate-proposal", {
+    const res = await fetch(apiUrl("/api/generate-proposal"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ 
@@ -392,7 +393,7 @@ export async function analyzeFoodImage(imageBase64: string, userProfile?: any, u
     const prompt = "Analise esta foto de comida, estime as calorias e classifique color (green/yellow/red). Retorne JSON.";
     const cleanBase64 = imageBase64.split(",")[1] || imageBase64;
 
-    const res = await fetch("/api/analyze-image", {
+    const res = await fetch(apiUrl("/api/analyze-image"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ 
@@ -421,7 +422,7 @@ export async function analyzeFoodImage(imageBase64: string, userProfile?: any, u
 
 export async function getExerciseGuide(name: string) {
   const prompt = `Gere um guia técnico JSON para o exercício: ${name}.`;
-  const res = await fetch("/api/generate-proposal", {
+  const res = await fetch(apiUrl("/api/generate-proposal"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt, systemInstruction: "Você é um especialista em biomecânica." })
@@ -431,7 +432,7 @@ export async function getExerciseGuide(name: string) {
 
 export async function resolveVideoDirectly(name: string) {
   const prompt = `Encontre o videoID do YouTube para o exercício: ${name}. Retorne JSON { "videoId": "..." }.`;
-  const res = await fetch("/api/generate-proposal", {
+  const res = await fetch(apiUrl("/api/generate-proposal"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt, systemInstruction: "Retorne apenas JSON." })
