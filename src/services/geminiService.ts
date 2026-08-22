@@ -1,5 +1,5 @@
 import { ChatMessage, TrainingPlan, DietPlan } from "../types";
-import { apiUrl } from './apiBase';
+import { apiUrl, apiHeaders } from './apiBase';
 
 // Chave para persistência no localStorage
 const STORAGE_KEY = 'ironmind_chat_history';
@@ -25,7 +25,7 @@ export async function updateNeuralLinkUrl(url?: string, apiKey?: string): Promis
   try {
     const res = await fetch(apiUrl("/api/neural-link/config"), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: apiHeaders(),
       body: JSON.stringify({ url, apiKey })
     });
     return await res.json();
@@ -272,7 +272,7 @@ export async function chatWithCoach(history: ChatMessage[], message: string, use
 
     const res = await fetch(apiUrl("/api/chat"), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: apiHeaders(),
       body: JSON.stringify({ 
         messages: stabilized, 
         systemInstruction: finalSystemInstruction, 
@@ -331,7 +331,7 @@ export async function generateProposal(type: 'training' | 'diet', context: strin
     
     const res = await fetch(apiUrl("/api/generate-proposal"), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: apiHeaders(),
       body: JSON.stringify({ 
         prompt, 
         systemInstruction: finalSystemInstruction, 
@@ -395,7 +395,7 @@ export async function analyzeFoodImage(imageBase64: string, userProfile?: any, u
 
     const res = await fetch(apiUrl("/api/analyze-image"), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: apiHeaders(),
       body: JSON.stringify({ 
         imageBase64: cleanBase64, 
         prompt, 
@@ -424,7 +424,7 @@ export async function getExerciseGuide(name: string) {
   const prompt = `Gere um guia técnico JSON para o exercício: ${name}.`;
   const res = await fetch(apiUrl("/api/generate-proposal"), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: apiHeaders(),
     body: JSON.stringify({ prompt, systemInstruction: "Você é um especialista em biomecânica." })
   });
   return await res.json();
@@ -434,7 +434,7 @@ export async function resolveVideoDirectly(name: string) {
   const prompt = `Encontre o videoID do YouTube para o exercício: ${name}. Retorne JSON { "videoId": "..." }.`;
   const res = await fetch(apiUrl("/api/generate-proposal"), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: apiHeaders(),
     body: JSON.stringify({ prompt, systemInstruction: "Retorne apenas JSON." })
   });
   return await res.json();

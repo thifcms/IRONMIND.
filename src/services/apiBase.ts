@@ -11,6 +11,19 @@
  */
 export const API_BASE: string = (import.meta as any).env?.VITE_API_BASE_URL || '';
 
+// Chave compartilhada exigida pelo backend do IronMind AI (X-API-KEY).
+// Antes disso ficava só no backend do app (que fazia o repasse); agora
+// que o frontend chama o IronMind AI direto, precisa mandar junto.
+export const HUB_API_KEY: string = (import.meta as any).env?.VITE_HUB_API_KEY || '';
+
 export function apiUrl(path: string): string {
   return `${API_BASE}${path}`;
+}
+
+export function apiHeaders(extra?: Record<string, string>): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    ...(HUB_API_KEY ? { "X-API-KEY": HUB_API_KEY } : {}),
+    ...(extra || {}),
+  };
 }
