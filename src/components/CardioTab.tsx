@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Bike, Footprints, Timer, Zap, MapPin, Youtube, Gauge, TrendingUp, Weight, Pause, Play, MonitorPlay, Activity, Heart, AlertTriangle } from 'lucide-react';
 import { bioMonitor } from '../services/bioMonitor';
 import { mediaMaestro } from '../services/mediaMaestro';
+import { logPiP } from '../lib/pipDebugLog';
+import PipDebugPanel from './PipDebugPanel';
+import { forceOpenInChrome } from '../lib/forceOpenInChrome';
 
 type CardioMode = 'corrida' | 'esteira' | 'bicicleta';
 
@@ -148,12 +151,28 @@ export default function CardioTab() {
           videoRef.current.srcObject = stream;
           // Pre-play muted video to have it ready for PiP
           await videoRef.current.play().catch(() => {});
+          logPiP('[Cardio] Visor inicializado (stream do canvas pronta).');
         } catch (e) {
           console.error("Failed to initialize PiP stream", e);
+          logPiP(`[Cardio] Falha ao iniciar stream do visor: ${e}`);
         }
       }
     };
     initializeStream();
+
+    const video = videoRef.current;
+    const onLeave = () => {
+      logPiP(`[Cardio] Visor SAIU do PiP (evento leavepictureinpicture). Aba oculta agora? ${document.hidden ? 'sim' : 'não'}.`);
+    };
+    const onVisibility = () => {
+      logPiP(`[Cardio] Visibilidade da aba mudou: ${document.hidden ? 'ocultada' : 'visível'}. PiP ativo nesse instante? ${document.pictureInPictureElement ? 'sim' : 'não'}.`);
+    };
+    video?.addEventListener('leavepictureinpicture', onLeave);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      video?.removeEventListener('leavepictureinpicture', onLeave);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
 
   const togglePiP = async () => {
@@ -161,9 +180,11 @@ export default function CardioTab() {
     if (!video) throw new Error('Elemento de vídeo do visor não está pronto ainda.');
 
     if (document.pictureInPictureElement) {
+      logPiP('[Cardio] Saindo do PiP (togglePiP chamado com PiP já ativo).');
       await document.exitPictureInPicture();
     } else {
       if (!document.pictureInPictureEnabled) {
+        logPiP('[Cardio] document.pictureInPictureEnabled = false -- navegador/OS bloqueou PiP antes mesmo de tentar.');
         throw new Error('document.pictureInPictureEnabled = false (navegador/página bloqueou PiP).');
       }
       // Sem await antes do requestPictureInPicture -- qualquer espera aqui
@@ -172,7 +193,9 @@ export default function CardioTab() {
       if (video.paused) {
         video.play().catch(() => {});
       }
+      logPiP('[Cardio] Chamando requestPictureInPicture()...');
       await video.requestPictureInPicture();
+      logPiP('[Cardio] requestPictureInPicture() resolveu (Promise aceita).');
       mediaMaestro.duckVolume(0.5);
     }
   };
@@ -203,51 +226,28 @@ export default function CardioTab() {
   const handleMediaClick = (url: string) => {
     if (!isActive) setIsActive(true);
     setPipDebug(null);
+    logPiP(`[Cardio] handleMediaClick chamado para ${url}.`);
+    const openUrl = forceOpenInChrome(url);
 
-    const video = videoRef.current;
-    let settled = false;
-
-    const openNow = () => window.open(url, '_blank');
-
-    if (!video) {
-      togglePiP().catch(err => setPipDebug(`Erro no PiP: ${err?.name || ''} ${err?.message || err}`)).finally(openNow);
-      return;
-    }
-
-    // Sincroniza a abertura da URL com a confirmação REAL de que o PiP
-    // entrou (evento 'enterpictureinpicture'), em vez de com a resolução
-    // da Promise de requestPictureInPicture() -- a Promise resolve assim
-    // que o pedido é aceito, não quando a janela do PiP já está de pé.
-    const onEnter = () => {
-      if (settled) return;
-      settled = true;
-      video.removeEventListener('enterpictureinpicture', onEnter);
-      setPipDebug('Visor entrou (evento enterpictureinpicture confirmado).');
-      openNow();
-    };
-    video.addEventListener('enterpictureinpicture', onEnter);
-
-    // Rede de segurança: se nem o evento nem o erro chegarem em 2.5s,
-    // abre mesmo assim e avisa -- pra nunca travar sem fazer nada.
-    const timeoutId = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      video.removeEventListener('enterpictureinpicture', onEnter);
-      setPipDebug('Visor não confirmou entrada em 2.5s (nem sucesso nem erro).');
-      openNow();
-    }, 2500);
-
-    togglePiP().catch(err => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeoutId);
-      video.removeEventListener('enterpictureinpicture', onEnter);
+    // Padrão restaurado ao que foi CONFIRMADO funcionando de verdade no
+    // Render (commit da09120 / revert 77bdcfc): abre o app assim que a
+    // Promise do togglePiP resolve, sem esperar o evento
+    // 'enterpictureinpicture'. A tentativa de "sincronizar com a
+    // confirmação real" parecia mais robusta no papel, mas não tem
+    // confirmação de que ajudou -- e o app parou de funcionar depois
+    // dela ter sido introduzida. Os listeners de leavepictureinpicture/
+    // visibilitychange continuam ativos (no useEffect) e seguem
+    // registrando o que acontece depois, então não perdemos o
+    // diagnóstico.
+    togglePiP().then(() => {
+      logPiP('[Cardio] togglePiP resolveu, abrindo (travado no Chrome) agora.');
+      window.open(openUrl, '_blank');
+    }).catch(err => {
       const msg = `Erro no PiP: ${err?.name || ''} ${err?.message || err}`;
       console.error(msg);
+      logPiP(`[Cardio] ${msg} -- abrindo mesmo assim.`);
       setPipDebug(msg);
-      openNow();
-    }).then(() => {
-      clearTimeout(timeoutId);
+      window.open(openUrl, '_blank');
     });
   };
 
@@ -255,12 +255,13 @@ export default function CardioTab() {
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0a0a0a] overflow-hidden relative transition-colors duration-300">
-      {/* O vídeo precisa de um tamanho de verdade na tela -- 1x1px podia
-          fazer o Chrome desenhar a janela do PiP nesse mesmo tamanho
-          minúsculo (praticamente invisível), mesmo o canvas sendo
-          720x720. Continua invisível por causa do opacity-0, não pelo
-          tamanho do container. */}
-      <div className="opacity-0 pointer-events-none fixed -left-[9999px] top-0 w-[300px] h-[300px] overflow-hidden -z-50">
+      {/* Contêiner 1x1px invisível -- é o tamanho confirmado funcionando de
+          verdade no Render (commit 77bdcfc). Uma tentativa posterior de
+          "melhoria" mudou pra 300x300px por teoria (não testada) de que
+          1px causaria problema no PiP -- não há confirmação de que esse
+          tamanho realmente importe; o que importa é opacity-0 +
+          pointer-events-none escondendo o elemento visualmente. */}
+      <div className="opacity-0 pointer-events-none absolute -z-50 overflow-hidden w-px h-px">
         <canvas ref={canvasRef} width={720} height={720} />
         <video ref={videoRef} playsInline muted className="w-full h-full" />
       </div>
@@ -443,6 +444,7 @@ export default function CardioTab() {
             {pipDebug}
           </p>
         )}
+        <PipDebugPanel />
       </div>
     </div>
   );

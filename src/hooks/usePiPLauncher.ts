@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { mediaMaestro } from '../services/mediaMaestro';
+import { logPiP } from '../lib/pipDebugLog';
 
 /**
  * Visor flutuante (Picture-in-Picture) reutilizável: mostra um cronômetro
@@ -31,13 +32,13 @@ export function usePiPLauncher() {
     video.style.position = 'fixed';
     video.style.opacity = '0';
     video.style.pointerEvents = 'none';
-    // O vídeo precisa de um tamanho de verdade na tela -- 1x1px pode
-    // fazer o Chrome desenhar a janela do PiP nesse mesmo tamanho
-    // minúsculo (praticamente invisível), mesmo com o conteúdo do
-    // canvas sendo 720x720. Fica invisível por causa do opacity:0 e
-    // fora da área visível pelo "left: -9999px", não pelo tamanho.
-    video.style.width = '300px';
-    video.style.height = '300px';
+    // Tamanho 1x1px -- é o que estava confirmado funcionando de verdade
+    // no Render (aba clássica de Cardio, commit 77bdcfc). Uma teoria não
+    // testada dizia que 1px causaria problema no PiP, mas não há
+    // confirmação disso -- o que esconde o elemento é opacity:0 +
+    // pointer-events:none, não o tamanho.
+    video.style.width = '1px';
+    video.style.height = '1px';
     video.style.left = '-9999px';
     document.body.appendChild(video);
 
@@ -85,11 +86,27 @@ export function usePiPLauncher() {
         const stream = (canvas as any).captureStream(30);
         video.srcObject = stream;
         await video.play().catch(() => {});
+        logPiP('Visor inicializado (stream do canvas pronta).');
       } catch (e) {
         console.error("Falha ao iniciar o stream do PiP", e);
+        logPiP(`Falha ao iniciar stream do visor: ${e}`);
       }
     };
     initializeStream();
+
+    // Estes dois listeners ficam ativos a vida toda do hook (não só
+    // durante um launch()), porque o sumiço do visor pode acontecer bem
+    // depois da chamada de abrir o app -- precisamos pegar o evento
+    // sempre que ele disparar, e correlacionar com a troca de aba.
+    const onLeave = () => {
+      logPiP(`Visor SAIU do PiP (evento leavepictureinpicture). Aba oculta agora? ${document.hidden ? 'sim' : 'não'}.`);
+    };
+    video.addEventListener('leavepictureinpicture', onLeave);
+
+    const onVisibility = () => {
+      logPiP(`Visibilidade da aba mudou: ${document.hidden ? 'ocultada' : 'visível'}. PiP ativo nesse instante? ${document.pictureInPictureElement ? 'sim' : 'não'}.`);
+    };
+    document.addEventListener('visibilitychange', onVisibility);
 
     // O Chrome pausa o redesenho do canvas quando a aba vai pra segundo
     // plano (bug conhecido: canvas.captureStream() fica vazio/congelado
@@ -111,6 +128,8 @@ export function usePiPLauncher() {
     return () => {
       worker.terminate();
       URL.revokeObjectURL(workerUrl);
+      video.removeEventListener('leavepictureinpicture', onLeave);
+      document.removeEventListener('visibilitychange', onVisibility);
       video.remove();
     };
   }, []);
@@ -119,9 +138,11 @@ export function usePiPLauncher() {
     const video = videoElRef.current;
     if (!video) throw new Error('Elemento de vídeo do visor não está pronto ainda.');
     if (document.pictureInPictureElement) {
+      logPiP('Saindo do PiP (togglePiP chamado com PiP já ativo).');
       await document.exitPictureInPicture();
     } else {
       if (!document.pictureInPictureEnabled) {
+        logPiP('document.pictureInPictureEnabled = false -- navegador/OS bloqueou PiP antes mesmo de tentar.');
         throw new Error('document.pictureInPictureEnabled = false (navegador/página bloqueou PiP).');
       }
       // Sem await antes do requestPictureInPicture -- qualquer espera aqui
@@ -129,58 +150,37 @@ export function usePiPLauncher() {
       // "gesto do usuário" que o navegador exige pra liberar o PiP sem
       // bloquear, o mesmo problema que já vimos com o window.open().
       if (video.paused) video.play().catch(() => {});
+      logPiP('Chamando requestPictureInPicture()...');
       await video.requestPictureInPicture();
+      logPiP('requestPictureInPicture() resolveu (Promise aceita).');
       mediaMaestro.duckVolume(0.5);
     }
   };
 
   const launch = (opener: () => void, onDebug?: (msg: string) => void) => {
     activeRef.current = true;
-    const video = videoElRef.current;
+    logPiP(`launch() chamado (abrindo app/URL após o PiP).`);
 
-    // Sincroniza a abertura da URL com a confirmação REAL de que o PiP
-    // entrou (evento 'enterpictureinpicture'), em vez de com a resolução
-    // da Promise de requestPictureInPicture() -- a Promise resolve assim
-    // que o pedido é aceito, não quando a janela do PiP já está de pé.
-    // Isso corrige a ordem sem reintroduzir o polling com setTimeout que
-    // causava bloqueio de pop-up (o listener de evento não consome o
-    // "gesto do usuário" do mesmo jeito que um loop de espera consome).
-    if (video) {
-      let settled = false;
-      const onEnter = () => {
-        if (settled) return;
-        settled = true;
-        video.removeEventListener('enterpictureinpicture', onEnter);
-        onDebug?.('Visor entrou (evento enterpictureinpicture confirmado).');
-        opener();
-      };
-      video.addEventListener('enterpictureinpicture', onEnter);
-
-      // Rede de segurança: se nem o evento nem o erro chegarem em 2.5s,
-      // abre mesmo assim e avisa -- pra nunca travar sem fazer nada.
-      const timeoutId = setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        video.removeEventListener('enterpictureinpicture', onEnter);
-        onDebug?.('Visor não confirmou entrada em 2.5s (nem sucesso nem erro).');
-        opener();
-      }, 2500);
-
-      togglePiP().catch(err => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeoutId);
-        video.removeEventListener('enterpictureinpicture', onEnter);
-        const msg = `Erro no PiP: ${err?.name || ''} ${err?.message || err}`;
-        console.error(msg);
-        onDebug?.(msg);
-        opener();
-      }).then(() => {
-        clearTimeout(timeoutId);
-      });
-    } else {
-      togglePiP().catch(err => onDebug?.(`Erro no PiP: ${err?.name || ''} ${err?.message || err}`)).finally(opener);
-    }
+    // Padrão restaurado ao que foi CONFIRMADO funcionando de verdade no
+    // Render (aba clássica de Cardio, commit da09120 / revert 77bdcfc):
+    // abre o app assim que a Promise do togglePiP resolve, sem esperar
+    // o evento 'enterpictureinpicture'. A tentativa de "sincronizar com
+    // a confirmação real" parecia mais robusta no papel, mas não há
+    // confirmação de que ajudou -- e o problema voltou depois dela ter
+    // sido introduzida. Os listeners de leavepictureinpicture/
+    // visibilitychange (lá em cima) continuam ativos e seguem
+    // registrando o que acontece depois, então não perdemos o
+    // diagnóstico.
+    togglePiP().then(() => {
+      logPiP('togglePiP resolveu, abrindo app agora.');
+      opener();
+    }).catch(err => {
+      const msg = `Erro no PiP: ${err?.name || ''} ${err?.message || err}`;
+      console.error(msg);
+      logPiP(`${msg} -- abrindo app mesmo assim.`);
+      onDebug?.(msg);
+      opener();
+    });
   };
 
   return { launch };

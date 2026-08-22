@@ -14,8 +14,10 @@ export interface BodyOption {
 
 // ─── Tipos de corpo (etapa "tipoCorpo") ───────────────────────────────
 export const BODY_TYPES: { id: string; label: string; src: string }[] = [
-  { id: 'gordo', label: 'Corpo Cheio', src: '/bodydiet/corpo/corpo_gordo.png' },
-  { id: 'musculoso', label: 'Musculoso / Definido', src: '/bodydiet/corpo/corpo_musculoso.png' },
+  { id: 'gordo', label: 'Gordo / Endomorfa', src: '/bodydiet/tipos/gordo.jpg' },
+  { id: 'quadrado', label: 'Quadrado / Retangular', src: '/bodydiet/tipos/quadrado.jpg' },
+  { id: 'triangular', label: 'Triangular / Pera', src: '/bodydiet/tipos/triangular.jpg' },
+  { id: 'vshape', label: 'Ombros Largos', src: '/bodydiet/tipos/vshape.jpg' },
 ];
 
 // ─── Regiões do corpo: cada uma tem 5 opções "atuais" (linha 1 da
@@ -35,6 +37,22 @@ function row(prefix: string, folder: string, r: number, count = 5): BodyOption[]
   }));
 }
 
+// Glúteos v2: 5 níveis (1 imagem cada), Nível 1 (plano) a Nível 5 (hipertrofiado).
+// A mesma escala serve tanto pra "atual" quanto pra "meta".
+const GLUTEOS_NIVEIS: BodyOption[] = Array.from({ length: 5 }, (_, i) => ({
+  id: `gluteos_nivel_${i + 1}`,
+  src: `/bodydiet/gluteos_v2/gluteos_nivel_${i + 1}.png`,
+}));
+export const GLUTEOS_NIVEL_LABELS = ['Plano', 'Leve volume', 'Firme e definido', 'Bem definido', 'Hipertrofiado'];
+
+// Pernas v2: 4 níveis (1 imagem cada, frontal + lateral), Nível 1 (fina) a
+// Nível 4 (volumosa/hipertrofia). Mesma escala serve pra "atual" e "meta".
+const PERNAS_NIVEIS: BodyOption[] = Array.from({ length: 4 }, (_, i) => ({
+  id: `pernas_nivel_${i + 1}`,
+  src: `/bodydiet/pernas_v2/pernas_nivel_${i + 1}.jpg`,
+}));
+export const PERNAS_NIVEL_LABELS = ['Fina / Sem desenho muscular', 'Volume médio / Uniforme', 'Definida (quadríceps marcados)', 'Volumosa e torneada'];
+
 export const BODY_REGIONS: BodyRegion[] = [
   {
     id: 'costas',
@@ -44,21 +62,20 @@ export const BODY_REGIONS: BodyRegion[] = [
   },
   {
     id: 'torso',
-    label: 'Torso / Abdômen',
+    label: 'Peito / Abdômen',
     current: row('torso', 'torso', 1),
     goalLevels: [row('torso', 'torso', 2), row('torso', 'torso', 3), row('torso', 'torso', 4)],
   },
   {
     id: 'gluteos',
     label: 'Quadril e Glúteos',
-    current: row('gluteos', 'gluteos', 1),
-    goalLevels: [row('gluteos', 'gluteos', 2)],
+    current: GLUTEOS_NIVEIS,
+    goalLevels: [GLUTEOS_NIVEIS],
   },
   {
     id: 'pernas',
     label: 'Pernas',
-    current: Array.from({ length: 5 }, (_, i) => ({ id: `pernas_${i + 1}`, src: `/bodydiet/pernas/pernas_${i + 1}.png` })),
-    // Pernas só tem uma leva de fotos -- usa a mesma leva como opções de meta.
-    goalLevels: [Array.from({ length: 5 }, (_, i) => ({ id: `pernas_${i + 1}`, src: `/bodydiet/pernas/pernas_${i + 1}.png` }))],
+    current: PERNAS_NIVEIS,
+    goalLevels: [PERNAS_NIVEIS],
   },
 ];
