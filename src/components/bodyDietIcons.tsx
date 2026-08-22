@@ -45,6 +45,14 @@ const GLUTEOS_NIVEIS: BodyOption[] = Array.from({ length: 5 }, (_, i) => ({
 }));
 export const GLUTEOS_NIVEL_LABELS = ['Plano', 'Leve volume', 'Firme e definido', 'Bem definido', 'Hipertrofiado'];
 
+// Pernas v2: 4 níveis (1 imagem cada, frontal + lateral), Nível 1 (fina) a
+// Nível 4 (volumosa/hipertrofia). Mesma escala serve pra "atual" e "meta".
+const PERNAS_NIVEIS: BodyOption[] = Array.from({ length: 4 }, (_, i) => ({
+  id: `pernas_nivel_${i + 1}`,
+  src: `/bodydiet/pernas_v2/pernas_nivel_${i + 1}.jpg`,
+}));
+export const PERNAS_NIVEL_LABELS = ['Fina / Sem desenho muscular', 'Volume médio / Uniforme', 'Definida (quadríceps marcados)', 'Volumosa e torneada'];
+
 export const BODY_REGIONS: BodyRegion[] = [
   {
     id: 'costas',
@@ -54,7 +62,7 @@ export const BODY_REGIONS: BodyRegion[] = [
   },
   {
     id: 'torso',
-    label: 'Torso / Abdômen',
+    label: 'Peito / Abdômen',
     current: row('torso', 'torso', 1),
     goalLevels: [row('torso', 'torso', 2), row('torso', 'torso', 3), row('torso', 'torso', 4)],
   },
@@ -67,8 +75,7 @@ export const BODY_REGIONS: BodyRegion[] = [
   {
     id: 'pernas',
     label: 'Pernas',
-    current: Array.from({ length: 5 }, (_, i) => ({ id: `pernas_${i + 1}`, src: `/bodydiet/pernas/pernas_${i + 1}.png` })),
-    // Pernas só tem uma leva de fotos -- usa a mesma leva como opções de meta.
-    goalLevels: [Array.from({ length: 5 }, (_, i) => ({ id: `pernas_${i + 1}`, src: `/bodydiet/pernas/pernas_${i + 1}.png` }))],
+    current: PERNAS_NIVEIS,
+    goalLevels: [PERNAS_NIVEIS],
   },
 ];
