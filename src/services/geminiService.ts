@@ -1,5 +1,5 @@
 import { ChatMessage, TrainingPlan, DietPlan } from "../types";
-import { apiUrl, apiHeaders } from './apiBase';
+import { apiUrl, apiHeaders, API_BASE, HUB_API_KEY } from './apiBase';
 
 // Chave para persistência no localStorage
 const STORAGE_KEY = 'ironmind_chat_history';
@@ -40,8 +40,13 @@ export async function updateNeuralLinkUrl(url?: string, apiKey?: string): Promis
  */
 export async function diagnoseNeuralLink(): Promise<any> {
   try {
-    const res = await fetch(apiUrl("/api/neural-link/diagnose"));
-    return await res.json();
+    // Não existe mais um "cérebro externo" configurável separado -- o
+    // IronMind AI já é o motor direto. Usamos /api/ping (sempre existiu,
+    // sempre funciona) só pra confirmar que o backend está de pé.
+    const res = await fetch(apiUrl("/api/ping"));
+    if (!res.ok) return { online: false, error: `HTTP ${res.status}` };
+    const data = await res.json();
+    return { online: data.status === 'pong', target: API_BASE || '(mesmo domínio)', apiKey: HUB_API_KEY ? '••••••••' : null };
   } catch (error) {
     console.error("Diagnostic Error:", error);
     return { online: false, error: "Falha ao conectar com o servidor de diagnóstico." };

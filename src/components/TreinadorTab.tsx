@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ChatMessage, TrainingPlan, DietPlan } from '../types';
-import { chatWithCoach, generateProposal, diagnoseNeuralLink, updateNeuralLinkUrl } from '../services/geminiService';
+import { chatWithCoach, generateProposal, diagnoseNeuralLink } from '../services/geminiService';
 import { checkAIHealth } from '../services/aiManagerService';
 
 interface TreinadorTabProps {
@@ -25,27 +25,10 @@ interface TreinadorTabProps {
 function NeuralLinkDiagnostic({ onClose, onStatusChange }: { onClose: () => void, onStatusChange?: (online: boolean) => void }) {
   const [diag, setDiag] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [editUrl, setEditUrl] = useState('');
-  const [editApiKey, setEditApiKey] = useState('');
-  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     runDiagnostic();
   }, []);
-
-  const handleUpdateConfig = async () => {
-    if (!editUrl && !editApiKey) return;
-    setIsUpdating(true);
-    const res = await updateNeuralLinkUrl(editUrl || undefined, editApiKey || undefined);
-    if (res.success) {
-      await runDiagnostic();
-      setEditUrl('');
-      setEditApiKey('');
-    } else {
-      alert(res.message || "Erro ao atualizar");
-    }
-    setIsUpdating(false);
-  };
 
   const runDiagnostic = async () => {
     setLoading(true);
@@ -109,52 +92,23 @@ function NeuralLinkDiagnostic({ onClose, onStatusChange }: { onClose: () => void
 
           <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden space-y-3">
             <div>
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-1.5">
                 <Globe className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">URL do Cérebro Externo (API)</span>
+                <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Backend (fixo)</span>
               </div>
-              
-              <div className="flex gap-2">
-                 <input 
-                   type="text"
-                   value={editUrl}
-                   onChange={(e) => setEditUrl(e.target.value)}
-                   placeholder="Ex: https://seu-app.run.app/api/chat"
-                   className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-[10px] focus:outline-none focus:border-blue-500 transition-all font-mono"
-                 />
-              </div>
-              <code className="mt-1.5 text-[9px] text-blue-600 dark:text-blue-400 font-mono break-all opacity-80 leading-relaxed block bg-white dark:bg-slate-800 p-2 rounded-lg">
-                Link Atual: {diag?.target}
+              <code className="text-[9px] text-blue-600 dark:text-blue-400 font-mono break-all opacity-80 leading-relaxed block bg-white dark:bg-slate-800 p-2 rounded-lg">
+                {diag?.target}
               </code>
             </div>
-
             <div>
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-1.5">
                 <Zap className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Chave de Acesso (API Key / Token)</span>
+                <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Autenticação</span>
               </div>
-              
-              <div className="flex gap-2">
-                 <input 
-                   type="text"
-                   value={editApiKey}
-                   onChange={(e) => setEditApiKey(e.target.value)}
-                   placeholder="Ex: HUB_IRONMIND_..."
-                   className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-[10px] focus:outline-none focus:border-blue-500 transition-all font-mono"
-                 />
-              </div>
-              <code className="mt-1.5 text-[9px] text-blue-600 dark:text-blue-400 font-mono break-all opacity-80 leading-relaxed block bg-white dark:bg-slate-800 p-2 rounded-lg">
-                Chave Ativa: {diag?.apiKey || "Nenhuma chave configurada"}
+              <code className="text-[9px] text-blue-600 dark:text-blue-400 font-mono break-all opacity-80 leading-relaxed block bg-white dark:bg-slate-800 p-2 rounded-lg">
+                {diag?.apiKey ? `Configurada ${diag.apiKey}` : "Nenhuma chave configurada"}
               </code>
             </div>
-
-            <button 
-              onClick={handleUpdateConfig}
-              disabled={isUpdating || (!editUrl && !editApiKey)}
-              className="w-full py-2 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest disabled:opacity-50 transition-all mt-1"
-            >
-              {isUpdating ? 'Salvando Configurações...' : 'Salvar Configurações'}
-            </button>
           </div>
 
           {!diag.online && (
