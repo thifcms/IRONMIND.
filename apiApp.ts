@@ -25,7 +25,7 @@ if (typeof Object.hasOwn !== 'function') {
 }
 
 let EXTERNAL_COACH_URL = "https://ironmind-ai.netlify.app/api/chat";
-let EXTERNAL_COACH_API_KEY = "HUB_IRONMIND_2024_UPLINK";
+let EXTERNAL_COACH_API_KEY = process.env.HUB_API_KEY || "HUB_IRONMIND_2024_UPLINK";
 
 /**
  * Função auxiliar para fetch com retentativa (Cold Start detection)
