@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, Check, Droplets, Moon, Utensils, Pill, Zap } from 'lucide-react';
-import { BODY_TYPES, BODY_REGIONS, RegionLevelIcon } from './bodyDietIcons';
+import { BODY_TYPES, BODY_REGIONS } from './bodyDietIcons';
 
 export interface BodyDietProfile {
   sexo?: 'masculino' | 'feminino' | 'outro';
@@ -13,8 +13,8 @@ export interface BodyDietProfile {
     coxa?: string;
   };
   tipoCorpoAtual?: string;
-  autopercepcaoAtual?: Record<string, 1 | 2 | 3>;
-  metaCorpo?: Record<string, 1 | 2 | 3>;
+  autopercepcaoAtual?: Record<string, string>;
+  metaCorpo?: Record<string, string>;
   dieta?: {
     alimentosPreferidos?: string;
     facilidadeHorarios?: 'facil' | 'medio' | 'dificil';
@@ -41,14 +41,6 @@ interface Props {
 
 const STEPS = ['sexo', 'medidas', 'tipoCorpo', 'atual', 'meta', 'dieta', 'agua', 'sono', 'preTreino'] as const;
 type Step = typeof STEPS[number];
-
-const REGION_LEVEL_LABELS: Record<string, [string, string, string]> = {
-  abdomen: ['Barriga saliente', 'Abdômen médio', 'Definido / tanquinho'],
-  bracos: ['Fino', 'Médio', 'Musculoso'],
-  pernas: ['Fina', 'Média', 'Musculosa'],
-  gluteos: ['Enxuto', 'Médio', 'Volumoso'],
-  peito_ombros: ['Estreito', 'Médio', 'Largo / definido'],
-};
 
 const SUPLEMENTOS = ['Creatina', 'Whey Protein', 'BCAA', 'Multivitamínico', 'Nenhum'];
 
@@ -182,19 +174,17 @@ export default function BodyDietProfileTab({ initial, onSave, onSkip }: Props) {
               <div className={cardCls}>
                 <h3 className="text-lg font-[1000] italic text-slate-900 dark:text-white uppercase tracking-tighter mb-1">Como você vê seu corpo?</h3>
                 <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-4">Escolhe a silhueta que mais se parece com a sua hoje.</p>
-                <div className="grid grid-cols-3 gap-3">
-                  {BODY_TYPES.map(({ id, label, Icon }) => (
+                <div className="grid grid-cols-2 gap-3">
+                  {BODY_TYPES.map(({ id, label, src }) => (
                     <button
                       key={id}
                       type="button"
                       onClick={() => update({ tipoCorpoAtual: id })}
-                      className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${
-                        data.tipoCorpoAtual === id ? 'bg-blue-600/10 border-blue-600' : 'bg-slate-50 dark:bg-[#1a1a1a] border-slate-200 dark:border-slate-800'
+                      className={`flex flex-col items-center gap-2 p-2 rounded-xl border-2 transition-all overflow-hidden ${
+                        data.tipoCorpoAtual === id ? 'border-blue-600 bg-blue-600/10' : 'bg-slate-50 dark:bg-[#1a1a1a] border-slate-200 dark:border-slate-800'
                       }`}
                     >
-                      <div className={`w-10 h-16 ${data.tipoCorpoAtual === id ? 'text-blue-600' : 'text-slate-400 dark:text-slate-500'}`}>
-                        <Icon />
-                      </div>
+                      <img src={src} alt={label} className="w-full h-auto rounded-lg object-cover" />
                       <span className={`text-[8px] font-black uppercase tracking-widest text-center ${data.tipoCorpoAtual === id ? 'text-blue-600' : 'text-slate-500 dark:text-slate-400'}`}>
                         {label}
                       </span>
@@ -212,33 +202,33 @@ export default function BodyDietProfileTab({ initial, onSave, onSkip }: Props) {
                 <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-4">
                   {step === 'atual' ? 'Pra cada região, escolhe o nível que mais bate com você agora.' : 'Agora escolhe o nível que você quer alcançar em cada região.'}
                 </p>
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {BODY_REGIONS.map(region => {
                     const target = step === 'atual' ? data.autopercepcaoAtual : data.metaCorpo;
-                    const setTarget = (level: 1 | 2 | 3) => {
+                    const setTarget = (optionId: string) => {
                       const key = step === 'atual' ? 'autopercepcaoAtual' : 'metaCorpo';
-                      update({ [key]: { ...target, [region.id]: level } } as any);
+                      update({ [key]: { ...target, [region.id]: optionId } } as any);
                     };
+                    const rows = step === 'atual' ? [region.current] : region.goalLevels;
                     return (
                       <div key={region.id}>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 mb-1.5">{region.label}</p>
-                        <div className="grid grid-cols-3 gap-2">
-                          {[1, 2, 3].map((lvl) => (
-                            <button
-                              key={lvl}
-                              type="button"
-                              onClick={() => setTarget(lvl as 1 | 2 | 3)}
-                              className={`flex flex-col items-center gap-1.5 py-3 rounded-lg border-2 transition-all ${
-                                target?.[region.id] === lvl ? 'bg-blue-600/10 border-blue-600' : 'bg-slate-50 dark:bg-[#1a1a1a] border-slate-200 dark:border-slate-800'
-                              }`}
-                            >
-                              <div className={`w-11 h-11 ${target?.[region.id] === lvl ? 'text-blue-600' : 'text-slate-400 dark:text-slate-500'}`}>
-                                <RegionLevelIcon level={lvl as 1 | 2 | 3} />
-                              </div>
-                              <span className={`text-[8px] font-bold leading-tight text-center px-1 ${target?.[region.id] === lvl ? 'text-blue-600' : 'text-slate-500 dark:text-slate-400'}`}>
-                                {(REGION_LEVEL_LABELS[region.id] || ['Baixo', 'Médio', 'Alto'])[lvl - 1]}
-                              </span>
-                            </button>
+                        <div className="space-y-2">
+                          {rows.map((options, rowIdx) => (
+                            <div key={rowIdx} className="grid grid-cols-5 gap-1.5">
+                              {options.map(opt => (
+                                <button
+                                  key={opt.id}
+                                  type="button"
+                                  onClick={() => setTarget(opt.id)}
+                                  className={`rounded-lg border-2 overflow-hidden transition-all ${
+                                    target?.[region.id] === opt.id ? 'border-blue-600 ring-2 ring-blue-600/40' : 'border-slate-200 dark:border-slate-800'
+                                  }`}
+                                >
+                                  <img src={opt.src} alt="" className="w-full h-auto object-cover" />
+                                </button>
+                              ))}
+                            </div>
                           ))}
                         </div>
                       </div>
