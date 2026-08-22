@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Youtube } from 'lucide-react';
 import { usePiPLauncher } from '../hooks/usePiPLauncher';
 import PipDebugPanel from './PipDebugPanel';
+import { forceOpenInChrome } from '../lib/forceOpenInChrome';
 
 /**
  * Botões de Netflix/YouTube com o "visor flutuante" (cronômetro em
@@ -15,8 +16,9 @@ export default function MediaQuickLaunch() {
 
   const open = (url: string) => {
     setDebug(null);
+    const openUrl = forceOpenInChrome(url);
     launch(
-      () => window.open(url, '_blank'),
+      () => window.open(openUrl, '_blank'),
       (msg) => setDebug(msg)
     );
   };

@@ -5,6 +5,7 @@ import { bioMonitor } from '../services/bioMonitor';
 import { mediaMaestro } from '../services/mediaMaestro';
 import { logPiP } from '../lib/pipDebugLog';
 import PipDebugPanel from './PipDebugPanel';
+import { forceOpenInChrome } from '../lib/forceOpenInChrome';
 
 type CardioMode = 'corrida' | 'esteira' | 'bicicleta';
 
@@ -226,6 +227,7 @@ export default function CardioTab() {
     if (!isActive) setIsActive(true);
     setPipDebug(null);
     logPiP(`[Cardio] handleMediaClick chamado para ${url}.`);
+    const openUrl = forceOpenInChrome(url);
 
     // Padrão restaurado ao que foi CONFIRMADO funcionando de verdade no
     // Render (commit da09120 / revert 77bdcfc): abre o app assim que a
@@ -238,14 +240,14 @@ export default function CardioTab() {
     // registrando o que acontece depois, então não perdemos o
     // diagnóstico.
     togglePiP().then(() => {
-      logPiP('[Cardio] togglePiP resolveu, abrindo app agora.');
-      window.open(url, '_blank');
+      logPiP('[Cardio] togglePiP resolveu, abrindo (travado no Chrome) agora.');
+      window.open(openUrl, '_blank');
     }).catch(err => {
       const msg = `Erro no PiP: ${err?.name || ''} ${err?.message || err}`;
       console.error(msg);
-      logPiP(`[Cardio] ${msg} -- abrindo app mesmo assim.`);
+      logPiP(`[Cardio] ${msg} -- abrindo mesmo assim.`);
       setPipDebug(msg);
-      window.open(url, '_blank');
+      window.open(openUrl, '_blank');
     });
   };
 
