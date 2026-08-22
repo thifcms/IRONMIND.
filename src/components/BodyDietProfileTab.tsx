@@ -184,7 +184,9 @@ export default function BodyDietProfileTab({ initial, onSave, onSkip }: Props) {
                         data.tipoCorpoAtual === id ? 'border-blue-600 bg-blue-600/10' : 'bg-slate-50 dark:bg-[#1a1a1a] border-slate-200 dark:border-slate-800'
                       }`}
                     >
-                      <img src={src} alt={label} className="w-full h-auto rounded-lg object-cover" />
+                      <div className="w-full aspect-[3/4] rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-800">
+                        <img src={src} alt={label} className="w-full h-full object-cover object-top" />
+                      </div>
                       <span className={`text-[8px] font-black uppercase tracking-widest text-center ${data.tipoCorpoAtual === id ? 'text-blue-600' : 'text-slate-500 dark:text-slate-400'}`}>
                         {label}
                       </span>
@@ -215,7 +217,7 @@ export default function BodyDietProfileTab({ initial, onSave, onSkip }: Props) {
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 mb-1.5">{region.label}</p>
                         <div className="space-y-2">
                           {rows.map((options, rowIdx) => (
-                            <div key={rowIdx} className="grid grid-cols-5 gap-1.5">
+                            <div key={rowIdx} className={`grid gap-1.5 ${options.length === 4 ? 'grid-cols-4' : 'grid-cols-5'}`}>
                               {options.map(opt => (
                                 <button
                                   key={opt.id}
