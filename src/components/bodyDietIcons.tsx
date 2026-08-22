@@ -14,8 +14,10 @@ export interface BodyOption {
 
 // ─── Tipos de corpo (etapa "tipoCorpo") ───────────────────────────────
 export const BODY_TYPES: { id: string; label: string; src: string }[] = [
-  { id: 'gordo', label: 'Corpo Cheio', src: '/bodydiet/corpo/corpo_gordo.png' },
-  { id: 'musculoso', label: 'Musculoso / Definido', src: '/bodydiet/corpo/corpo_musculoso.png' },
+  { id: 'gordo', label: 'Gordo / Endomorfa', src: '/bodydiet/corpo/corpo_gordo.png' },
+  { id: 'quadrado', label: 'Quadrado / Retangular', src: '/bodydiet/tipos/quadrado.jpg' },
+  { id: 'triangular', label: 'Triangular / Pera', src: '/bodydiet/tipos/triangular.jpg' },
+  { id: 'vshape', label: 'V-Shape / Ombros Largos', src: '/bodydiet/tipos/vshape.jpg' },
 ];
 
 // ─── Regiões do corpo: cada uma tem 5 opções "atuais" (linha 1 da
@@ -35,6 +37,14 @@ function row(prefix: string, folder: string, r: number, count = 5): BodyOption[]
   }));
 }
 
+// Glúteos v2: 5 níveis (1 imagem cada), Nível 1 (plano) a Nível 5 (hipertrofiado).
+// A mesma escala serve tanto pra "atual" quanto pra "meta".
+const GLUTEOS_NIVEIS: BodyOption[] = Array.from({ length: 5 }, (_, i) => ({
+  id: `gluteos_nivel_${i + 1}`,
+  src: `/bodydiet/gluteos_v2/gluteos_nivel_${i + 1}.png`,
+}));
+export const GLUTEOS_NIVEL_LABELS = ['Plano', 'Leve volume', 'Firme e definido', 'Bem definido', 'Hipertrofiado'];
+
 export const BODY_REGIONS: BodyRegion[] = [
   {
     id: 'costas',
@@ -51,8 +61,8 @@ export const BODY_REGIONS: BodyRegion[] = [
   {
     id: 'gluteos',
     label: 'Quadril e Glúteos',
-    current: row('gluteos', 'gluteos', 1),
-    goalLevels: [row('gluteos', 'gluteos', 2)],
+    current: GLUTEOS_NIVEIS,
+    goalLevels: [GLUTEOS_NIVEIS],
   },
   {
     id: 'pernas',
