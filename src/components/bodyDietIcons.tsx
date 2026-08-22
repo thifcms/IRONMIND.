@@ -17,7 +17,7 @@ export const BODY_TYPES: { id: string; label: string; src: string }[] = [
   { id: 'gordo', label: 'Gordo / Endomorfa', src: '/bodydiet/corpo/corpo_gordo.png' },
   { id: 'quadrado', label: 'Quadrado / Retangular', src: '/bodydiet/tipos/quadrado.jpg' },
   { id: 'triangular', label: 'Triangular / Pera', src: '/bodydiet/tipos/triangular.jpg' },
-  { id: 'vshape', label: 'V-Shape / Ombros Largos', src: '/bodydiet/tipos/vshape.jpg' },
+  { id: 'vshape', label: 'Ombros Largos', src: '/bodydiet/tipos/vshape.jpg' },
 ];
 
 // ─── Regiões do corpo: cada uma tem 5 opções "atuais" (linha 1 da
