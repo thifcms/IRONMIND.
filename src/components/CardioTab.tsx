@@ -227,53 +227,25 @@ export default function CardioTab() {
     setPipDebug(null);
     logPiP(`[Cardio] handleMediaClick chamado para ${url}.`);
 
-    const video = videoRef.current;
-    let settled = false;
-
-    const openNow = () => window.open(url, '_blank');
-
-    if (!video) {
-      togglePiP().catch(err => setPipDebug(`Erro no PiP: ${err?.name || ''} ${err?.message || err}`)).finally(openNow);
-      return;
-    }
-
-    // Sincroniza a abertura da URL com a confirmação REAL de que o PiP
-    // entrou (evento 'enterpictureinpicture'), em vez de com a resolução
-    // da Promise de requestPictureInPicture() -- a Promise resolve assim
-    // que o pedido é aceito, não quando a janela do PiP já está de pé.
-    const onEnter = () => {
-      if (settled) return;
-      settled = true;
-      video.removeEventListener('enterpictureinpicture', onEnter);
-      logPiP('[Cardio] Visor entrou (evento enterpictureinpicture confirmado). Abrindo app agora.');
-      setPipDebug('Visor entrou (evento enterpictureinpicture confirmado).');
-      openNow();
-    };
-    video.addEventListener('enterpictureinpicture', onEnter);
-
-    // Rede de segurança: se nem o evento nem o erro chegarem em 2.5s,
-    // abre mesmo assim e avisa -- pra nunca travar sem fazer nada.
-    const timeoutId = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      video.removeEventListener('enterpictureinpicture', onEnter);
-      logPiP('[Cardio] Visor NÃO confirmou entrada em 2.5s -- abrindo app mesmo assim.');
-      setPipDebug('Visor não confirmou entrada em 2.5s (nem sucesso nem erro).');
-      openNow();
-    }, 2500);
-
-    togglePiP().catch(err => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeoutId);
-      video.removeEventListener('enterpictureinpicture', onEnter);
+    // Padrão restaurado ao que foi CONFIRMADO funcionando de verdade no
+    // Render (commit da09120 / revert 77bdcfc): abre o app assim que a
+    // Promise do togglePiP resolve, sem esperar o evento
+    // 'enterpictureinpicture'. A tentativa de "sincronizar com a
+    // confirmação real" parecia mais robusta no papel, mas não tem
+    // confirmação de que ajudou -- e o app parou de funcionar depois
+    // dela ter sido introduzida. Os listeners de leavepictureinpicture/
+    // visibilitychange continuam ativos (no useEffect) e seguem
+    // registrando o que acontece depois, então não perdemos o
+    // diagnóstico.
+    togglePiP().then(() => {
+      logPiP('[Cardio] togglePiP resolveu, abrindo app agora.');
+      window.open(url, '_blank');
+    }).catch(err => {
       const msg = `Erro no PiP: ${err?.name || ''} ${err?.message || err}`;
       console.error(msg);
       logPiP(`[Cardio] ${msg} -- abrindo app mesmo assim.`);
       setPipDebug(msg);
-      openNow();
-    }).then(() => {
-      clearTimeout(timeoutId);
+      window.open(url, '_blank');
     });
   };
 
@@ -281,12 +253,13 @@ export default function CardioTab() {
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0a0a0a] overflow-hidden relative transition-colors duration-300">
-      {/* O vídeo precisa de um tamanho de verdade na tela -- 1x1px podia
-          fazer o Chrome desenhar a janela do PiP nesse mesmo tamanho
-          minúsculo (praticamente invisível), mesmo o canvas sendo
-          720x720. Continua invisível por causa do opacity-0, não pelo
-          tamanho do container. */}
-      <div className="opacity-0 pointer-events-none fixed -left-[9999px] top-0 w-[300px] h-[300px] overflow-hidden -z-50">
+      {/* Contêiner 1x1px invisível -- é o tamanho confirmado funcionando de
+          verdade no Render (commit 77bdcfc). Uma tentativa posterior de
+          "melhoria" mudou pra 300x300px por teoria (não testada) de que
+          1px causaria problema no PiP -- não há confirmação de que esse
+          tamanho realmente importe; o que importa é opacity-0 +
+          pointer-events-none escondendo o elemento visualmente. */}
+      <div className="opacity-0 pointer-events-none absolute -z-50 overflow-hidden w-px h-px">
         <canvas ref={canvasRef} width={720} height={720} />
         <video ref={videoRef} playsInline muted className="w-full h-full" />
       </div>

@@ -32,13 +32,13 @@ export function usePiPLauncher() {
     video.style.position = 'fixed';
     video.style.opacity = '0';
     video.style.pointerEvents = 'none';
-    // O vídeo precisa de um tamanho de verdade na tela -- 1x1px pode
-    // fazer o Chrome desenhar a janela do PiP nesse mesmo tamanho
-    // minúsculo (praticamente invisível), mesmo com o conteúdo do
-    // canvas sendo 720x720. Fica invisível por causa do opacity:0 e
-    // fora da área visível pelo "left: -9999px", não pelo tamanho.
-    video.style.width = '300px';
-    video.style.height = '300px';
+    // Tamanho 1x1px -- é o que estava confirmado funcionando de verdade
+    // no Render (aba clássica de Cardio, commit 77bdcfc). Uma teoria não
+    // testada dizia que 1px causaria problema no PiP, mas não há
+    // confirmação disso -- o que esconde o elemento é opacity:0 +
+    // pointer-events:none, não o tamanho.
+    video.style.width = '1px';
+    video.style.height = '1px';
     video.style.left = '-9999px';
     document.body.appendChild(video);
 
@@ -159,55 +159,28 @@ export function usePiPLauncher() {
 
   const launch = (opener: () => void, onDebug?: (msg: string) => void) => {
     activeRef.current = true;
-    const video = videoElRef.current;
     logPiP(`launch() chamado (abrindo app/URL após o PiP).`);
 
-    // Sincroniza a abertura da URL com a confirmação REAL de que o PiP
-    // entrou (evento 'enterpictureinpicture'), em vez de com a resolução
-    // da Promise de requestPictureInPicture() -- a Promise resolve assim
-    // que o pedido é aceito, não quando a janela do PiP já está de pé.
-    // Isso corrige a ordem sem reintroduzir o polling com setTimeout que
-    // causava bloqueio de pop-up (o listener de evento não consome o
-    // "gesto do usuário" do mesmo jeito que um loop de espera consome).
-    if (video) {
-      let settled = false;
-      const onEnter = () => {
-        if (settled) return;
-        settled = true;
-        video.removeEventListener('enterpictureinpicture', onEnter);
-        logPiP('Visor entrou (evento enterpictureinpicture confirmado). Abrindo app agora.');
-        onDebug?.('Visor entrou (evento enterpictureinpicture confirmado).');
-        opener();
-      };
-      video.addEventListener('enterpictureinpicture', onEnter);
-
-      // Rede de segurança: se nem o evento nem o erro chegarem em 2.5s,
-      // abre mesmo assim e avisa -- pra nunca travar sem fazer nada.
-      const timeoutId = setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        video.removeEventListener('enterpictureinpicture', onEnter);
-        logPiP('Visor NÃO confirmou entrada em 2.5s (nem sucesso nem erro) -- abrindo app mesmo assim.');
-        onDebug?.('Visor não confirmou entrada em 2.5s (nem sucesso nem erro).');
-        opener();
-      }, 2500);
-
-      togglePiP().catch(err => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeoutId);
-        video.removeEventListener('enterpictureinpicture', onEnter);
-        const msg = `Erro no PiP: ${err?.name || ''} ${err?.message || err}`;
-        console.error(msg);
-        logPiP(`${msg} -- abrindo app mesmo assim.`);
-        onDebug?.(msg);
-        opener();
-      }).then(() => {
-        clearTimeout(timeoutId);
-      });
-    } else {
-      togglePiP().catch(err => onDebug?.(`Erro no PiP: ${err?.name || ''} ${err?.message || err}`)).finally(opener);
-    }
+    // Padrão restaurado ao que foi CONFIRMADO funcionando de verdade no
+    // Render (aba clássica de Cardio, commit da09120 / revert 77bdcfc):
+    // abre o app assim que a Promise do togglePiP resolve, sem esperar
+    // o evento 'enterpictureinpicture'. A tentativa de "sincronizar com
+    // a confirmação real" parecia mais robusta no papel, mas não há
+    // confirmação de que ajudou -- e o problema voltou depois dela ter
+    // sido introduzida. Os listeners de leavepictureinpicture/
+    // visibilitychange (lá em cima) continuam ativos e seguem
+    // registrando o que acontece depois, então não perdemos o
+    // diagnóstico.
+    togglePiP().then(() => {
+      logPiP('togglePiP resolveu, abrindo app agora.');
+      opener();
+    }).catch(err => {
+      const msg = `Erro no PiP: ${err?.name || ''} ${err?.message || err}`;
+      console.error(msg);
+      logPiP(`${msg} -- abrindo app mesmo assim.`);
+      onDebug?.(msg);
+      opener();
+    });
   };
 
   return { launch };
