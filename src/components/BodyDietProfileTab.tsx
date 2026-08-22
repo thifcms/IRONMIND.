@@ -225,7 +225,7 @@ export default function BodyDietProfileTab({ initial, onSave, onSkip }: Props) {
                               }`}
                             >
                               <div className={`w-6 h-9 ${target?.[region.id] === lvl ? 'text-blue-600' : 'text-slate-400 dark:text-slate-500'}`}>
-                                <RegionLevelIcon level={lvl as 1 | 2 | 3} />
+                                <RegionLevelIcon level={lvl as 1 | 2 | 3} region={region.id} />
                               </div>
                             </button>
                           ))}
