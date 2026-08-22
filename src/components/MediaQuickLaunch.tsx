@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Youtube } from 'lucide-react';
 import { usePiPLauncher } from '../hooks/usePiPLauncher';
+import PipDebugPanel from './PipDebugPanel';
 
 /**
  * Botões de Netflix/YouTube com o "visor flutuante" (cronômetro em
@@ -41,6 +42,7 @@ export default function MediaQuickLaunch() {
           {debug}
         </p>
       )}
+      <PipDebugPanel />
     </div>
   );
 }

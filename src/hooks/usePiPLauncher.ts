@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { mediaMaestro } from '../services/mediaMaestro';
+import { logPiP } from '../lib/pipDebugLog';
 
 /**
  * Visor flutuante (Picture-in-Picture) reutilizável: mostra um cronômetro
@@ -85,11 +86,27 @@ export function usePiPLauncher() {
         const stream = (canvas as any).captureStream(30);
         video.srcObject = stream;
         await video.play().catch(() => {});
+        logPiP('Visor inicializado (stream do canvas pronta).');
       } catch (e) {
         console.error("Falha ao iniciar o stream do PiP", e);
+        logPiP(`Falha ao iniciar stream do visor: ${e}`);
       }
     };
     initializeStream();
+
+    // Estes dois listeners ficam ativos a vida toda do hook (não só
+    // durante um launch()), porque o sumiço do visor pode acontecer bem
+    // depois da chamada de abrir o app -- precisamos pegar o evento
+    // sempre que ele disparar, e correlacionar com a troca de aba.
+    const onLeave = () => {
+      logPiP(`Visor SAIU do PiP (evento leavepictureinpicture). Aba oculta agora? ${document.hidden ? 'sim' : 'não'}.`);
+    };
+    video.addEventListener('leavepictureinpicture', onLeave);
+
+    const onVisibility = () => {
+      logPiP(`Visibilidade da aba mudou: ${document.hidden ? 'ocultada' : 'visível'}. PiP ativo nesse instante? ${document.pictureInPictureElement ? 'sim' : 'não'}.`);
+    };
+    document.addEventListener('visibilitychange', onVisibility);
 
     // O Chrome pausa o redesenho do canvas quando a aba vai pra segundo
     // plano (bug conhecido: canvas.captureStream() fica vazio/congelado
@@ -111,6 +128,8 @@ export function usePiPLauncher() {
     return () => {
       worker.terminate();
       URL.revokeObjectURL(workerUrl);
+      video.removeEventListener('leavepictureinpicture', onLeave);
+      document.removeEventListener('visibilitychange', onVisibility);
       video.remove();
     };
   }, []);
@@ -119,9 +138,11 @@ export function usePiPLauncher() {
     const video = videoElRef.current;
     if (!video) throw new Error('Elemento de vídeo do visor não está pronto ainda.');
     if (document.pictureInPictureElement) {
+      logPiP('Saindo do PiP (togglePiP chamado com PiP já ativo).');
       await document.exitPictureInPicture();
     } else {
       if (!document.pictureInPictureEnabled) {
+        logPiP('document.pictureInPictureEnabled = false -- navegador/OS bloqueou PiP antes mesmo de tentar.');
         throw new Error('document.pictureInPictureEnabled = false (navegador/página bloqueou PiP).');
       }
       // Sem await antes do requestPictureInPicture -- qualquer espera aqui
@@ -129,7 +150,9 @@ export function usePiPLauncher() {
       // "gesto do usuário" que o navegador exige pra liberar o PiP sem
       // bloquear, o mesmo problema que já vimos com o window.open().
       if (video.paused) video.play().catch(() => {});
+      logPiP('Chamando requestPictureInPicture()...');
       await video.requestPictureInPicture();
+      logPiP('requestPictureInPicture() resolveu (Promise aceita).');
       mediaMaestro.duckVolume(0.5);
     }
   };
@@ -137,6 +160,7 @@ export function usePiPLauncher() {
   const launch = (opener: () => void, onDebug?: (msg: string) => void) => {
     activeRef.current = true;
     const video = videoElRef.current;
+    logPiP(`launch() chamado (abrindo app/URL após o PiP).`);
 
     // Sincroniza a abertura da URL com a confirmação REAL de que o PiP
     // entrou (evento 'enterpictureinpicture'), em vez de com a resolução
@@ -151,6 +175,7 @@ export function usePiPLauncher() {
         if (settled) return;
         settled = true;
         video.removeEventListener('enterpictureinpicture', onEnter);
+        logPiP('Visor entrou (evento enterpictureinpicture confirmado). Abrindo app agora.');
         onDebug?.('Visor entrou (evento enterpictureinpicture confirmado).');
         opener();
       };
@@ -162,6 +187,7 @@ export function usePiPLauncher() {
         if (settled) return;
         settled = true;
         video.removeEventListener('enterpictureinpicture', onEnter);
+        logPiP('Visor NÃO confirmou entrada em 2.5s (nem sucesso nem erro) -- abrindo app mesmo assim.');
         onDebug?.('Visor não confirmou entrada em 2.5s (nem sucesso nem erro).');
         opener();
       }, 2500);
@@ -173,6 +199,7 @@ export function usePiPLauncher() {
         video.removeEventListener('enterpictureinpicture', onEnter);
         const msg = `Erro no PiP: ${err?.name || ''} ${err?.message || err}`;
         console.error(msg);
+        logPiP(`${msg} -- abrindo app mesmo assim.`);
         onDebug?.(msg);
         opener();
       }).then(() => {

@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Bike, Footprints, Timer, Zap, MapPin, Youtube, Gauge, TrendingUp, Weight, Pause, Play, MonitorPlay, Activity, Heart, AlertTriangle } from 'lucide-react';
 import { bioMonitor } from '../services/bioMonitor';
 import { mediaMaestro } from '../services/mediaMaestro';
+import { logPiP } from '../lib/pipDebugLog';
+import PipDebugPanel from './PipDebugPanel';
 
 type CardioMode = 'corrida' | 'esteira' | 'bicicleta';
 
@@ -148,12 +150,28 @@ export default function CardioTab() {
           videoRef.current.srcObject = stream;
           // Pre-play muted video to have it ready for PiP
           await videoRef.current.play().catch(() => {});
+          logPiP('[Cardio] Visor inicializado (stream do canvas pronta).');
         } catch (e) {
           console.error("Failed to initialize PiP stream", e);
+          logPiP(`[Cardio] Falha ao iniciar stream do visor: ${e}`);
         }
       }
     };
     initializeStream();
+
+    const video = videoRef.current;
+    const onLeave = () => {
+      logPiP(`[Cardio] Visor SAIU do PiP (evento leavepictureinpicture). Aba oculta agora? ${document.hidden ? 'sim' : 'não'}.`);
+    };
+    const onVisibility = () => {
+      logPiP(`[Cardio] Visibilidade da aba mudou: ${document.hidden ? 'ocultada' : 'visível'}. PiP ativo nesse instante? ${document.pictureInPictureElement ? 'sim' : 'não'}.`);
+    };
+    video?.addEventListener('leavepictureinpicture', onLeave);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      video?.removeEventListener('leavepictureinpicture', onLeave);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, []);
 
   const togglePiP = async () => {
@@ -161,9 +179,11 @@ export default function CardioTab() {
     if (!video) throw new Error('Elemento de vídeo do visor não está pronto ainda.');
 
     if (document.pictureInPictureElement) {
+      logPiP('[Cardio] Saindo do PiP (togglePiP chamado com PiP já ativo).');
       await document.exitPictureInPicture();
     } else {
       if (!document.pictureInPictureEnabled) {
+        logPiP('[Cardio] document.pictureInPictureEnabled = false -- navegador/OS bloqueou PiP antes mesmo de tentar.');
         throw new Error('document.pictureInPictureEnabled = false (navegador/página bloqueou PiP).');
       }
       // Sem await antes do requestPictureInPicture -- qualquer espera aqui
@@ -172,7 +192,9 @@ export default function CardioTab() {
       if (video.paused) {
         video.play().catch(() => {});
       }
+      logPiP('[Cardio] Chamando requestPictureInPicture()...');
       await video.requestPictureInPicture();
+      logPiP('[Cardio] requestPictureInPicture() resolveu (Promise aceita).');
       mediaMaestro.duckVolume(0.5);
     }
   };
@@ -203,6 +225,7 @@ export default function CardioTab() {
   const handleMediaClick = (url: string) => {
     if (!isActive) setIsActive(true);
     setPipDebug(null);
+    logPiP(`[Cardio] handleMediaClick chamado para ${url}.`);
 
     const video = videoRef.current;
     let settled = false;
@@ -222,6 +245,7 @@ export default function CardioTab() {
       if (settled) return;
       settled = true;
       video.removeEventListener('enterpictureinpicture', onEnter);
+      logPiP('[Cardio] Visor entrou (evento enterpictureinpicture confirmado). Abrindo app agora.');
       setPipDebug('Visor entrou (evento enterpictureinpicture confirmado).');
       openNow();
     };
@@ -233,6 +257,7 @@ export default function CardioTab() {
       if (settled) return;
       settled = true;
       video.removeEventListener('enterpictureinpicture', onEnter);
+      logPiP('[Cardio] Visor NÃO confirmou entrada em 2.5s -- abrindo app mesmo assim.');
       setPipDebug('Visor não confirmou entrada em 2.5s (nem sucesso nem erro).');
       openNow();
     }, 2500);
@@ -244,6 +269,7 @@ export default function CardioTab() {
       video.removeEventListener('enterpictureinpicture', onEnter);
       const msg = `Erro no PiP: ${err?.name || ''} ${err?.message || err}`;
       console.error(msg);
+      logPiP(`[Cardio] ${msg} -- abrindo app mesmo assim.`);
       setPipDebug(msg);
       openNow();
     }).then(() => {
@@ -443,6 +469,7 @@ export default function CardioTab() {
             {pipDebug}
           </p>
         )}
+        <PipDebugPanel />
       </div>
     </div>
   );
