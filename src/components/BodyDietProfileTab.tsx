@@ -185,7 +185,7 @@ export default function BodyDietProfileTab({ initial, onSave, onSkip }: Props) {
                       }`}
                     >
                       <div className="w-full aspect-[3/4] rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-800">
-                        <img src={src} alt={label} className="w-full h-full object-cover object-top" />
+                        <img src={src} alt={label} className="w-full h-full object-contain" />
                       </div>
                       <span className={`text-[8px] font-black uppercase tracking-widest text-center ${data.tipoCorpoAtual === id ? 'text-blue-600' : 'text-slate-500 dark:text-slate-400'}`}>
                         {label}
