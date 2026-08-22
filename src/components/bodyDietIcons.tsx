@@ -14,7 +14,7 @@ export interface BodyOption {
 
 // ─── Tipos de corpo (etapa "tipoCorpo") ───────────────────────────────
 export const BODY_TYPES: { id: string; label: string; src: string }[] = [
-  { id: 'gordo', label: 'Gordo / Endomorfa', src: '/bodydiet/corpo/corpo_gordo.png' },
+  { id: 'gordo', label: 'Gordo / Endomorfa', src: '/bodydiet/tipos/gordo.jpg' },
   { id: 'quadrado', label: 'Quadrado / Retangular', src: '/bodydiet/tipos/quadrado.jpg' },
   { id: 'triangular', label: 'Triangular / Pera', src: '/bodydiet/tipos/triangular.jpg' },
   { id: 'vshape', label: 'Ombros Largos', src: '/bodydiet/tipos/vshape.jpg' },
