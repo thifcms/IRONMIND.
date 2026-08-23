@@ -3,9 +3,19 @@
  * "Corpo & Dieta" do perfil: tipo de corpo, autopercepção atual e meta,
  * por região corporal. Substituem as silhuetas SVG antigas.
  *
- * Todas as imagens ficam em /public/bodydiet/... e são referenciadas
- * por caminho absoluto (sem import), pois são assets estáticos.
+ * Todas as imagens ficam em /public/bodydiet/... . O Render/Netlify
+ * servem o app na raiz do domínio ('/'), mas o GitHub Pages publica
+ * dentro de uma subpasta (github.io/IRONMIND./) -- por isso os
+ * caminhos passam pelo helper asset() abaixo, que prefixa com o
+ * BASE_URL correto em vez de ficar fixo em "/" (que só funciona na
+ * raiz e quebra -- fica com ícone de imagem quebrada -- assim que o
+ * app é publicado numa subpasta).
  */
+
+function asset(path: string): string {
+  const base = import.meta.env.BASE_URL || '/';
+  return base.replace(/\/$/, '') + '/' + path.replace(/^\//, '');
+}
 
 export interface BodyOption {
   id: string;
@@ -14,10 +24,10 @@ export interface BodyOption {
 
 // ─── Tipos de corpo (etapa "tipoCorpo") ───────────────────────────────
 export const BODY_TYPES: { id: string; label: string; src: string }[] = [
-  { id: 'gordo', label: 'Gordo / Endomorfa', src: '/bodydiet/tipos/gordo.jpg' },
-  { id: 'quadrado', label: 'Quadrado / Retangular', src: '/bodydiet/tipos/quadrado.jpg' },
-  { id: 'triangular', label: 'Triangular / Pera', src: '/bodydiet/tipos/triangular.jpg' },
-  { id: 'vshape', label: 'Ombros Largos', src: '/bodydiet/tipos/vshape.jpg' },
+  { id: 'gordo', label: 'Gordo / Endomorfa', src: asset('bodydiet/tipos/gordo.jpg') },
+  { id: 'quadrado', label: 'Quadrado / Retangular', src: asset('bodydiet/tipos/quadrado.jpg') },
+  { id: 'triangular', label: 'Triangular / Pera', src: asset('bodydiet/tipos/triangular.jpg') },
+  { id: 'vshape', label: 'Ombros Largos', src: asset('bodydiet/tipos/vshape.jpg') },
 ];
 
 // ─── Regiões do corpo: cada uma tem 5 opções "atuais" (linha 1 da
@@ -33,7 +43,7 @@ export interface BodyRegion {
 function row(prefix: string, folder: string, r: number, count = 5): BodyOption[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `${prefix}_${r}_${i + 1}`,
-    src: `/bodydiet/${folder}/${folder}_${r}_${i + 1}.png`,
+    src: asset(`bodydiet/${folder}/${folder}_${r}_${i + 1}.png`),
   }));
 }
 
@@ -41,17 +51,20 @@ function row(prefix: string, folder: string, r: number, count = 5): BodyOption[]
 // A mesma escala serve tanto pra "atual" quanto pra "meta".
 const GLUTEOS_NIVEIS: BodyOption[] = Array.from({ length: 5 }, (_, i) => ({
   id: `gluteos_nivel_${i + 1}`,
-  src: `/bodydiet/gluteos_v2/gluteos_nivel_${i + 1}.png`,
+  src: asset(`bodydiet/gluteos_v2/gluteos_nivel_${i + 1}.png`),
 }));
 export const GLUTEOS_NIVEL_LABELS = ['Plano', 'Leve volume', 'Firme e definido', 'Bem definido', 'Hipertrofiado'];
 
-// Pernas v2: 4 níveis (1 imagem cada, frontal + lateral), Nível 1 (fina) a
-// Nível 4 (volumosa/hipertrofia). Mesma escala serve pra "atual" e "meta".
-const PERNAS_NIVEIS: BodyOption[] = Array.from({ length: 4 }, (_, i) => ({
-  id: `pernas_nivel_${i + 1}`,
-  src: `/bodydiet/pernas_v2/pernas_nivel_${i + 1}.jpg`,
+// Pernas v3: 10 fotos (5 "atuais" + 5 "meta"), mesmo padrão de
+// costas/torso (uma linha sem escolha de nível, cada foto é uma opção).
+const PERNAS_ATUAL: BodyOption[] = Array.from({ length: 5 }, (_, i) => ({
+  id: `pernas_${i + 1}`,
+  src: asset(`bodydiet/pernas_v3/pernas_${i + 1}.jpg`),
 }));
-export const PERNAS_NIVEL_LABELS = ['Fina / Sem desenho muscular', 'Volume médio / Uniforme', 'Definida (quadríceps marcados)', 'Volumosa e torneada'];
+const PERNAS_META: BodyOption[] = Array.from({ length: 5 }, (_, i) => ({
+  id: `pernas_${i + 6}`,
+  src: asset(`bodydiet/pernas_v3/pernas_${i + 6}.jpg`),
+}));
 
 export const BODY_REGIONS: BodyRegion[] = [
   {
@@ -75,7 +88,7 @@ export const BODY_REGIONS: BodyRegion[] = [
   {
     id: 'pernas',
     label: 'Pernas',
-    current: PERNAS_NIVEIS,
-    goalLevels: [PERNAS_NIVEIS],
+    current: PERNAS_ATUAL,
+    goalLevels: [PERNAS_META],
   },
 ];

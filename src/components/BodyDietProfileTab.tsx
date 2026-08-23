@@ -223,11 +223,11 @@ export default function BodyDietProfileTab({ initial, onSave, onSkip }: Props) {
                                   key={opt.id}
                                   type="button"
                                   onClick={() => setTarget(opt.id)}
-                                  className={`rounded-lg border-2 overflow-hidden transition-all ${
+                                  className={`h-16 flex items-center justify-center rounded-lg border-2 overflow-hidden bg-slate-100 dark:bg-slate-900 transition-all ${
                                     target?.[region.id] === opt.id ? 'border-blue-600 ring-2 ring-blue-600/40' : 'border-slate-200 dark:border-slate-800'
                                   }`}
                                 >
-                                  <img src={opt.src} alt="" className="w-full h-auto object-cover" />
+                                  <img src={opt.src} alt="" className="h-full w-auto max-w-full object-contain" />
                                 </button>
                               ))}
                             </div>
