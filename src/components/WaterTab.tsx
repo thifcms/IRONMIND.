@@ -7,6 +7,7 @@ interface WaterTabProps {
   profile: any;
   waterIntake: Record<string, number>;
   onSetTodayCount: (count: number) => void;
+  dietAguaLitrosDia?: number;
 }
 
 const GLASS_SIZE_L = 0.25; // 250ml por copo, padrão
@@ -44,7 +45,7 @@ async function showWaterNotification(title: string, body: string) {
   }
 }
 
-export default function WaterTab({ profile, waterIntake, onSetTodayCount }: WaterTabProps) {
+export default function WaterTab({ profile, waterIntake, onSetTodayCount, dietAguaLitrosDia }: WaterTabProps) {
   const key = todayKey();
   const todayCount = waterIntake?.[key] || 0;
 
@@ -54,10 +55,12 @@ export default function WaterTab({ profile, waterIntake, onSetTodayCount }: Wate
   const [notifEnabled, setNotifEnabled] = useState(() => localStorage.getItem(NOTIF_PREF_KEY) === 'true');
 
   const targetGlasses = useMemo(() => {
+    // Prioridade: sugestão da dieta aceita > preenchido manualmente em Corpo & Dieta > padrão 2L
+    if (dietAguaLitrosDia && dietAguaLitrosDia > 0) return Math.max(1, Math.round(dietAguaLitrosDia / GLASS_SIZE_L));
     const litros = parseFloat(profile?.bodyDietProfile?.dieta?.aguaLitrosDia);
     if (!isNaN(litros) && litros > 0) return Math.max(1, Math.round(litros / GLASS_SIZE_L));
     return 8; // padrão: 2L / 250ml
-  }, [profile]);
+  }, [profile, dietAguaLitrosDia]);
 
   const totalSlots = Math.max(targetGlasses, todayCount);
   const litrosBebidos = (todayCount * GLASS_SIZE_L).toFixed(2);

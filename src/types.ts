@@ -50,11 +50,19 @@ export interface DietMeal {
   items: string[];
 }
 
+export interface DietSupplement {
+  nome: string;
+  quantidade: string;
+  horario: string;
+}
+
 export interface DietPlan {
   id: string;
   name: string;
   description: string;
   meals: DietMeal[];
+  aguaLitrosDia?: number;
+  suplementos?: DietSupplement[];
   createdAt: number;
 }
 

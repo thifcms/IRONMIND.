@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { DietPlan } from '../types';
-import { Clock, CheckCircle2, Camera, Loader2, Info, AlertTriangle, Utensils, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Clock, CheckCircle2, Camera, Loader2, Info, AlertTriangle, Utensils, ShieldCheck, ShieldAlert, Droplets, Pill } from 'lucide-react';
 import { analyzeFoodImage } from '../services/geminiService';
 import { compressImage } from '../lib/imageUtils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -231,6 +231,38 @@ export default function DietTab({
 
         {plan ? (
           <div className="space-y-4 relative before:absolute before:left-[1rem] before:top-4 before:bottom-4 before:w-px before:bg-slate-200 dark:before:bg-slate-800 pt-4">
+            {(plan.aguaLitrosDia || (plan.suplementos && plan.suplementos.length > 0)) && (
+              <div className="relative pl-8">
+                <div className="absolute left-0 top-1 w-8 h-8 bg-sky-500 border-4 border-white dark:border-[#0a0a0a] rounded-full flex items-center justify-center z-10 text-white shadow-sm">
+                  <Droplets className="w-4 h-4" />
+                </div>
+                <div className="bg-white dark:bg-[#121212] rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+                  {plan.aguaLitrosDia ? (
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Água recomendada</span>
+                      <span className="text-sm font-black text-sky-600">{plan.aguaLitrosDia}L/dia</span>
+                    </div>
+                  ) : null}
+                  {plan.suplementos && plan.suplementos.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Pill className="w-3.5 h-3.5 text-blue-600" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Suplementos</span>
+                      </div>
+                      <ul className="space-y-1.5">
+                        {plan.suplementos.map((s, i) => (
+                          <li key={i} className="text-[11px] bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                            <span className="font-black text-slate-800 dark:text-slate-200">{s.nome}</span>
+                            {s.quantidade && <span className="text-slate-500 dark:text-slate-400"> — {s.quantidade}</span>}
+                            {s.horario && <span className="block text-[9px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider mt-0.5">{s.horario}</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             {(plan.meals || []).map((meal, i) => (
               <div key={i} className="relative pl-8">
                 <div className="absolute left-0 top-1 w-8 h-8 bg-blue-600 border-4 border-white dark:border-[#0a0a0a] rounded-full flex items-center justify-center z-10 text-white shadow-sm">

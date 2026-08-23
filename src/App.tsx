@@ -974,6 +974,7 @@ export default function App() {
                 profile={profile}
                 waterIntake={profile?.waterIntake || {}}
                 onSetTodayCount={handleSetTodayWaterCount}
+                dietAguaLitrosDia={dietPlan?.aguaLitrosDia}
               />
             )}
             {activeTab === Tab.SOM && <MusicTab />}

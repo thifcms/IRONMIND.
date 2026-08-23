@@ -653,6 +653,15 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
                                 return m;
                               });
                               setHistory(newHistory);
+
+                              // Sequência treino -> dieta: assim que aceita o treino, já
+                              // pede a dieta em seguida (o treinador vai perguntar sobre
+                              // suplementos antes de montar, se o perfil não informou).
+                              setTimeout(() => {
+                                const autoMsg = 'Acabei de aceitar esse plano de treino. Agora monta minha dieta pra complementar.';
+                                setHistory(prev => [...prev, { role: 'user', text: autoMsg }]);
+                                handleSend(autoMsg);
+                              }, 300);
                             }}
                             className="flex-1 py-3.5 bg-[#0a1a50] text-white rounded-xl shadow-lg shadow-blue-900/20 active:scale-95 transition-all flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-[0.2em]"
                           >
@@ -762,6 +771,15 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
                                   items: Array.isArray(rawItems) ? rawItems.map((item: any) => typeof item === 'object' ? (item.name || item.nome || item.descricao || JSON.stringify(item)) : String(item)) : []
                                 };
                               }) : [],
+                              aguaLitrosDia: Number(planData?.aguaLitrosDia || planData?.agua_litros_dia || planData?.agua) || undefined,
+                              suplementos: (() => {
+                                const rawSupps = planData?.suplementos || planData?.supplements;
+                                if (!Array.isArray(rawSupps)) return undefined;
+                                return rawSupps.map((s: any) => typeof s === 'object'
+                                  ? { nome: s.nome || s.name || "Suplemento", quantidade: s.quantidade || s.dose || s.quantity || "", horario: s.horario || s.time || s.schedule || "" }
+                                  : { nome: String(s), quantidade: "", horario: "" }
+                                );
+                              })(),
                               createdAt: planData?.createdAt || Date.now()
                             };
                             localStorage.setItem('ironmind_diet', JSON.stringify(dietPlan));
