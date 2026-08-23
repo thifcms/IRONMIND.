@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { Droplets, RotateCcw } from 'lucide-react';
+import { Droplets, RotateCcw, Bell, Clock } from 'lucide-react';
+import { getReminderSchedule, getExpectedGlassesByNow, checkDueReminder, markReminderFired, WAKE_HOUR, SLEEP_HOUR } from '../services/waterSchedule';
 
 interface WaterTabProps {
   profile: any;
@@ -9,6 +10,7 @@ interface WaterTabProps {
 }
 
 const GLASS_SIZE_L = 0.25; // 250ml por copo, padrão
+const NOTIF_PREF_KEY = 'ironmind_water_notifications_enabled';
 
 function todayKey(): string {
   const d = new Date();
@@ -27,9 +29,29 @@ function GlassIcon({ filled }: { filled: boolean }) {
   );
 }
 
+async function showWaterNotification(title: string, body: string) {
+  try {
+    if (navigator.serviceWorker) {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification(title, { body, icon: './icon.svg', tag: 'ironmind-water', badge: './icon.svg' });
+      return;
+    }
+  } catch {
+    // ignora e tenta o caminho simples abaixo
+  }
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    new Notification(title, { body, icon: './icon.svg' });
+  }
+}
+
 export default function WaterTab({ profile, waterIntake, onSetTodayCount }: WaterTabProps) {
   const key = todayKey();
   const todayCount = waterIntake?.[key] || 0;
+
+  const [notifStatus, setNotifStatus] = useState<NotificationPermission | 'unsupported'>(
+    typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
+  );
+  const [notifEnabled, setNotifEnabled] = useState(() => localStorage.getItem(NOTIF_PREF_KEY) === 'true');
 
   const targetGlasses = useMemo(() => {
     const litros = parseFloat(profile?.bodyDietProfile?.dieta?.aguaLitrosDia);
@@ -40,12 +62,50 @@ export default function WaterTab({ profile, waterIntake, onSetTodayCount }: Wate
   const totalSlots = Math.max(targetGlasses, todayCount);
   const litrosBebidos = (todayCount * GLASS_SIZE_L).toFixed(2);
   const metaAtingida = todayCount >= targetGlasses;
+  const schedule = useMemo(() => getReminderSchedule(targetGlasses), [targetGlasses]);
+  const expectedByNow = getExpectedGlassesByNow(targetGlasses);
+  const atrasado = !metaAtingida && todayCount < expectedByNow;
 
   const handleTapGlass = (index: number) => {
-    // Tocar num copo preenche até ele; tocar no ultimo preenchido esvazia ele
     const novoCount = index + 1 === todayCount ? index : index + 1;
     onSetTodayCount(novoCount);
   };
+
+  const handleEnableNotifications = async () => {
+    if (typeof Notification === 'undefined') return;
+    const perm = await Notification.requestPermission();
+    setNotifStatus(perm);
+    if (perm === 'granted') {
+      localStorage.setItem(NOTIF_PREF_KEY, 'true');
+      setNotifEnabled(true);
+      showWaterNotification('Lembretes de água ativados', `Você vai receber ${targetGlasses} lembretes hoje, das ${WAKE_HOUR}h às ${SLEEP_HOUR}h.`);
+    }
+  };
+
+  const handleDisableNotifications = () => {
+    localStorage.setItem(NOTIF_PREF_KEY, 'false');
+    setNotifEnabled(false);
+  };
+
+  // Verifica a cada minuto se algum lembrete "venceu" e ainda não foi avisado
+  useEffect(() => {
+    if (!notifEnabled || notifStatus !== 'granted') return;
+    const check = () => {
+      const due = checkDueReminder(targetGlasses, todayCount);
+      if (due) {
+        markReminderFired(due.glassNumber);
+        showWaterNotification(
+          '💧 Hora de beber água!',
+          `Você deveria estar no copo ${due.glassNumber} de ${targetGlasses} agora.`
+        );
+      }
+    };
+    check(); // checa assim que a aba abre também
+    const interval = setInterval(check, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [notifEnabled, notifStatus, targetGlasses, todayCount]);
+
+  const cardCls = "bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-slate-800 p-4";
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0a0a0a] overflow-hidden">
@@ -72,7 +132,7 @@ export default function WaterTab({ profile, waterIntake, onSetTodayCount }: Wate
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        <div className="bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-slate-800 p-4 text-center">
+        <div className={`${cardCls} text-center`}>
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">
             Meta do treinador: {targetGlasses} copos ({(targetGlasses * GLASS_SIZE_L).toFixed(1)}L/dia)
           </p>
@@ -83,9 +143,71 @@ export default function WaterTab({ profile, waterIntake, onSetTodayCount }: Wate
           {metaAtingida && (
             <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mt-2">Meta batida! 💧</p>
           )}
+          {atrasado && (
+            <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest mt-2">
+              Você deveria estar em {expectedByNow} copos a essa hora
+            </p>
+          )}
         </div>
 
-        <div className="bg-white dark:bg-[#121212] rounded-2xl border border-slate-200 dark:border-slate-800 p-4">
+        {/* Lembretes */}
+        <div className={cardCls}>
+          <div className="flex items-center gap-2 mb-2">
+            <Clock className="w-4 h-4 text-blue-600" />
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">
+              Lembretes ao longo do dia ({WAKE_HOUR}h–{SLEEP_HOUR}h)
+            </h3>
+          </div>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 mb-3">
+            {targetGlasses} copos divididos em avisos ao longo do dia, pra você não deixar tudo pro fim.
+          </p>
+
+          {notifStatus === 'unsupported' ? (
+            <p className="text-[9px] text-slate-400 dark:text-slate-500">Seu navegador não suporta notificações.</p>
+          ) : notifStatus === 'denied' ? (
+            <p className="text-[9px] text-rose-500">
+              Notificações bloqueadas nas configurações do navegador. Ative manualmente nas permissões do site pra receber os lembretes.
+            </p>
+          ) : notifEnabled && notifStatus === 'granted' ? (
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-emerald-600">
+                <Bell className="w-3.5 h-3.5" /> Lembretes ativados
+              </span>
+              <button
+                type="button"
+                onClick={handleDisableNotifications}
+                className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 underline"
+              >
+                Desativar
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleEnableNotifications}
+              className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5"
+            >
+              <Bell className="w-4 h-4" /> Ativar lembretes
+            </button>
+          )}
+
+          {schedule.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {schedule.map((r) => (
+                <span
+                  key={r.glassNumber}
+                  className={`text-[8px] font-bold px-2 py-1 rounded-full ${
+                    todayCount >= r.glassNumber ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                  }`}
+                >
+                  {String(r.hour).padStart(2, '0')}:{String(r.minute).padStart(2, '0')}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className={cardCls}>
           <p className="text-[9px] text-slate-400 dark:text-slate-500 mb-3 text-center">Toca num copo pra marcar até ele</p>
           <div className="grid grid-cols-4 gap-3">
             {Array.from({ length: totalSlots }).map((_, i) => (
