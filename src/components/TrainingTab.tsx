@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { TrainingPlan, Exercise } from '../types';
-import { Play, Dumbbell, Clock, Check, Plus, Trash2, StickyNote, X, TrendingUp, Target, Search, ChevronRight, Filter, AlertCircle, ChevronDown, Timer, Pause, RotateCcw, PlusCircle, MinusCircle } from 'lucide-react';
+import { Play, Dumbbell, Clock, Check, Plus, Trash2, StickyNote, X, TrendingUp, Target, Search, ChevronRight, Filter, AlertCircle, ChevronDown, Timer, Pause, RotateCcw, PlusCircle, MinusCircle, Camera } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { EXERCISE_LIBRARY, LibraryExercise, MUSCLE_GROUPS } from '../constants/exercises';
 import { resolveVideoUrl, getYouTubeSearchUrl } from '../lib/videoUtils';
@@ -10,13 +10,15 @@ export default function TrainingTab({
   onUpdatePlan, 
   onClearPlan,
   onOpenSplitSelector,
-  onWorkoutComplete
+  onWorkoutComplete,
+  onOpenPoseCounter
 }: { 
   plan: TrainingPlan; 
   onUpdatePlan: (p: TrainingPlan) => void;
   onClearPlan: () => void;
   onOpenSplitSelector: () => void;
   onWorkoutComplete?: (dayLabel: string, exerciseCount: number) => void;
+  onOpenPoseCounter?: () => void;
 }) {
   console.log('TrainingTab rendering with plan:', plan);
   const [activeDayIdx, setActiveDayIdx] = useState(0);
@@ -428,16 +430,27 @@ export default function TrainingTab({
                        </p>
                      </div>
                    </div>
-                   <button 
-                     onClick={() => {
-                       setAddingToDayIdx(dayIdx);
-                       setIsLibraryOpen(true);
-                     }}
-                     className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-blue-600 dark:bg-slate-900 hover:dark:bg-blue-600 text-slate-500 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm"
-                   >
-                     <Plus className="w-4 h-4" />
-                     Add
-                   </button>
+                   <div className="flex items-center gap-2">
+                     {onOpenPoseCounter && (
+                       <button
+                         onClick={onOpenPoseCounter}
+                         aria-label="Contar repetições por câmera"
+                         className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-blue-600 dark:bg-slate-900 hover:dark:bg-blue-600 text-slate-500 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm"
+                       >
+                         <Camera className="w-4 h-4" />
+                       </button>
+                     )}
+                     <button 
+                       onClick={() => {
+                         setAddingToDayIdx(dayIdx);
+                         setIsLibraryOpen(true);
+                       }}
+                       className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-blue-600 dark:bg-slate-900 hover:dark:bg-blue-600 text-slate-500 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm"
+                     >
+                       <Plus className="w-4 h-4" />
+                       Add
+                     </button>
+                   </div>
                 </div>
 
                 <motion.div 

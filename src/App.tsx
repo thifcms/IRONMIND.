@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Dumbbell, 
@@ -31,6 +31,7 @@ import { loadChatHistory, saveChatHistory, chatWithCoach } from './services/gemi
 import { safeLocalStorageSet } from './lib/safeStorage';
 import { recordActivity } from './lib/streak';
 import WorkoutCompleteModal, { diffNewAchievements } from './components/WorkoutCompleteModal';
+const PoseRepCounter = lazy(() => import('./components/PoseRepCounter'));
 import type { Achievement } from './lib/streak';
 import TreinadorTab from './components/TreinadorTab';
 import TrainingTab from './components/TrainingTab';
@@ -58,6 +59,7 @@ export default function App() {
   const db = getFirestoreInstance();
   const { user, profile, loading, setProfile } = useAuth();
   const [workoutCompleteInfo, setWorkoutCompleteInfo] = useState<{ dayLabel: string; exerciseCount: number; streakCount: number; newAchievements: Achievement[] } | null>(null);
+  const [showPoseCounter, setShowPoseCounter] = useState(false);
 
   const handleWorkoutComplete = useCallback((dayLabel: string, exerciseCount: number) => {
     setProfile((prev) => {
@@ -919,7 +921,7 @@ export default function App() {
                     <>
                       <div className="flex-1 overflow-hidden">
                         {warmupPlan
-                          ? <TrainingTab plan={warmupPlan} onUpdatePlan={updateWarmupPlan} onClearPlan={() => setShowConfirmClearWarmup(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} onWorkoutComplete={handleWorkoutComplete} />
+                          ? <TrainingTab plan={warmupPlan} onUpdatePlan={updateWarmupPlan} onClearPlan={() => setShowConfirmClearWarmup(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} onWorkoutComplete={handleWorkoutComplete} onOpenPoseCounter={() => setShowPoseCounter(true)} />
                           : <EmptyState type="aquecimento" onClick={() => setActiveTab(Tab.TREINADOR)} />}
                       </div>
                       <MediaQuickLaunch />
@@ -936,6 +938,7 @@ export default function App() {
                 onClearPlan={() => setShowConfirmClearTraining(true)} 
                 onOpenSplitSelector={() => setIsSplitSelectorOpen(true)}
                 onWorkoutComplete={handleWorkoutComplete}
+                onOpenPoseCounter={() => setShowPoseCounter(true)}
               />
             )}
             {activeTab === Tab.VIDEOS && (
@@ -968,7 +971,7 @@ export default function App() {
                     <>
                       <div className="flex-1 overflow-hidden">
                         {cardioPlan
-                          ? <TrainingTab plan={cardioPlan} onUpdatePlan={updateCardioPlan} onClearPlan={() => setShowConfirmClearCardio(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} onWorkoutComplete={handleWorkoutComplete} />
+                          ? <TrainingTab plan={cardioPlan} onUpdatePlan={updateCardioPlan} onClearPlan={() => setShowConfirmClearCardio(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} onWorkoutComplete={handleWorkoutComplete} onOpenPoseCounter={() => setShowPoseCounter(true)} />
                           : <EmptyState type="cardio" onClick={() => setActiveTab(Tab.TREINADOR)} />}
                       </div>
                       <MediaQuickLaunch />
@@ -1162,15 +1165,25 @@ export default function App() {
           onClose={() => setWorkoutCompleteInfo(null)}
         />
       )}
+
+      {showPoseCounter && (
+        <Suspense fallback={
+          <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        }>
+          <PoseRepCounter onClose={() => setShowPoseCounter(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }
 
-function TrainingPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan, onOpenSplitSelector, onWorkoutComplete }: { plan: TrainingPlan | null, setActiveTab: (t: Tab) => void, onUpdatePlan: (p: TrainingPlan) => void, onClearPlan: () => void, onOpenSplitSelector: () => void, onWorkoutComplete?: (dayLabel: string, exerciseCount: number) => void }) {
+function TrainingPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan, onOpenSplitSelector, onWorkoutComplete, onOpenPoseCounter }: { plan: TrainingPlan | null, setActiveTab: (t: Tab) => void, onUpdatePlan: (p: TrainingPlan) => void, onClearPlan: () => void, onOpenSplitSelector: () => void, onWorkoutComplete?: (dayLabel: string, exerciseCount: number) => void, onOpenPoseCounter?: () => void }) {
   console.log('TrainingPlanView rendering, plan:', plan);
 
   if (!plan) return <EmptyState type="treino" onClick={() => setActiveTab(Tab.TREINADOR)} onManualBuild={onOpenSplitSelector} />;
-  return <TrainingTab plan={plan} onUpdatePlan={onUpdatePlan} onClearPlan={onClearPlan} onOpenSplitSelector={onOpenSplitSelector} onWorkoutComplete={onWorkoutComplete} />;
+  return <TrainingTab plan={plan} onUpdatePlan={onUpdatePlan} onClearPlan={onClearPlan} onOpenSplitSelector={onOpenSplitSelector} onWorkoutComplete={onWorkoutComplete} onOpenPoseCounter={onOpenPoseCounter} />;
 }
 
 function DietPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan }: { plan: DietPlan | null, setActiveTab: (t: Tab) => void, onUpdatePlan: (p: DietPlan) => void, onClearPlan: () => void }) {
