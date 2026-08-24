@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { mediaMaestro } from '../services/mediaMaestro';
 import { logPiP } from '../lib/pipDebugLog';
+import { forceOpenInChrome } from '../lib/forceOpenInChrome';
 
 /**
  * Visor flutuante (Picture-in-Picture) reutilizável: mostra um cronômetro
@@ -157,29 +158,88 @@ export function usePiPLauncher() {
     }
   };
 
-  const launch = (opener: () => void, onDebug?: (msg: string) => void) => {
+  const launch = (target: string | (() => void), onDebug?: (msg: string) => void) => {
     activeRef.current = true;
-    logPiP(`launch() chamado (abrindo app/URL após o PiP).`);
 
-    // Padrão restaurado ao que foi CONFIRMADO funcionando de verdade no
-    // Render (aba clássica de Cardio, commit da09120 / revert 77bdcfc):
-    // abre o app assim que a Promise do togglePiP resolve, sem esperar
-    // o evento 'enterpictureinpicture'. A tentativa de "sincronizar com
-    // a confirmação real" parecia mais robusta no papel, mas não há
-    // confirmação de que ajudou -- e o problema voltou depois dela ter
-    // sido introduzida. Os listeners de leavepictureinpicture/
-    // visibilitychange (lá em cima) continuam ativos e seguem
-    // registrando o que acontece depois, então não perdemos o
-    // diagnóstico.
-    togglePiP().then(() => {
-      logPiP('togglePiP resolveu, abrindo app agora.');
-      opener();
-    }).catch(err => {
+    // Fluxo customizado (ex: MusicTab, que usa deep link de app + fallback
+    // pra loja) -- mantém o comportamento simples de antes, sem a técnica
+    // da aba em branco (que não se aplica a deep links tipo "spotify:open").
+    if (typeof target === 'function') {
+      logPiP(`launch() chamado com callback customizado.`);
+      togglePiP().then(() => {
+        logPiP('togglePiP resolveu, chamando callback agora.');
+        target();
+      }).catch(err => {
+        const msg = `Erro no PiP: ${err?.name || ''} ${err?.message || err}`;
+        console.error(msg);
+        logPiP(`${msg} -- chamando callback mesmo assim.`);
+        onDebug?.(msg);
+        target();
+      });
+      return;
+    }
+
+    const url = target;
+    logPiP(`launch() chamado pra ${url}.`);
+
+    // Abre uma aba EM BRANCO já, dentro do mesmo gesto síncrono do toque
+    // (evita bloqueio de pop-up). Só navega essa aba já aberta pro
+    // destino de verdade depois que o PiP CONFIRMAR que entrou de fato
+    // (evento enterpictureinpicture) -- não precisa mais temer bloqueio
+    // de pop-up nessa espera, porque não é mais um window.open() novo,
+    // é só mudar a URL de uma aba que já existe.
+    const newWin = window.open('about:blank', '_blank');
+    logPiP(`Aba em branco ${newWin ? 'aberta com sucesso' : 'BLOQUEADA pelo navegador'} (antes do PiP).`);
+
+    const navigate = () => {
+      const finalUrl = forceOpenInChrome(url);
+      if (newWin && !newWin.closed) {
+        logPiP(`Navegando a aba já aberta pra ${finalUrl}.`);
+        newWin.location.href = finalUrl;
+      } else {
+        logPiP(`Aba em branco não existe mais -- tentando window.open direto como fallback.`);
+        window.open(finalUrl, '_blank');
+      }
+    };
+
+    const video = videoElRef.current;
+    if (!video) {
+      navigate();
+      return;
+    }
+
+    let settled = false;
+    const onEnter = () => {
+      if (settled) return;
+      settled = true;
+      video.removeEventListener('enterpictureinpicture', onEnter);
+      logPiP('Visor confirmado ativo (enterpictureinpicture) -- navegando agora.');
+      onDebug?.('Visor confirmado ativo -- navegando a aba pro destino agora.');
+      navigate();
+    };
+    video.addEventListener('enterpictureinpicture', onEnter);
+
+    const timeoutId = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      video.removeEventListener('enterpictureinpicture', onEnter);
+      logPiP('Visor não confirmou entrada em 2.5s -- navegando mesmo assim.');
+      onDebug?.('Visor não confirmou entrada em 2.5s (nem sucesso nem erro).');
+      navigate();
+    }, 2500);
+
+    togglePiP().catch(err => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      video.removeEventListener('enterpictureinpicture', onEnter);
       const msg = `Erro no PiP: ${err?.name || ''} ${err?.message || err}`;
       console.error(msg);
-      logPiP(`${msg} -- abrindo app mesmo assim.`);
+      logPiP(`${msg} -- navegando mesmo assim.`);
       onDebug?.(msg);
-      opener();
+      navigate();
+    }).then(() => {
+      clearTimeout(timeoutId);
     });
   };
 

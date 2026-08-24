@@ -227,27 +227,64 @@ export default function CardioTab() {
     if (!isActive) setIsActive(true);
     setPipDebug(null);
     logPiP(`[Cardio] handleMediaClick chamado para ${url}.`);
-    const openUrl = forceOpenInChrome(url);
 
-    // Padrão restaurado ao que foi CONFIRMADO funcionando de verdade no
-    // Render (commit da09120 / revert 77bdcfc): abre o app assim que a
-    // Promise do togglePiP resolve, sem esperar o evento
-    // 'enterpictureinpicture'. A tentativa de "sincronizar com a
-    // confirmação real" parecia mais robusta no papel, mas não tem
-    // confirmação de que ajudou -- e o app parou de funcionar depois
-    // dela ter sido introduzida. Os listeners de leavepictureinpicture/
-    // visibilitychange continuam ativos (no useEffect) e seguem
-    // registrando o que acontece depois, então não perdemos o
-    // diagnóstico.
-    togglePiP().then(() => {
-      logPiP('[Cardio] togglePiP resolveu, abrindo (travado no Chrome) agora.');
-      window.open(openUrl, '_blank');
-    }).catch(err => {
+    // Abre a aba EM BRANCO já, dentro do gesto síncrono do toque (evita
+    // bloqueio de pop-up). Só navega essa aba já aberta pro destino de
+    // verdade depois que o PiP CONFIRMAR que entrou (evento
+    // enterpictureinpicture) -- sem risco de bloqueio nessa espera,
+    // porque não é mais um window.open() novo, é só mudar a URL de uma
+    // aba que já existe.
+    const newWin = window.open('about:blank', '_blank');
+    logPiP(`[Cardio] Aba em branco ${newWin ? 'aberta com sucesso' : 'BLOQUEADA pelo navegador'} (antes do PiP).`);
+
+    const navigate = () => {
+      const finalUrl = forceOpenInChrome(url);
+      if (newWin && !newWin.closed) {
+        logPiP(`[Cardio] Navegando a aba já aberta pra ${finalUrl}.`);
+        newWin.location.href = finalUrl;
+      } else {
+        logPiP(`[Cardio] Aba em branco não existe mais -- tentando window.open direto como fallback.`);
+        window.open(finalUrl, '_blank');
+      }
+    };
+
+    const video = videoRef.current;
+    if (!video) {
+      navigate();
+      return;
+    }
+
+    let settled = false;
+    const onEnter = () => {
+      if (settled) return;
+      settled = true;
+      video.removeEventListener('enterpictureinpicture', onEnter);
+      logPiP('[Cardio] Visor confirmado ativo (enterpictureinpicture) -- navegando agora.');
+      navigate();
+    };
+    video.addEventListener('enterpictureinpicture', onEnter);
+
+    const timeoutId = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      video.removeEventListener('enterpictureinpicture', onEnter);
+      logPiP('[Cardio] Visor não confirmou entrada em 2.5s -- navegando mesmo assim.');
+      setPipDebug('Visor não confirmou entrada em 2.5s (nem sucesso nem erro).');
+      navigate();
+    }, 2500);
+
+    togglePiP().catch(err => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      video.removeEventListener('enterpictureinpicture', onEnter);
       const msg = `Erro no PiP: ${err?.name || ''} ${err?.message || err}`;
       console.error(msg);
-      logPiP(`[Cardio] ${msg} -- abrindo mesmo assim.`);
+      logPiP(`[Cardio] ${msg} -- navegando mesmo assim.`);
       setPipDebug(msg);
-      window.open(openUrl, '_blank');
+      navigate();
+    }).then(() => {
+      clearTimeout(timeoutId);
     });
   };
 
