@@ -104,7 +104,9 @@ function getProfileContext(userProfileFromParams?: any): { profileObj: any, cont
       if (saved) {
         profileData = JSON.parse(saved);
       }
-    } catch {}
+    } catch (e) {
+      console.warn("Erro ao ler fallback 'profile' do localStorage:", e);
+    }
   }
 
   if (!profileData && userProfileFromParams) {

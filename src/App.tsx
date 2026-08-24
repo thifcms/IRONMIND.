@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { Tab, TrainingPlan, DietPlan, ChatMessage, WeightEntry, UserProfile, MeasurementEntry, LoadEntry, CheckinEntry } from './types';
 import { loadChatHistory, saveChatHistory, chatWithCoach } from './services/geminiService';
+import { safeLocalStorageSet } from './lib/safeStorage';
 import TreinadorTab from './components/TreinadorTab';
 import TrainingTab from './components/TrainingTab';
 import WarmupTab from './components/WarmupTab';
@@ -141,9 +142,7 @@ export default function App() {
 
   useEffect(() => {
     if (chatHistory.length > 0) {
-      try {
-        localStorage.setItem('ironmind_chat', JSON.stringify(chatHistory));
-      } catch (e) {}
+              safeLocalStorageSet('ironmind_chat', JSON.stringify(chatHistory));
     }
   }, [chatHistory]);
 
@@ -186,27 +185,19 @@ export default function App() {
         const data = snap.data();
         if (data.trainingPlan) {
           setTrainingPlan(data.trainingPlan);
-          try {
-            localStorage.setItem('ironmind_training', JSON.stringify(data.trainingPlan));
-          } catch (e) {}
+                      safeLocalStorageSet('ironmind_training', JSON.stringify(data.trainingPlan));
         }
         if (data.warmupPlan) {
           setWarmupPlan(data.warmupPlan);
-          try {
-            localStorage.setItem('ironmind_warmup', JSON.stringify(data.warmupPlan));
-          } catch (e) {}
+                      safeLocalStorageSet('ironmind_warmup', JSON.stringify(data.warmupPlan));
         }
         if (data.cardioPlan) {
           setCardioPlan(data.cardioPlan);
-          try {
-            localStorage.setItem('ironmind_cardio', JSON.stringify(data.cardioPlan));
-          } catch (e) {}
+                      safeLocalStorageSet('ironmind_cardio', JSON.stringify(data.cardioPlan));
         }
         if (data.dietPlan) {
           setDietPlan(data.dietPlan);
-          try {
-            localStorage.setItem('ironmind_diet', JSON.stringify(data.dietPlan));
-          } catch (e) {}
+                      safeLocalStorageSet('ironmind_diet', JSON.stringify(data.dietPlan));
         }
         if (data.weightHistory) setWeightHistory(data.weightHistory);
         if (data.checkinHistory) setCheckinHistory(data.checkinHistory);
@@ -338,9 +329,7 @@ export default function App() {
 
   const updateTrainingPlan = async (plan: TrainingPlan) => {
     setTrainingPlan(plan);
-    try {
-      localStorage.setItem('ironmind_training', JSON.stringify(plan));
-    } catch (e) {}
+          safeLocalStorageSet('ironmind_training', JSON.stringify(plan));
 
     if (user) {
       try {
@@ -355,9 +344,7 @@ export default function App() {
 
   const updateWarmupPlan = async (plan: TrainingPlan) => {
     setWarmupPlan(plan);
-    try {
-      localStorage.setItem('ironmind_warmup', JSON.stringify(plan));
-    } catch (e) {}
+          safeLocalStorageSet('ironmind_warmup', JSON.stringify(plan));
 
     if (user) {
       try {
@@ -372,9 +359,7 @@ export default function App() {
 
   const updateCardioPlan = async (plan: TrainingPlan) => {
     setCardioPlan(plan);
-    try {
-      localStorage.setItem('ironmind_cardio', JSON.stringify(plan));
-    } catch (e) {}
+          safeLocalStorageSet('ironmind_cardio', JSON.stringify(plan));
 
     if (user) {
       try {
@@ -389,9 +374,7 @@ export default function App() {
 
   const updateDietPlan = async (plan: DietPlan) => {
     setDietPlan(plan);
-    try {
-      localStorage.setItem('ironmind_diet', JSON.stringify(plan));
-    } catch (e) {}
+          safeLocalStorageSet('ironmind_diet', JSON.stringify(plan));
 
     if (user) {
       try {
@@ -407,7 +390,7 @@ export default function App() {
   const clearChatHistory = async () => {
     const initialMessage: ChatMessage = { role: 'model', text: 'Saudações. Eu sou o IronMind Neural. Sou o núcleo de inteligência deste ecossistema. Como posso otimizar sua performance hoje?' };
     setChatHistory([initialMessage]);
-    localStorage.setItem('ironmind_chat', JSON.stringify([initialMessage]));
+    safeLocalStorageSet('ironmind_chat', JSON.stringify([initialMessage]));
     
     if (user) {
       try {
@@ -567,9 +550,7 @@ export default function App() {
   const saveTraining = (plan: TrainingPlan) => {
     console.log("saveTraining called with plan:", plan);
     setTrainingPlan(plan);
-    try {
-      localStorage.setItem('ironmind_training', JSON.stringify(plan));
-    } catch (e) {}
+          safeLocalStorageSet('ironmind_training', JSON.stringify(plan));
 
     if (user) {
       updateDoc(doc(db, 'users', user.uid), {
@@ -700,7 +681,7 @@ export default function App() {
                 Preencher
               </button>
               <button
-                onClick={() => { localStorage.setItem('ironmind_bodydiet_banner_dismissed', 'true'); setBodyDietBannerDismissed(true); }}
+                onClick={() => { safeLocalStorageSet('ironmind_bodydiet_banner_dismissed', 'true'); setBodyDietBannerDismissed(true); }}
                 className="shrink-0 p-1.5 text-blue-600/60"
                 aria-label="Dispensar"
               >

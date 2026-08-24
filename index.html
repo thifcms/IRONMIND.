@@ -6,10 +6,10 @@
     <meta name="google" content="notranslate" />
     <title>IronMind - Treinador Inteligente</title>
     
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="%BASE_URL%manifest.json" />
     <meta name="theme-color" content="#2563eb" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <link rel="apple-touch-icon" href="/icon.svg" />
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%icon.svg" />
+    <link rel="apple-touch-icon" href="%BASE_URL%icon.svg" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="IronMind" />
@@ -32,7 +32,12 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((registration) => {
+          // %BASE_URL% -- ver comentário na tag <link rel="manifest"> acima.
+          // Registrar como "/sw.js" fixo quebrava silenciosamente no GitHub
+          // Pages (tenta buscar em github.io/sw.js, que não existe -- o app
+          // real fica em github.io/IRONMIND./sw.js), então o Service Worker
+          // nunca chegava a se registrar de verdade nesse ambiente.
+          navigator.serviceWorker.register('%BASE_URL%sw.js', { updateViaCache: 'none' }).then((registration) => {
             // Verifica se há uma versão nova assim que a página abre...
             registration.update();
             // ...e periodicamente enquanto o app fica aberto (ex: durante um treino longo).
