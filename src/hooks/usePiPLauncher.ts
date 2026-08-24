@@ -182,14 +182,22 @@ export function usePiPLauncher() {
     const url = target;
     logPiP(`launch() chamado pra ${url}.`);
 
-    // Abre uma aba EM BRANCO já, dentro do mesmo gesto síncrono do toque
-    // (evita bloqueio de pop-up). Só navega essa aba já aberta pro
-    // destino de verdade depois que o PiP CONFIRMAR que entrou de fato
-    // (evento enterpictureinpicture) -- não precisa mais temer bloqueio
-    // de pop-up nessa espera, porque não é mais um window.open() novo,
-    // é só mudar a URL de uma aba que já existe.
-    const newWin = window.open('about:blank', '_blank');
-    logPiP(`Aba em branco ${newWin ? 'aberta com sucesso' : 'BLOQUEADA pelo navegador'} (antes do PiP).`);
+    // ORDEM INVERTIDA (2ª tentativa): o erro real capturado foi
+    // "NotAllowedError: Must be handling a user gesture" no
+    // requestPictureInPicture() -- ou seja, abrir a aba em branco
+    // ANTES consumia o "gesto do usuário" que o PiP também precisa.
+    // Pedimos o PiP primeiro (gesto mais fresco possível), e só then
+    // abrimos a aba em branco -- ainda no mesmo instante síncrono,
+    // sem esperar a Promise do PiP resolver.
+    const video = videoElRef.current;
+    if (!video) {
+      logPiP('Vídeo do visor não está pronto -- abrindo direto, sem PiP.');
+      window.open(forceOpenInChrome(url), '_blank');
+      return;
+    }
+
+    let settled = false;
+    let newWin: Window | null = null;
 
     const navigate = () => {
       const finalUrl = forceOpenInChrome(url);
@@ -202,13 +210,6 @@ export function usePiPLauncher() {
       }
     };
 
-    const video = videoElRef.current;
-    if (!video) {
-      navigate();
-      return;
-    }
-
-    let settled = false;
     const onEnter = () => {
       if (settled) return;
       settled = true;
@@ -228,6 +229,7 @@ export function usePiPLauncher() {
       navigate();
     }, 2500);
 
+    // 1º: pede o PiP (gesto mais fresco possível)
     togglePiP().catch(err => {
       if (settled) return;
       settled = true;
@@ -241,6 +243,13 @@ export function usePiPLauncher() {
     }).then(() => {
       clearTimeout(timeoutId);
     });
+
+    // 2º: abre a aba em branco logo em seguida, ainda no mesmo instante
+    // síncrono (não espera a Promise do PiP resolver) -- só muda a URL
+    // dela depois de verdade, quando o PiP confirmar (onEnter acima) ou
+    // no timeout de segurança.
+    newWin = window.open('about:blank', '_blank');
+    logPiP(`Aba em branco ${newWin ? 'aberta com sucesso' : 'BLOQUEADA pelo navegador'} (depois do pedido de PiP).`);
   };
 
   return { launch };

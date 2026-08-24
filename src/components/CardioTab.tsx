@@ -228,14 +228,20 @@ export default function CardioTab() {
     setPipDebug(null);
     logPiP(`[Cardio] handleMediaClick chamado para ${url}.`);
 
-    // Abre a aba EM BRANCO já, dentro do gesto síncrono do toque (evita
-    // bloqueio de pop-up). Só navega essa aba já aberta pro destino de
-    // verdade depois que o PiP CONFIRMAR que entrou (evento
-    // enterpictureinpicture) -- sem risco de bloqueio nessa espera,
-    // porque não é mais um window.open() novo, é só mudar a URL de uma
-    // aba que já existe.
-    const newWin = window.open('about:blank', '_blank');
-    logPiP(`[Cardio] Aba em branco ${newWin ? 'aberta com sucesso' : 'BLOQUEADA pelo navegador'} (antes do PiP).`);
+    // ORDEM INVERTIDA (2ª tentativa): o erro real capturado foi
+    // "NotAllowedError: Must be handling a user gesture" no
+    // requestPictureInPicture() -- abrir a aba em branco ANTES consumia
+    // o "gesto do usuário" que o PiP também precisa. Pedimos o PiP
+    // primeiro (gesto mais fresco possível), e só depois (mesmo
+    // instante síncrono) abrimos a aba em branco.
+    const video = videoRef.current;
+    if (!video) {
+      window.open(forceOpenInChrome(url), '_blank');
+      return;
+    }
+
+    let settled = false;
+    let newWin: Window | null = null;
 
     const navigate = () => {
       const finalUrl = forceOpenInChrome(url);
@@ -248,13 +254,6 @@ export default function CardioTab() {
       }
     };
 
-    const video = videoRef.current;
-    if (!video) {
-      navigate();
-      return;
-    }
-
-    let settled = false;
     const onEnter = () => {
       if (settled) return;
       settled = true;
@@ -273,6 +272,7 @@ export default function CardioTab() {
       navigate();
     }, 2500);
 
+    // 1º: pede o PiP (gesto mais fresco possível)
     togglePiP().catch(err => {
       if (settled) return;
       settled = true;
@@ -286,6 +286,13 @@ export default function CardioTab() {
     }).then(() => {
       clearTimeout(timeoutId);
     });
+
+    // 2º: abre a aba em branco logo em seguida, ainda no mesmo instante
+    // síncrono (não espera a Promise do PiP resolver) -- só muda a URL
+    // dela depois de verdade, quando o PiP confirmar (onEnter acima) ou
+    // no timeout de segurança.
+    newWin = window.open('about:blank', '_blank');
+    logPiP(`[Cardio] Aba em branco ${newWin ? 'aberta com sucesso' : 'BLOQUEADA pelo navegador'} (depois do pedido de PiP).`);
   };
 
   const stats = getStats();
