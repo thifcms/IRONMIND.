@@ -20,10 +20,31 @@ export function apiUrl(path: string): string {
   return `${API_BASE}${path}`;
 }
 
-export function apiHeaders(extra?: Record<string, string>): Record<string, string> {
-  return {
+/**
+ * Monta os headers pra chamar o backend do IronMind AI. Prioriza mandar
+ * o ID Token do usuário logado (Authorization: Bearer ...) -- o backend
+ * confere esse token direto com o Firebase, então não existe mais um
+ * segredo fixo pra alguém "roubar" abrindo o DevTools no navegador.
+ * A HUB_API_KEY continua indo junto só como fallback, pra não quebrar
+ * na hora enquanto o backend novo não estiver 100% confirmado no ar
+ * (ver isAuthenticated() no apiApp.ts do repo Ironmind-ai-funcionando).
+ */
+export async function apiHeaders(extra?: Record<string, string>): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(HUB_API_KEY ? { "X-API-KEY": HUB_API_KEY } : {}),
     ...(extra || {}),
   };
+
+  try {
+    const { auth } = await import('../lib/firebase');
+    const idToken = await auth.currentUser?.getIdToken();
+    if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
+  } catch {
+    // Sem usuário logado via Firebase Auth ainda (ex: conta antiga não
+    // migrada) -- segue só com a X-API-KEY de fallback, sem travar a
+    // chamada por causa disso.
+  }
+
+  return headers;
 }
