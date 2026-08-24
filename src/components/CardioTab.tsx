@@ -6,6 +6,7 @@ import { mediaMaestro } from '../services/mediaMaestro';
 import { logPiP } from '../lib/pipDebugLog';
 import PipDebugPanel from './PipDebugPanel';
 import { forceOpenInChrome } from '../lib/forceOpenInChrome';
+import { useHeartRateMonitor } from '../hooks/useHeartRateMonitor';
 
 type CardioMode = 'corrida' | 'esteira' | 'bicicleta';
 
@@ -25,13 +26,16 @@ export default function CardioTab() {
   const [load, setLoad] = useState(5); // Resistance for bike
   const [heartRate, setHeartRate] = useState(70);
   const [bioStatus, setBioStatus] = useState<any>(null);
+  const hrMonitor = useHeartRateMonitor();
 
   // Refs pra ler o valor mais recente de dentro do worker sem precisar
   // recriar o worker toda vez que isActive/speed mudam.
   const isActiveRef = useRef(isActive);
   const speedRef = useRef(speed);
+  const hrConnectedRef = useRef(false);
   useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
   useEffect(() => { speedRef.current = speed; }, [speed]);
+  useEffect(() => { hrConnectedRef.current = hrMonitor.status === 'connected'; }, [hrMonitor.status]);
 
   // O Chrome pausa o redesenho do canvas (e os setInterval comuns) quando
   // a aba vai pra segundo plano -- bug conhecido do Chromium
@@ -104,6 +108,10 @@ export default function CardioTab() {
         return next;
       });
       setHeartRate(prev => {
+        // Com monitor Bluetooth real conectado, o BPM vem direto dele
+        // (ver useEffect de sincronização abaixo) -- a simulação aqui
+        // só serve de fallback pra quem não tem/não conectou um sensor.
+        if (hrConnectedRef.current) return prev;
         const target = 120 + (speedRef.current * 5);
         if (prev < target) return prev + 1;
         if (prev > target) return prev - 1;
@@ -118,8 +126,18 @@ export default function CardioTab() {
   }, []);
 
   useEffect(() => {
-    if (!isActive) setHeartRate(70);
-  }, [isActive]);
+    if (!isActive && hrMonitor.status !== 'connected') setHeartRate(70);
+  }, [isActive, hrMonitor.status]);
+
+  // Sincroniza o BPM real do monitor Bluetooth com o estado usado pelo
+  // resto da tela (Bio-Monitor, notificação de progresso, visor PiP) --
+  // assim tudo que já lê `heartRate` passa a refletir o sensor real
+  // sem precisar duplicar lógica em cada lugar que o usa.
+  useEffect(() => {
+    if (hrMonitor.status === 'connected' && hrMonitor.bpm !== null) {
+      setHeartRate(hrMonitor.bpm);
+    }
+  }, [hrMonitor.bpm, hrMonitor.status]);
 
   // Monitorar Bio-Status
   useEffect(() => {
@@ -343,6 +361,31 @@ export default function CardioTab() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Monitor cardíaco Bluetooth -- opcional, sem ele o BPM continua
+          estimado a partir da velocidade, como sempre foi. */}
+      {hrMonitor.supported && (
+        <div className="px-2 pt-2 flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => hrMonitor.status === 'connected' ? hrMonitor.disconnect() : hrMonitor.connect()}
+            disabled={hrMonitor.status === 'connecting'}
+            className={`w-full flex items-center justify-center gap-2 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+              hrMonitor.status === 'connected'
+                ? 'bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 border border-emerald-200 dark:border-emerald-900/30'
+                : 'bg-slate-50 dark:bg-[#1a1a1a] text-slate-500 border border-slate-200 dark:border-slate-800'
+            }`}
+          >
+            <Heart className={`w-3.5 h-3.5 ${hrMonitor.status === 'connected' ? 'text-emerald-500' : ''}`} />
+            {hrMonitor.status === 'connecting' && 'Conectando...'}
+            {hrMonitor.status === 'connected' && `${hrMonitor.deviceName || 'Monitor'} conectado — toque pra desconectar`}
+            {(hrMonitor.status === 'disconnected' || hrMonitor.status === 'error') && 'Conectar monitor cardíaco (Bluetooth)'}
+          </button>
+          {hrMonitor.status === 'error' && hrMonitor.error && (
+            <p className="text-[9px] text-red-500 mt-1 px-1">{hrMonitor.error}</p>
+          )}
+        </div>
+      )}
 
       {/* Mode Selection */}
       <div className="p-2 flex gap-2 flex-shrink-0">
