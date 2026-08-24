@@ -11,10 +11,11 @@ import { doc, deleteDoc } from 'firebase/firestore';
 import { signOut, deleteUser } from 'firebase/auth';
 import { isBiometricAvailable, isBiometricEnabledOnThisDevice, registerBiometric, disableBiometric, getLocalCredentialId } from '../services/biometricAuth';
 import BodyDietProfileTab, { BodyDietProfile } from './BodyDietProfileTab';
+import type { AppProfile } from '../types';
 
 interface ProfileTabProps {
-  profile: any;
-  setProfile: (profile: any) => void;
+  profile: AppProfile | null;
+  setProfile: (profile: AppProfile) => void;
 }
 
 const toScalar = (val: any, fallback: string): string => {

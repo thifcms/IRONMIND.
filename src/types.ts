@@ -115,3 +115,36 @@ export interface UserProfile {
   height?: number; // cm
   targetWeight?: number;
 }
+
+/**
+ * Perfil completo do usuário logado, como salvo no documento Firestore
+ * `users/{id}` e usado pelo AuthProvider/geminiService. Diferente da
+ * UserProfile acima (que é só o recorte usado dentro do HistoryTab).
+ * Todos os campos opcionais porque cadastros antigos/incompletos podem
+ * não ter preenchido tudo ainda.
+ */
+export interface AppProfile {
+  name?: string;
+  email?: string;
+  age?: number;
+  gender?: string;
+  height?: number;
+  weight?: number;
+  objective?: string;
+  experienceLevel?: string;
+  daysPerWeek?: number;
+  timePerWorkout?: number;
+  injuries?: string;
+  dietaryRestrictions?: string;
+  authUid?: string;
+  uid?: string;
+  waterIntake?: Record<string, number>;
+  bodyDietProfile?: import('./components/BodyDietProfileTab').BodyDietProfile;
+  // Campos adicionais que o backend/telas específicas possam salvar,
+  // sem quebrar a checagem de tipos do resto do app.
+  [key: string]: unknown;
+}
+
+export interface AppUser extends AppProfile {
+  uid: string;
+}

@@ -3,7 +3,7 @@ import { Send, Check, Loader2, Trash2, ShieldCheck, ShieldAlert, Cpu, X, Sparkle
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ChatMessage, TrainingPlan, DietPlan } from '../types';
+import { ChatMessage, TrainingPlan, DietPlan, AppProfile, MeasurementEntry } from '../types';
 import { chatWithCoach, generateProposal, diagnoseNeuralLink } from '../services/geminiService';
 import { checkAIHealth } from '../services/aiManagerService';
 
@@ -16,9 +16,9 @@ interface TreinadorTabProps {
   onAcceptDiet: (plan: DietPlan) => void;
   onClearChat?: () => void;
   userContext?: {
-    profile: any;
+    profile: AppProfile | null;
     weight: number | null;
-    measurements: any[];
+    measurements: MeasurementEntry[];
   };
 }
 

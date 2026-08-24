@@ -7,13 +7,16 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getFirestoreInstance, auth } from '../lib/firebase';
+import type { AppUser, AppProfile } from '../types';
+
+type ProfileUpdate = AppProfile | ((prev: AppProfile | null) => AppProfile);
 
 interface AuthContextType {
-  user: any | null;
-  profile: any | null;
+  user: AppUser | null;
+  profile: AppProfile | null;
   loading: boolean;
-  setProfile: (profile: any) => void;
-  setUser: (user: any | null) => void;
+  setProfile: (update: ProfileUpdate) => void;
+  setUser: (user: AppUser | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -23,8 +26,8 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<any | null>(null);
-  const [profile, setProfile] = useState<any | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [profile, setProfile] = useState<AppProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -89,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, []);
 
-  const setUserAndStorage = (user: any | null) => {
+  const setUserAndStorage = (user: AppUser | null) => {
     if (user) {
       localStorage.setItem('user', JSON.stringify(user));
     } else {
@@ -98,7 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(user);
   };
 
-  const updateProfile = async (update: any) => {
+  const updateProfile = async (update: ProfileUpdate) => {
     const newProfile = typeof update === 'function' ? update(profile) : update;
     setProfile(newProfile);
     if (newProfile) {

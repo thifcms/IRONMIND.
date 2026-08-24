@@ -2,9 +2,10 @@ import React, { useMemo, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Droplets, RotateCcw, Bell, Clock } from 'lucide-react';
 import { getReminderSchedule, getExpectedGlassesByNow, checkDueReminder, markReminderFired, WAKE_HOUR, SLEEP_HOUR } from '../services/waterSchedule';
+import type { AppProfile } from '../types';
 
 interface WaterTabProps {
-  profile: any;
+  profile: AppProfile | null;
   waterIntake: Record<string, number>;
   onSetTodayCount: (count: number) => void;
   dietAguaLitrosDia?: number;
