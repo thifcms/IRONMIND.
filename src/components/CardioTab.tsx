@@ -244,13 +244,17 @@ export default function CardioTab() {
     let newWin: Window | null = null;
 
     const navigate = () => {
-      const finalUrl = forceOpenInChrome(url);
+      // O truque do intent:// (forceOpenInChrome) só funciona numa
+      // navegação direta (clique, window.open novo) -- atribuído via
+      // .location.href numa aba já aberta, ele resulta em tela branca
+      // (o navegador não processa a URL intent:// da mesma forma nesse
+      // caminho). Por isso aqui usamos a URL normal, sem essa técnica.
       if (newWin && !newWin.closed) {
-        logPiP(`[Cardio] Navegando a aba já aberta pra ${finalUrl}.`);
-        newWin.location.href = finalUrl;
+        logPiP(`[Cardio] Navegando a aba já aberta pra ${url}.`);
+        newWin.location.href = url;
       } else {
         logPiP(`[Cardio] Aba em branco não existe mais -- tentando window.open direto como fallback.`);
-        window.open(finalUrl, '_blank');
+        window.open(url, '_blank');
       }
     };
 
