@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, Dispatch, SetStateAction } from 'react';
-import { Send, Check, Loader2, Trash2, ShieldCheck, ShieldAlert, Cpu, X, Sparkles, Activity, Globe, Zap, AlertCircle, Copy } from 'lucide-react';
+import { Send, Check, Loader2, Trash2, ShieldCheck, ShieldAlert, Cpu, X, Sparkles, Activity, Globe, Zap, AlertCircle, Copy, Mic, MicOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ChatMessage, TrainingPlan, DietPlan, AppProfile, MeasurementEntry } from '../types';
 import { chatWithCoach, generateProposal, diagnoseNeuralLink } from '../services/geminiService';
 import { checkAIHealth } from '../services/aiManagerService';
+import { useSpeechInput } from '../hooks/useSpeechInput';
 
 interface TreinadorTabProps {
   history: ChatMessage[];
@@ -137,6 +138,9 @@ function NeuralLinkDiagnostic({ onClose, onStatusChange }: { onClose: () => void
 
 export default function TreinadorTab({ history, setHistory, onAcceptTraining, onAcceptWarmup, onAcceptCardio, onAcceptDiet, onClearChat, userContext }: TreinadorTabProps) {
   const [input, setInput] = useState('');
+  const { listening, start: startListening, stop: stopListening, supported: speechSupported } = useSpeechInput(
+    (transcript) => setInput(prev => (prev ? prev + ' ' : '') + transcript)
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Conectando ao Motor Neural... aguarde.');
   const [aiStatus, setAiStatus] = useState<{status: string, message: string} | null>(null);
@@ -905,10 +909,25 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
-            placeholder="Falar com o Treinador..."
+            placeholder={listening ? "Ouvindo..." : "Falar com o Treinador..."}
             rows={1}
             className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-300 transition-all text-slate-700 min-h-[48px] max-h-32 resize-none"
           />
+          {speechSupported && (
+            <button
+              type="button"
+              onClick={() => listening ? stopListening() : startListening()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              aria-label={listening ? "Parar de ouvir" : "Falar por voz"}
+              className={`w-12 h-12 rounded-xl flex-none flex items-center justify-center transition-all shadow-md active:scale-95 ${
+                listening ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+              }`}
+            >
+              {listening ? <MicOff className="w-5 h-5 flex-none" /> : <Mic className="w-5 h-5 flex-none" />}
+            </button>
+          )}
           <button 
             type="submit"
             disabled={isLoading}
