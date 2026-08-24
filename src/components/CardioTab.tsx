@@ -41,6 +41,48 @@ export default function CardioTab() {
   // "relógio" do cronômetro roda num Web Worker (thread separada, que o
   // Chrome não pausa da mesma forma) em vez de um setInterval direto.
   const workerRef = useRef<Worker | null>(null);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>(
+    typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
+  );
+  const tickCountRef = useRef(0);
+
+  const updateProgressNotification = async (elapsedSeconds: number) => {
+    if (notifPermission !== 'granted' || typeof navigator === 'undefined' || !navigator.serviceWorker) return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const mins = Math.floor(elapsedSeconds / 60).toString().padStart(2, '0');
+      const secs = (elapsedSeconds % 60).toString().padStart(2, '0');
+      const stats = getStats();
+      await reg.showNotification('IronMind Cardio', {
+        body: `⏱ ${mins}:${secs}  •  ${stats.distance}km  •  ${speedRef.current.toFixed(1)}km/h`,
+        icon: './icon.svg',
+        badge: './icon.svg',
+        tag: 'ironmind-cardio-progress', // substitui a anterior, não empilha
+        silent: true,
+        renotify: false,
+      } as NotificationOptions);
+    } catch (e) {
+      console.warn('Falha ao mostrar notificação de progresso:', e);
+    }
+  };
+
+  const clearProgressNotification = async () => {
+    if (typeof navigator === 'undefined' || !navigator.serviceWorker) return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const notifs = await reg.getNotifications({ tag: 'ironmind-cardio-progress' });
+      notifs.forEach(n => n.close());
+    } catch {
+      // sem problema, a notificação só some quando o usuário limpar mesmo
+    }
+  };
+
+  const handleEnableProgressNotif = async () => {
+    if (typeof Notification === 'undefined') return;
+    const perm = await Notification.requestPermission();
+    setNotifPermission(perm);
+  };
+
   useEffect(() => {
     const workerCode = `setInterval(() => postMessage('tick'), 1000);`;
     const blob = new Blob([workerCode], { type: 'application/javascript' });
@@ -50,7 +92,17 @@ export default function CardioTab() {
 
     worker.onmessage = () => {
       if (!isActiveRef.current) return;
-      setTime(prev => prev + 1);
+      setTime(prev => {
+        const next = prev + 1;
+        // Atualiza a notificação a cada 15s (não todo segundo -- evita
+        // gastar bateria/spam de atualização), rodando pelo mesmo
+        // Worker que já sobrevive a aba em segundo plano.
+        tickCountRef.current += 1;
+        if (tickCountRef.current % 15 === 0) {
+          updateProgressNotification(next);
+        }
+        return next;
+      });
       setHeartRate(prev => {
         const target = 120 + (speedRef.current * 5);
         if (prev < target) return prev + 1;
@@ -463,7 +515,11 @@ export default function CardioTab() {
       {/* Controls */}
       <div className="px-4 py-4 space-y-3 bg-white dark:bg-[#121212] border-t border-slate-200 dark:border-slate-800">
         <button 
-            onClick={() => setIsActive(!isActive)}
+            onClick={() => {
+              const next = !isActive;
+              setIsActive(next);
+              if (!next) clearProgressNotification();
+            }}
             className={`w-full py-3.5 rounded-xl font-black uppercase tracking-[0.2em] text-[9px] transition-all ${
                 isActive 
                     ? 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/20' 
@@ -472,6 +528,16 @@ export default function CardioTab() {
         >
             {isActive ? 'PONTUALIZAR / PAUSAR' : 'INICIAR TREINO'}
         </button>
+
+        {notifPermission !== 'unsupported' && notifPermission !== 'granted' && (
+          <button
+            type="button"
+            onClick={handleEnableProgressNotif}
+            className="w-full py-2.5 rounded-xl bg-slate-100 dark:bg-[#1a1a1a] text-slate-600 dark:text-slate-300 font-black text-[9px] uppercase tracking-widest flex items-center justify-center gap-1.5"
+          >
+            <Zap className="w-3.5 h-3.5" /> Ativar notificação de progresso
+          </button>
+        )}
 
         <div className="flex gap-2 pb-2">
             <button 
