@@ -995,6 +995,7 @@ export default function App() {
                   setMeasurementHistory={setMeasurementHistory}
                   loadHistory={loadHistory}
                   setLoadHistory={setLoadHistory}
+                  checkinHistory={checkinHistory}
                   userProfile={profile}
                   setUserProfile={setProfile}
                   onClearHistory={() => setShowConfirmClearHistory(true)}

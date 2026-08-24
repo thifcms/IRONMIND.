@@ -325,6 +325,43 @@ export async function chatWithCoach(history: ChatMessage[], message: string, use
 }
 
 /**
+ * Gera um insight curto sobre a semana (peso, progressão de carga,
+ * check-ins) usando o mesmo endpoint de chat, mas como uma chamada
+ * avulsa -- não entra no histórico visível de conversa com o
+ * Treinador, é só pra essa análise pontual.
+ */
+export async function generateWeeklyInsights(weeklySummary: string, userProfile?: any): Promise<string> {
+  const { contextText } = getProfileContext(userProfile);
+
+  const prompt = `Analise os dados da última semana deste aluno e escreva um insight curto (3-5 frases, tom direto e motivador, português do Brasil). Aponte padrões, correlações entre os dados (ex: energia baixa em dias de pior adesão, progressão de carga parada ou subindo), e UMA sugestão prática pra semana que vem. Não repita os números de forma robótica, interprete-os.
+
+DADOS DA SEMANA:
+${weeklySummary}`;
+
+  const res = await fetch(apiUrl("/api/chat"), {
+    method: "POST",
+    headers: await apiHeaders(),
+    body: JSON.stringify({
+      messages: [{ role: 'user', parts: [{ text: prompt }] }],
+      systemInstruction: `Você é o IronMind Neural, o treinador IA do app. Responda em texto corrido (sem markdown de tabela, sem tags de proposta).${contextText}`,
+      userId: "anonymous",
+    })
+  });
+
+  const contentType = res.headers.get("content-type") || "";
+  if (!res.ok) {
+    const errorData = contentType.includes("application/json") ? await res.json() : { message: await res.text() };
+    throw new Error(errorData.message || errorData.error || "Falha ao gerar insights.");
+  }
+
+  if (!contentType.includes("application/json")) {
+    return (await res.text()).trim();
+  }
+  const data = await res.json();
+  return data.text;
+}
+
+/**
  * Gera propostas de treino ou dieta (JSON via Servidor)
  */
 export async function generateProposal(type: 'training' | 'diet', context: string, userProfile?: any, userId?: string, allowFallback: boolean = false): Promise<TrainingPlan | DietPlan> {

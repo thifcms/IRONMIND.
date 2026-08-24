@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { Calendar, TrendingUp, Award, Clock, Scale, Ruler, Plus, Dumbbell, Activity, AlertCircle, Sparkles } from 'lucide-react';
-import { WeightEntry, UserProfile, MeasurementEntry, LoadEntry } from '../types';
+import { WeightEntry, MeasurementEntry, LoadEntry, CheckinEntry, AppProfile } from '../types';
+import WeeklyInsights from './WeeklyInsights';
 
 interface HistoryTabProps {
   weightHistory: WeightEntry[];
@@ -11,8 +12,9 @@ interface HistoryTabProps {
   setMeasurementHistory: React.Dispatch<React.SetStateAction<MeasurementEntry[]>>;
   loadHistory: LoadEntry[];
   setLoadHistory: React.Dispatch<React.SetStateAction<LoadEntry[]>>;
-  userProfile: UserProfile;
-  setUserProfile: React.Dispatch<React.SetStateAction<UserProfile>>;
+  checkinHistory: CheckinEntry[];
+  userProfile: AppProfile;
+  setUserProfile: React.Dispatch<React.SetStateAction<AppProfile>>;
   onClearHistory: () => void;
   onClearChat: () => void;
   onClearTraining: () => void;
@@ -27,6 +29,7 @@ export default function HistoryTab({
   setMeasurementHistory,
   loadHistory,
   setLoadHistory,
+  checkinHistory,
   userProfile, 
   setUserProfile,
   onClearHistory,
@@ -192,6 +195,13 @@ export default function HistoryTab({
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24 touch-pan-y">
+        <WeeklyInsights
+          weightHistory={weightHistory}
+          loadHistory={loadHistory}
+          checkinHistory={checkinHistory}
+          userProfile={userProfile}
+        />
+
         {/* Resumo de Frequência (Anteriormente existente) */}
         <div className="grid grid-cols-2 gap-3">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
