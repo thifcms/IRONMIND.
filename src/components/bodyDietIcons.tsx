@@ -51,7 +51,7 @@ function row(prefix: string, folder: string, r: number, count = 5): BodyOption[]
 // A mesma escala serve tanto pra "atual" quanto pra "meta".
 const GLUTEOS_NIVEIS: BodyOption[] = Array.from({ length: 5 }, (_, i) => ({
   id: `gluteos_nivel_${i + 1}`,
-  src: asset(`bodydiet/gluteos_v2/gluteos_nivel_${i + 1}.png`),
+  src: asset(`bodydiet/gluteos_v2/gluteos_nivel_${i + 1}.jpg`),
 }));
 export const GLUTEOS_NIVEL_LABELS = ['Plano', 'Leve volume', 'Firme e definido', 'Bem definido', 'Hipertrofiado'];
 
