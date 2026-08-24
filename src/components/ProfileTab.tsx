@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Calendar, Weight, Ruler, Dumbbell, Target, Info, AlertTriangle, Apple, Save, LogOut, Trash2, AlertCircle, Fingerprint, HeartPulse } from 'lucide-react';
+import { User, Calendar, Weight, Ruler, Dumbbell, Target, Info, AlertTriangle, Apple, Save, LogOut, Trash2, AlertCircle, Fingerprint, HeartPulse, Flame } from 'lucide-react';
 import { getFirestoreInstance, auth } from '../lib/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { signOut, deleteUser } from 'firebase/auth';
@@ -198,6 +198,19 @@ export default function ProfileTab({ profile, setProfile }: ProfileTabProps) {
           Sair
         </button>
       </div>
+
+      {/* Streak + conquistas -- só aparece se já tem alguma atividade registrada */}
+      {(profile?.streak?.count ?? 0) > 0 && (
+        <div className="mx-3 mt-3 mb-1 shrink-0 flex items-center gap-3 bg-orange-50 dark:bg-orange-900/10 rounded-2xl px-4 py-3">
+          <Flame className="w-6 h-6 text-orange-500 flex-none" />
+          <div className="flex-1">
+            <p className="text-lg font-black text-orange-600 dark:text-orange-400 leading-none">{profile?.streak?.count} dias seguidos</p>
+            <p className="text-[10px] text-orange-500/70 font-bold uppercase tracking-widest mt-0.5">
+              Recorde: {profile?.streak?.longestStreak || profile?.streak?.count} · {profile?.totalWorkoutsCompleted || 0} treinos no total
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Sub-abas */}
       <div className="flex gap-2 p-3 pb-0 shrink-0 bg-slate-50">

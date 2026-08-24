@@ -139,6 +139,8 @@ export interface AppProfile {
   authUid?: string;
   uid?: string;
   waterIntake?: Record<string, number>;
+  streak?: { count: number; longestStreak: number; lastActivityDate: string };
+  totalWorkoutsCompleted?: number;
   bodyDietProfile?: import('./components/BodyDietProfileTab').BodyDietProfile;
   // Campos adicionais que o backend/telas específicas possam salvar,
   // sem quebrar a checagem de tipos do resto do app.

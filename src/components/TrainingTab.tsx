@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { TrainingPlan, Exercise } from '../types';
 import { Play, Dumbbell, Clock, Check, Plus, Trash2, StickyNote, X, TrendingUp, Target, Search, ChevronRight, Filter, AlertCircle, ChevronDown, Timer, Pause, RotateCcw, PlusCircle, MinusCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -9,12 +9,14 @@ export default function TrainingTab({
   plan, 
   onUpdatePlan, 
   onClearPlan,
-  onOpenSplitSelector
+  onOpenSplitSelector,
+  onWorkoutComplete
 }: { 
   plan: TrainingPlan; 
   onUpdatePlan: (p: TrainingPlan) => void;
   onClearPlan: () => void;
   onOpenSplitSelector: () => void;
+  onWorkoutComplete?: (dayLabel: string, exerciseCount: number) => void;
 }) {
   console.log('TrainingTab rendering with plan:', plan);
   const [activeDayIdx, setActiveDayIdx] = useState(0);
@@ -72,6 +74,36 @@ export default function TrainingTab({
     if (totalSets === 0) return 0;
     return Math.round((completed / totalSets) * 100);
   }, [plan.days, completedSets]);
+
+  // Progresso só do dia ativo (ex: "Treino A" hoje), separado do
+  // progresso do plano inteiro acima -- é o que dispara a celebração
+  // de "treino concluído", já que ninguém termina o plano de semanas
+  // inteiro de uma vez, mas termina UM dia por sessão de treino.
+  const activeDay = plan.days?.[activeDayIdx];
+  const dayProgress = useMemo(() => {
+    if (!activeDay) return 0;
+    const dayTotalSets = (activeDay.exercises || []).reduce((acc, ex) => acc + (ex.sets || 0), 0);
+    if (dayTotalSets === 0) return 0;
+    const dayCompletedSetsCount = (activeDay.exercises || []).reduce((acc, ex) => {
+      const sets = completedSets[ex.id] || [];
+      return acc + sets.filter(Boolean).length;
+    }, 0);
+    return Math.round((dayCompletedSetsCount / dayTotalSets) * 100);
+  }, [activeDay, completedSets]);
+
+  // Dispara a celebração só na transição pra 100% (não em todo re-render
+  // enquanto já está em 100%, nem ao trocar de aba e voltar). A chave
+  // inclui o dia + a data de hoje, pra permitir comemorar de novo se a
+  // pessoa reabrir o mesmo treino num dia diferente.
+  const celebratedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!activeDay || dayProgress !== 100) return;
+    const todayStr = new Date().toDateString();
+    const key = `${plan.id}_${activeDayIdx}_${todayStr}`;
+    if (celebratedKeyRef.current === key) return;
+    celebratedKeyRef.current = key;
+    onWorkoutComplete?.(activeDay.label || `Treino ${String.fromCharCode(65 + activeDayIdx)}`, (activeDay.exercises || []).length);
+  }, [dayProgress, activeDay, activeDayIdx, plan.id, onWorkoutComplete]);
 
   const removeExercise = (id: string, name: string) => {
     const newDays = plan.days.map((day) => ({
@@ -378,14 +410,7 @@ export default function TrainingTab({
           (() => {
             const day = plan.days[activeDayIdx];
             const dayIdx = activeDayIdx;
-            
-            // Calculate specific day progress
-            const dayTotalSets = (day.exercises || []).reduce((acc: number, ex: any) => acc + (ex.sets || 0), 0);
-            const dayCompletedSetsCount = (day.exercises || []).reduce((acc: number, ex: any) => {
-              const sets = completedSets[ex.id] || [];
-              return acc + sets.filter(s => s).length;
-            }, 0);
-            const dayProgress = dayTotalSets === 0 ? 0 : Math.round((dayCompletedSetsCount / dayTotalSets) * 100);
+            // dayProgress já calculado acima (useMemo), reaproveitado aqui.
 
             return (
               <div key={dayIdx} className="space-y-4 pt-4 animate-in fade-in slide-in-from-right-4 duration-300">

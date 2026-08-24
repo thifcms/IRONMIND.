@@ -29,6 +29,9 @@ import {
 import { Tab, TrainingPlan, DietPlan, ChatMessage, WeightEntry, UserProfile, MeasurementEntry, LoadEntry, CheckinEntry } from './types';
 import { loadChatHistory, saveChatHistory, chatWithCoach } from './services/geminiService';
 import { safeLocalStorageSet } from './lib/safeStorage';
+import { recordActivity } from './lib/streak';
+import WorkoutCompleteModal, { diffNewAchievements } from './components/WorkoutCompleteModal';
+import type { Achievement } from './lib/streak';
 import TreinadorTab from './components/TreinadorTab';
 import TrainingTab from './components/TrainingTab';
 import WarmupTab from './components/WarmupTab';
@@ -54,6 +57,30 @@ import { signOut } from 'firebase/auth';
 export default function App() {
   const db = getFirestoreInstance();
   const { user, profile, loading, setProfile } = useAuth();
+  const [workoutCompleteInfo, setWorkoutCompleteInfo] = useState<{ dayLabel: string; exerciseCount: number; streakCount: number; newAchievements: Achievement[] } | null>(null);
+
+  const handleWorkoutComplete = useCallback((dayLabel: string, exerciseCount: number) => {
+    setProfile((prev) => {
+      const before = prev || {};
+      const { streak: newStreak, isNewDay } = recordActivity(before.streak);
+      const newTotal = (before.totalWorkoutsCompleted || 0) + (isNewDay ? 1 : 0);
+      const after = { ...before, streak: newStreak, totalWorkoutsCompleted: newTotal };
+
+      // Só mostra a tela de celebração se for realmente uma atividade nova
+      // hoje (evita popup repetido se a pessoa re-renderiza/revisita a
+      // mesma sessão já concluída).
+      if (isNewDay) {
+        const newAchievements = diffNewAchievements(
+          { streak: before.streak, totalWorkoutsCompleted: before.totalWorkoutsCompleted },
+          { streak: after.streak, totalWorkoutsCompleted: after.totalWorkoutsCompleted }
+        );
+        setWorkoutCompleteInfo({ dayLabel, exerciseCount, streakCount: newStreak.count, newAchievements });
+      }
+
+      return after;
+    });
+  }, [setProfile]);
+
   const [biometricLocked, setBiometricLocked] = useState(() => isBiometricEnabledOnThisDevice());
   const [aquecimentoSubTab, setAquecimentoSubTab] = useState<'classico' | 'sugestao'>('classico');
   const [cardioSubTab, setCardioSubTab] = useState<'classico' | 'sugestao'>('classico');
@@ -892,7 +919,7 @@ export default function App() {
                     <>
                       <div className="flex-1 overflow-hidden">
                         {warmupPlan
-                          ? <TrainingTab plan={warmupPlan} onUpdatePlan={updateWarmupPlan} onClearPlan={() => setShowConfirmClearWarmup(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} />
+                          ? <TrainingTab plan={warmupPlan} onUpdatePlan={updateWarmupPlan} onClearPlan={() => setShowConfirmClearWarmup(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} onWorkoutComplete={handleWorkoutComplete} />
                           : <EmptyState type="aquecimento" onClick={() => setActiveTab(Tab.TREINADOR)} />}
                       </div>
                       <MediaQuickLaunch />
@@ -908,6 +935,7 @@ export default function App() {
                 onUpdatePlan={updateTrainingPlan} 
                 onClearPlan={() => setShowConfirmClearTraining(true)} 
                 onOpenSplitSelector={() => setIsSplitSelectorOpen(true)}
+                onWorkoutComplete={handleWorkoutComplete}
               />
             )}
             {activeTab === Tab.VIDEOS && (
@@ -940,7 +968,7 @@ export default function App() {
                     <>
                       <div className="flex-1 overflow-hidden">
                         {cardioPlan
-                          ? <TrainingTab plan={cardioPlan} onUpdatePlan={updateCardioPlan} onClearPlan={() => setShowConfirmClearCardio(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} />
+                          ? <TrainingTab plan={cardioPlan} onUpdatePlan={updateCardioPlan} onClearPlan={() => setShowConfirmClearCardio(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} onWorkoutComplete={handleWorkoutComplete} />
                           : <EmptyState type="cardio" onClick={() => setActiveTab(Tab.TREINADOR)} />}
                       </div>
                       <MediaQuickLaunch />
@@ -1123,15 +1151,25 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {workoutCompleteInfo && (
+        <WorkoutCompleteModal
+          dayLabel={workoutCompleteInfo.dayLabel}
+          exerciseCount={workoutCompleteInfo.exerciseCount}
+          streakCount={workoutCompleteInfo.streakCount}
+          newAchievements={workoutCompleteInfo.newAchievements}
+          onClose={() => setWorkoutCompleteInfo(null)}
+        />
+      )}
     </div>
   );
 }
 
-function TrainingPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan, onOpenSplitSelector }: { plan: TrainingPlan | null, setActiveTab: (t: Tab) => void, onUpdatePlan: (p: TrainingPlan) => void, onClearPlan: () => void, onOpenSplitSelector: () => void }) {
+function TrainingPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan, onOpenSplitSelector, onWorkoutComplete }: { plan: TrainingPlan | null, setActiveTab: (t: Tab) => void, onUpdatePlan: (p: TrainingPlan) => void, onClearPlan: () => void, onOpenSplitSelector: () => void, onWorkoutComplete?: (dayLabel: string, exerciseCount: number) => void }) {
   console.log('TrainingPlanView rendering, plan:', plan);
 
   if (!plan) return <EmptyState type="treino" onClick={() => setActiveTab(Tab.TREINADOR)} onManualBuild={onOpenSplitSelector} />;
-  return <TrainingTab plan={plan} onUpdatePlan={onUpdatePlan} onClearPlan={onClearPlan} onOpenSplitSelector={onOpenSplitSelector} />;
+  return <TrainingTab plan={plan} onUpdatePlan={onUpdatePlan} onClearPlan={onClearPlan} onOpenSplitSelector={onOpenSplitSelector} onWorkoutComplete={onWorkoutComplete} />;
 }
 
 function DietPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan }: { plan: DietPlan | null, setActiveTab: (t: Tab) => void, onUpdatePlan: (p: DietPlan) => void, onClearPlan: () => void }) {
