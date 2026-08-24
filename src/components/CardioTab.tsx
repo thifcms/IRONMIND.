@@ -279,76 +279,35 @@ export default function CardioTab() {
     if (!isActive) setIsActive(true);
     setPipDebug(null);
     logPiP(`[Cardio] handleMediaClick chamado para ${url}.`);
+    const openUrl = forceOpenInChrome(url);
 
-    // ORDEM INVERTIDA (2ª tentativa): o erro real capturado foi
-    // "NotAllowedError: Must be handling a user gesture" no
-    // requestPictureInPicture() -- abrir a aba em branco ANTES consumia
-    // o "gesto do usuário" que o PiP também precisa. Pedimos o PiP
-    // primeiro (gesto mais fresco possível), e só depois (mesmo
-    // instante síncrono) abrimos a aba em branco.
-    const video = videoRef.current;
-    if (!video) {
-      window.open(forceOpenInChrome(url), '_blank');
-      return;
-    }
-
-    let settled = false;
-    let newWin: Window | null = null;
-
-    const navigate = () => {
-      // O truque do intent:// (forceOpenInChrome) só funciona numa
-      // navegação direta (clique, window.open novo) -- atribuído via
-      // .location.href numa aba já aberta, ele resulta em tela branca
-      // (o navegador não processa a URL intent:// da mesma forma nesse
-      // caminho). Por isso aqui usamos a URL normal, sem essa técnica.
-      if (newWin && !newWin.closed) {
-        logPiP(`[Cardio] Navegando a aba já aberta pra ${url}.`);
-        newWin.location.href = url;
-      } else {
-        logPiP(`[Cardio] Aba em branco não existe mais -- tentando window.open direto como fallback.`);
-        window.open(url, '_blank');
-      }
-    };
-
-    const onEnter = () => {
-      if (settled) return;
-      settled = true;
-      video.removeEventListener('enterpictureinpicture', onEnter);
-      logPiP('[Cardio] Visor confirmado ativo (enterpictureinpicture) -- navegando agora.');
-      navigate();
-    };
-    video.addEventListener('enterpictureinpicture', onEnter);
-
-    const timeoutId = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      video.removeEventListener('enterpictureinpicture', onEnter);
-      logPiP('[Cardio] Visor não confirmou entrada em 2.5s -- navegando mesmo assim.');
-      setPipDebug('Visor não confirmou entrada em 2.5s (nem sucesso nem erro).');
-      navigate();
-    }, 2500);
-
-    // 1º: pede o PiP (gesto mais fresco possível)
-    togglePiP().catch(err => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeoutId);
-      video.removeEventListener('enterpictureinpicture', onEnter);
+    // ================================================================
+    // PADRÃO SIMPLES -- É O QUE ESTÁ CONFIRMADO FUNCIONANDO DE VERDADE.
+    //
+    // Isso já foi reescrito e revertido MAIS DE UMA VEZ (ver commits
+    // da09120/77bdcfc, depois be24e78, depois 768b072/c54fdb2/31e3077).
+    // Toda vez que alguém tenta "sincronizar direito" com o evento
+    // enterpictureinpicture (esperar confirmação antes de abrir a URL,
+    // usar aba em branco pra evitar bloqueio de pop-up, navegar só
+    // depois) o resultado é IDÊNTICO ao problema original: o log
+    // mostra leavepictureinpicture disparando sozinho, com a aba
+    // oculta, e o visor some. A complexidade extra não resolve nada --
+    // só introduz bugs novos (bloqueio de pop-up, tela branca, etc).
+    //
+    // NÃO REINTRODUZA a espera pelo evento nem a técnica da aba em
+    // branco sem antes confirmar com o usuário, testando ESTA versão
+    // exata, que o problema realmente persiste.
+    // ================================================================
+    togglePiP().then(() => {
+      logPiP('[Cardio] togglePiP resolveu, abrindo (travado no Chrome) agora.');
+      window.open(openUrl, '_blank');
+    }).catch(err => {
       const msg = `Erro no PiP: ${err?.name || ''} ${err?.message || err}`;
       console.error(msg);
-      logPiP(`[Cardio] ${msg} -- navegando mesmo assim.`);
+      logPiP(`[Cardio] ${msg} -- abrindo mesmo assim.`);
       setPipDebug(msg);
-      navigate();
-    }).then(() => {
-      clearTimeout(timeoutId);
+      window.open(openUrl, '_blank');
     });
-
-    // 2º: abre a aba em branco logo em seguida, ainda no mesmo instante
-    // síncrono (não espera a Promise do PiP resolver) -- só muda a URL
-    // dela depois de verdade, quando o PiP confirmar (onEnter acima) ou
-    // no timeout de segurança.
-    newWin = window.open('about:blank', '_blank');
-    logPiP(`[Cardio] Aba em branco ${newWin ? 'aberta com sucesso' : 'BLOQUEADA pelo navegador'} (depois do pedido de PiP).`);
   };
 
   const stats = getStats();

@@ -161,99 +161,38 @@ export function usePiPLauncher() {
   const launch = (target: string | (() => void), onDebug?: (msg: string) => void) => {
     activeRef.current = true;
 
-    // Fluxo customizado (ex: MusicTab, que usa deep link de app + fallback
-    // pra loja) -- mantém o comportamento simples de antes, sem a técnica
-    // da aba em branco (que não se aplica a deep links tipo "spotify:open").
-    if (typeof target === 'function') {
-      logPiP(`launch() chamado com callback customizado.`);
-      togglePiP().then(() => {
-        logPiP('togglePiP resolveu, chamando callback agora.');
-        target();
-      }).catch(err => {
-        const msg = `Erro no PiP: ${err?.name || ''} ${err?.message || err}`;
-        console.error(msg);
-        logPiP(`${msg} -- chamando callback mesmo assim.`);
-        onDebug?.(msg);
-        target();
-      });
-      return;
-    }
+    const opener = typeof target === 'function' ? target : () => window.open(forceOpenInChrome(target), '_blank');
 
-    const url = target;
-    logPiP(`launch() chamado pra ${url}.`);
+    logPiP(`launch() chamado.`);
 
-    // ORDEM INVERTIDA (2ª tentativa): o erro real capturado foi
-    // "NotAllowedError: Must be handling a user gesture" no
-    // requestPictureInPicture() -- ou seja, abrir a aba em branco
-    // ANTES consumia o "gesto do usuário" que o PiP também precisa.
-    // Pedimos o PiP primeiro (gesto mais fresco possível), e só then
-    // abrimos a aba em branco -- ainda no mesmo instante síncrono,
-    // sem esperar a Promise do PiP resolver.
-    const video = videoElRef.current;
-    if (!video) {
-      logPiP('Vídeo do visor não está pronto -- abrindo direto, sem PiP.');
-      window.open(forceOpenInChrome(url), '_blank');
-      return;
-    }
-
-    let settled = false;
-    let newWin: Window | null = null;
-
-    const navigate = () => {
-      // O truque do intent:// (forceOpenInChrome) só funciona numa
-      // navegação direta (clique, window.open novo) -- atribuído via
-      // .location.href numa aba já aberta, ele resulta em tela branca
-      // (o navegador não processa a URL intent:// da mesma forma nesse
-      // caminho). Por isso aqui usamos a URL normal, sem essa técnica.
-      if (newWin && !newWin.closed) {
-        logPiP(`Navegando a aba já aberta pra ${url}.`);
-        newWin.location.href = url;
-      } else {
-        logPiP(`Aba em branco não existe mais -- tentando window.open direto como fallback.`);
-        window.open(url, '_blank');
-      }
-    };
-
-    const onEnter = () => {
-      if (settled) return;
-      settled = true;
-      video.removeEventListener('enterpictureinpicture', onEnter);
-      logPiP('Visor confirmado ativo (enterpictureinpicture) -- navegando agora.');
-      onDebug?.('Visor confirmado ativo -- navegando a aba pro destino agora.');
-      navigate();
-    };
-    video.addEventListener('enterpictureinpicture', onEnter);
-
-    const timeoutId = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      video.removeEventListener('enterpictureinpicture', onEnter);
-      logPiP('Visor não confirmou entrada em 2.5s -- navegando mesmo assim.');
-      onDebug?.('Visor não confirmou entrada em 2.5s (nem sucesso nem erro).');
-      navigate();
-    }, 2500);
-
-    // 1º: pede o PiP (gesto mais fresco possível)
-    togglePiP().catch(err => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeoutId);
-      video.removeEventListener('enterpictureinpicture', onEnter);
+    // ================================================================
+    // PADRÃO SIMPLES -- É O QUE ESTÁ CONFIRMADO FUNCIONANDO DE VERDADE.
+    //
+    // Isso já foi reescrito e revertido MAIS DE UMA VEZ (ver commits
+    // da09120/77bdcfc, depois be24e78, depois 768b072/c54fdb2/31e3077).
+    // Toda vez que alguém tenta "sincronizar direito" com o evento
+    // enterpictureinpicture (esperar confirmação antes de abrir a
+    // URL, usar aba em branco pra evitar bloqueio de pop-up, navegar
+    // só depois) o resultado é IDÊNTICO ao problema original: o log
+    // mostra leavepictureinpicture disparando sozinho, com a aba
+    // oculta, e o visor some. Ou seja, a complexidade extra não
+    // resolve nada -- só introduz bugs novos (bloqueio de pop-up,
+    // tela branca, etc).
+    //
+    // NÃO REINTRODUZA a espera pelo evento nem a técnica da aba em
+    // branco sem antes confirmar com o usuário, testando ESTA versão
+    // exata, que o problema realmente persiste.
+    // ================================================================
+    togglePiP().then(() => {
+      logPiP('togglePiP resolveu, abrindo agora.');
+      opener();
+    }).catch(err => {
       const msg = `Erro no PiP: ${err?.name || ''} ${err?.message || err}`;
       console.error(msg);
-      logPiP(`${msg} -- navegando mesmo assim.`);
+      logPiP(`${msg} -- abrindo mesmo assim.`);
       onDebug?.(msg);
-      navigate();
-    }).then(() => {
-      clearTimeout(timeoutId);
+      opener();
     });
-
-    // 2º: abre a aba em branco logo em seguida, ainda no mesmo instante
-    // síncrono (não espera a Promise do PiP resolver) -- só muda a URL
-    // dela depois de verdade, quando o PiP confirmar (onEnter acima) ou
-    // no timeout de segurança.
-    newWin = window.open('about:blank', '_blank');
-    logPiP(`Aba em branco ${newWin ? 'aberta com sucesso' : 'BLOQUEADA pelo navegador'} (depois do pedido de PiP).`);
   };
 
   return { launch };
