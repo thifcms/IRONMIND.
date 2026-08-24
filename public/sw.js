@@ -81,3 +81,45 @@ self.addEventListener('fetch', (event) => {
       .catch(() => caches.match(req))
   );
 });
+
+// ─────────────────────────────────────────────────────────────
+// Push notifications: o backend manda um payload JSON
+// { title, body, url } (ver /api/push/send-reminders no repo
+// Ironmind-ai-funcionando) -- o navegador só entrega isso aqui quando
+// chega uma notificação de verdade, mesmo com o app fechado.
+// ─────────────────────────────────────────────────────────────
+
+self.addEventListener('push', (event) => {
+  let data = { title: 'IronMind', body: 'Você tem uma novidade.', url: '/' };
+  try {
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch {
+    // payload não é JSON válido -- usa o texto puro como corpo
+    if (event.data) data.body = event.data.text();
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: 'icon.svg',
+      badge: 'icon.svg',
+      data: { url: data.url || '/' },
+    })
+  );
+});
+
+// Ao tocar na notificação, foca numa aba já aberta do app (se tiver) em
+// vez de abrir uma nova toda vez.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) return client.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
+    })
+  );
+});

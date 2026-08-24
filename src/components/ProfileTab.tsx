@@ -11,6 +11,7 @@ import { doc, deleteDoc } from 'firebase/firestore';
 import { signOut, deleteUser } from 'firebase/auth';
 import { isBiometricAvailable, isBiometricEnabledOnThisDevice, registerBiometric, disableBiometric, getLocalCredentialId } from '../services/biometricAuth';
 import BodyDietProfileTab, { BodyDietProfile } from './BodyDietProfileTab';
+import PushNotificationToggle from './PushNotificationToggle';
 import type { AppProfile } from '../types';
 
 interface ProfileTabProps {
@@ -211,6 +212,8 @@ export default function ProfileTab({ profile, setProfile }: ProfileTabProps) {
           </div>
         </div>
       )}
+
+      <PushNotificationToggle userId={profile?.uid} />
 
       {/* Sub-abas */}
       <div className="flex gap-2 p-3 pb-0 shrink-0 bg-slate-50">
