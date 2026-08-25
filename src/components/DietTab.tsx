@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { DietPlan } from '../types';
+import { DietPlan, AppProfile } from '../types';
 import { Clock, CheckCircle2, Camera, Loader2, Info, AlertTriangle, Utensils, ShieldCheck, ShieldAlert, Droplets, Pill } from 'lucide-react';
 import { analyzeFoodImage } from '../services/geminiService';
 import { compressImage } from '../lib/imageUtils';
@@ -8,11 +8,15 @@ import { motion, AnimatePresence } from 'motion/react';
 export default function DietTab({ 
   plan, 
   onClearPlan, 
-  onRequestNew 
+  onRequestNew,
+  userProfile,
+  userId
 }: { 
   plan: DietPlan | null;
   onClearPlan: () => void;
   onRequestNew: () => void;
+  userProfile?: AppProfile | null;
+  userId?: string;
 }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<{ food: string, calories: number, color: 'green' | 'yellow' | 'red', explanation: string } | null>(null);
@@ -51,7 +55,7 @@ export default function DietTab({
 
   const performAnalysis = async (base64: string, forceFallback: boolean) => {
     try {
-      const result = await analyzeFoodImage(base64, forceFallback);
+      const result = await analyzeFoodImage(base64, userProfile, userId, forceFallback);
       setAnalysis(result);
     } catch (error: any) {
       console.error("Analysis Error:", error);

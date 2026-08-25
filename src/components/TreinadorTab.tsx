@@ -5,7 +5,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ChatMessage, TrainingPlan, DietPlan, AppProfile, MeasurementEntry, CheckinEntry, LoadEntry, CardioSession } from '../types';
 import { chatWithCoach, generateProposal, diagnoseNeuralLink } from '../services/geminiService';
-import { checkAIHealth } from '../services/aiManagerService';
 import { useSpeechInput } from '../hooks/useSpeechInput';
 
 interface TreinadorTabProps {
@@ -150,7 +149,6 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
   );
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Conectando ao Motor Neural... aguarde.');
-  const [aiStatus, setAiStatus] = useState<{status: string, message: string} | null>(null);
   const [neuralLinkOnline, setNeuralLinkOnline] = useState<boolean | null>(null);
   const [showDiagnostic, setShowDiagnostic] = useState(false);
 
@@ -178,7 +176,6 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
   const [showQuotaInfo, setShowQuotaInfo] = useState(false);
 
   useEffect(() => {
-    checkAIHealth().then(setAiStatus);
     diagnoseNeuralLink().then(res => setNeuralLinkOnline(!!res.online));
 
     const handleOnline = () => setNeuralLinkOnline(true);

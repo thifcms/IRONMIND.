@@ -26,7 +26,7 @@ import {
   ClipboardCheck,
   Droplets
 } from 'lucide-react';
-import { Tab, TrainingPlan, DietPlan, ChatMessage, WeightEntry, UserProfile, MeasurementEntry, LoadEntry, CheckinEntry, CardioSession } from './types';
+import { Tab, TrainingPlan, DietPlan, ChatMessage, WeightEntry, UserProfile, MeasurementEntry, LoadEntry, CheckinEntry, CardioSession, AppProfile } from './types';
 import { loadChatHistory, saveChatHistory, chatWithCoach } from './services/geminiService';
 import { safeLocalStorageSet } from './lib/safeStorage';
 import { recordActivity } from './lib/streak';
@@ -1010,7 +1010,7 @@ export default function App() {
                 </div>
               </div>
             )}
-            {activeTab === Tab.DIETA && <DietPlanView plan={dietPlan} setActiveTab={setActiveTab} onUpdatePlan={updateDietPlan} onClearPlan={() => setShowConfirmClearDiet(true)} />}
+            {activeTab === Tab.DIETA && <DietPlanView plan={dietPlan} setActiveTab={setActiveTab} onUpdatePlan={updateDietPlan} onClearPlan={() => setShowConfirmClearDiet(true)} userProfile={profile} userId={user?.uid} />}
             {activeTab === Tab.AGUA && (
               <WaterTab
                 profile={profile}
@@ -1217,9 +1217,9 @@ function TrainingPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan, onOpe
   return <TrainingTab plan={plan} onUpdatePlan={onUpdatePlan} onClearPlan={onClearPlan} onOpenSplitSelector={onOpenSplitSelector} onWorkoutComplete={onWorkoutComplete} onOpenPoseCounter={onOpenPoseCounter} />;
 }
 
-function DietPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan }: { plan: DietPlan | null, setActiveTab: (t: Tab) => void, onUpdatePlan: (p: DietPlan) => void, onClearPlan: () => void }) {
+function DietPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan, userProfile, userId }: { plan: DietPlan | null, setActiveTab: (t: Tab) => void, onUpdatePlan: (p: DietPlan) => void, onClearPlan: () => void, userProfile?: AppProfile | null, userId?: string }) {
   console.log('DietPlanView rendering, plan:', plan);
-  return <DietTab plan={plan} onClearPlan={onClearPlan} onRequestNew={() => setActiveTab(Tab.TREINADOR)} />;
+  return <DietTab plan={plan} onClearPlan={onClearPlan} onRequestNew={() => setActiveTab(Tab.TREINADOR)} userProfile={userProfile} userId={userId} />;
 }
 
 function EmptyState({ type, onClick, onManualBuild }: { type: string, onClick: () => void, onManualBuild?: () => void }) {

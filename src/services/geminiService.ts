@@ -23,23 +23,6 @@ DIRETRIZES DE IA (AGENTE NEURAL):
    c) Quando for gerar a proposta de dieta em JSON, inclua SEMPRE dois campos extras, além de "meals": "aguaLitrosDia" (número, litros de água recomendados por dia, calculado a partir do peso/objetivo do usuário -- regra prática: ~35ml por kg de peso corporal, ajustando pra cima em dias de treino/cardio intenso) e "suplementos" (array de objetos {"nome", "quantidade", "horario"} -- os que o usuário já usa OU os que você sugeriu e ele aceitou, com dose e horário de tomar cada um, ex: "Creatina: 5g, ao acordar").`;
 
 /**
- * Atualiza a URL e Chave de API do Cérebro Externo
- */
-export async function updateNeuralLinkUrl(url?: string, apiKey?: string): Promise<any> {
-  try {
-    const res = await fetch(apiUrl("/api/neural-link/config"), {
-      method: "POST",
-      headers: await apiHeaders(),
-      body: JSON.stringify({ url, apiKey })
-    });
-    return await res.json();
-  } catch (error) {
-    console.error("Config Error:", error);
-    return { success: false, error: "Falha ao atualizar configuração." };
-  }
-}
-
-/**
  * Diagnóstico do Link Neural
  */
 export async function diagnoseNeuralLink(): Promise<any> {
@@ -661,8 +644,14 @@ export async function generateProposal(type: 'training' | 'diet', context: strin
  */
 export async function analyzeFoodImage(imageBase64: string, userProfile?: any, userId?: string, allowFallback: boolean = false): Promise<{ food: string, calories: number, color: 'green' | 'yellow' | 'red', explanation: string }> {
   try {
-    const { profileObj } = getProfileContext(userProfile);
-    const prompt = "Analise esta foto de comida, estime as calorias e classifique color (green/yellow/red). Retorne JSON.";
+    // Mesmo padrão de personalização usado em chatWithCoach/generateProposal:
+    // monta o contexto completo do usuário (perfil, lesões, objetivo,
+    // restrições alimentares, avaliação corpo & dieta, etc) e manda como
+    // systemInstruction -- antes disso a análise de foto nunca sabia nada
+    // sobre quem estava perguntando.
+    const { contextText } = getProfileContext(userProfile);
+    const finalSystemInstruction = systemInstruction + contextText;
+    const prompt = "Analise esta foto de comida e estime as calorias, considerando o objetivo e as restrições alimentares do usuário.";
     const cleanBase64 = imageBase64.split(",")[1] || imageBase64;
 
     const res = await fetch(apiUrl("/api/analyze-image"), {
@@ -671,9 +660,9 @@ export async function analyzeFoodImage(imageBase64: string, userProfile?: any, u
       body: JSON.stringify({ 
         imageBase64: cleanBase64, 
         prompt, 
+        systemInstruction: finalSystemInstruction,
         allowFallback, 
         userId: userId || "anonymous",
-        userProfile: profileObj || userProfile 
       })
     });
 
