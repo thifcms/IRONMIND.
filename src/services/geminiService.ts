@@ -26,17 +26,30 @@ DIRETRIZES DE IA (AGENTE NEURAL):
  * Diagnóstico do Link Neural
  */
 export async function diagnoseNeuralLink(): Promise<any> {
+  // Sempre inclui target/apiKey, tanto no sucesso quanto na falha --
+  // antes esses dois campos só apareciam quando o ping dava certo, e
+  // no painel de diagnóstico (justamente a tela que existe pra ajudar
+  // a entender uma falha) eles ficavam em branco bem na hora que mais
+  // precisava deles.
+  const target = API_BASE || '(mesmo domínio)';
+  const apiKey = HUB_API_KEY ? '••••••••' : null;
+
   try {
     // Não existe mais um "cérebro externo" configurável separado -- o
     // IronMind AI já é o motor direto. Usamos /api/ping (sempre existiu,
     // sempre funciona) só pra confirmar que o backend está de pé.
     const res = await fetch(apiUrl("/api/ping"));
-    if (!res.ok) return { online: false, error: `HTTP ${res.status}` };
+    if (!res.ok) return { online: false, target, apiKey, error: `HTTP ${res.status} (${res.statusText || 'sem detalhe'})` };
     const data = await res.json();
-    return { online: data.status === 'pong', target: API_BASE || '(mesmo domínio)', apiKey: HUB_API_KEY ? '••••••••' : null };
-  } catch (error) {
+    return { online: data.status === 'pong', target, apiKey };
+  } catch (error: any) {
     console.error("Diagnostic Error:", error);
-    return { online: false, error: "Falha ao conectar com o servidor de diagnóstico." };
+    // Preserva a mensagem/nome REAL do erro (ex: "Failed to fetch",
+    // "NetworkError", timeout, etc) em vez de uma string genérica --
+    // é justamente essa mensagem que diferencia "backend fora do ar"
+    // de "bloqueado por CORS" de "URL errada", e antes ela nunca
+    // chegava a aparecer pro usuário nem pra mim quando pedia print.
+    return { online: false, target, apiKey, error: `${error?.name || 'Erro'}: ${error?.message || 'Falha ao conectar.'}` };
   }
 }
 

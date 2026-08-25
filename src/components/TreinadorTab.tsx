@@ -116,6 +116,17 @@ function NeuralLinkDiagnostic({ onClose, onStatusChange }: { onClose: () => void
                 {diag?.apiKey ? `Configurada ${diag.apiKey}` : "Nenhuma chave configurada"}
               </code>
             </div>
+            {diag?.error && (
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                  <span className="text-[8px] font-black uppercase tracking-widest text-red-400">Erro real (detalhe técnico)</span>
+                </div>
+                <code className="text-[9px] text-red-600 dark:text-red-400 font-mono break-all opacity-90 leading-relaxed block bg-red-50 dark:bg-red-900/10 p-2 rounded-lg">
+                  {diag.error}
+                </code>
+              </div>
+            )}
           </div>
 
           {!diag.online && (
