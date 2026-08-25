@@ -22,6 +22,10 @@ interface TreinadorTabProps {
     measurements: MeasurementEntry[];
     checkinHistory?: CheckinEntry[];
     loadHistory?: LoadEntry[];
+    trainingPlan?: TrainingPlan | null;
+    warmupPlan?: TrainingPlan | null;
+    cardioPlan?: TrainingPlan | null;
+    dietPlan?: DietPlan | null;
   };
 }
 
@@ -162,6 +166,10 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
     measurements: userContext.measurements,
     checkinHistory: userContext.checkinHistory,
     loadHistory: userContext.loadHistory,
+    trainingPlan: userContext.trainingPlan,
+    warmupPlan: userContext.warmupPlan,
+    cardioPlan: userContext.cardioPlan,
+    dietPlan: userContext.dietPlan,
   } : userContext?.profile;
   const scrollRef = useRef<HTMLDivElement>(null);
 

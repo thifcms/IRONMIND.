@@ -892,7 +892,11 @@ export default function App() {
                   weight: weightHistory.length > 0 ? weightHistory[weightHistory.length - 1].weight : null,
                   measurements: measurementHistory,
                   checkinHistory: checkinHistory,
-                  loadHistory: loadHistory
+                  loadHistory: loadHistory,
+                  trainingPlan: trainingPlan,
+                  warmupPlan: warmupPlan,
+                  cardioPlan: cardioPlan,
+                  dietPlan: dietPlan
                 }}
               />
             )}

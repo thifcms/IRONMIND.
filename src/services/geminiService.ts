@@ -147,6 +147,9 @@ function getProfileContext(userProfileFromParams?: any): { profileObj: any, cont
 ${buildBodyDietContext(profileData.bodyDietProfile)}
 ${buildLoadHistoryContext(profileData.loadHistory)}
 ${buildMeasurementsContext(profileData.measurements)}
+${buildConsistencyContext(profileData.streak, profileData.totalWorkoutsCompleted)}
+${buildCurrentPlansContext(profileData.trainingPlan, profileData.warmupPlan, profileData.cardioPlan, profileData.dietPlan)}
+${buildWaterContext(profileData.waterIntake)}
 ${buildCheckinContext(profileData.checkinHistory)}
 
 Você DEVE usar rigorosamente essas informações para gerar os treinos e dietas altamente personalizados, adaptados para o peso, objetivo, limitações físicas e nível especificados. Não proponha exercícios conflitantes com as lesões listadas ou alimentos conflitantes com as restrições alimentares.`;
@@ -286,6 +289,7 @@ function buildCheckinContext(checkinHistory: any[] | undefined): string {
       `energia ${c.energia}/5`,
       c.peso ? `peso ${c.peso}kg` : null,
       c.dorOuDificuldade ? `dor/dificuldade: "${c.dorOuDificuldade}"` : null,
+      c.observacoes ? `observação: "${c.observacoes}"` : null,
     ].filter(Boolean);
     return `  - ${partes.join(', ')}`;
   });
@@ -355,6 +359,89 @@ function buildMeasurementsContext(measurements: any[] | undefined): string {
   return `
 [MEDIDAS CORPORAIS REGISTRADAS (aba Histórico)]:
 ${linhas.join('\n')}`;
+}
+
+/**
+ * Consistência real de treino (streak + total de treinos concluídos,
+ * calculados em src/lib/streak.ts sempre que a pessoa termina 100% de
+ * um dia de treino). Antes disso, a IA não tinha nenhuma noção de
+ * ADESÃO real -- só via os check-ins subjetivos ("difícil"/"fácil"),
+ * não se a pessoa está de fato terminando os treinos ou não.
+ */
+function buildConsistencyContext(streak: any | undefined, totalWorkoutsCompleted: number | undefined): string {
+  if (!streak && !totalWorkoutsCompleted) return '';
+
+  const parts: string[] = [];
+  if (streak?.count) parts.push(`sequência atual de ${streak.count} dia(s) seguidos treinando`);
+  if (streak?.longestStreak) parts.push(`recorde pessoal de ${streak.longestStreak} dia(s) seguidos`);
+  if (totalWorkoutsCompleted) parts.push(`${totalWorkoutsCompleted} treino(s) concluído(s) no total (100% das séries do dia)`);
+
+  if (parts.length === 0) return '';
+
+  return `
+[CONSISTÊNCIA REAL DE TREINO]:
+${parts.map(p => `  - ${p}`).join('\n')}
+
+Use isso pra calibrar o tom e a exigência: sequência alta = pode aumentar volume/intensidade com confiança; sequência baixa/zerada recentemente após um recorde maior = provável quebra de rotina, considere reduzir a barreira de entrada (treino mais curto/simples) pra ela retomar o hábito antes de intensificar de novo.`;
+}
+
+/**
+ * Resumo compacto dos planos ATIVOS (treino, aquecimento, cardio,
+ * dieta) -- sem isso, se o usuário pede pra "ajustar o treino B" ou
+ * "trocar esse exercício de perna", a IA não tinha NENHUMA visão do
+ * que já existe fora da conversa aberta no momento (se o chat foi
+ * limpo, ou o plano foi criado numa sessão anterior, ela ficava cega).
+ */
+function buildCurrentPlansContext(trainingPlan: any, warmupPlan: any, cardioPlan: any, dietPlan: any): string {
+  const lines: string[] = [];
+
+  const summarizeTrainingPlan = (plan: any, label: string) => {
+    if (!plan?.days?.length) return;
+    lines.push(`- ${label} ATIVO ("${plan.name || 'sem nome'}"):`);
+    for (const day of plan.days) {
+      const exercises = (day.exercises || []).map((ex: any) => `${ex.name} (${ex.sets}x${ex.reps}${ex.weight ? `, ${ex.weight}` : ''})`).join('; ');
+      lines.push(`    ${day.label}: ${exercises || 'sem exercícios'}`);
+    }
+  };
+
+  summarizeTrainingPlan(trainingPlan, 'Plano de Treino');
+  summarizeTrainingPlan(warmupPlan, 'Plano de Aquecimento');
+  summarizeTrainingPlan(cardioPlan, 'Plano de Cardio');
+
+  if (dietPlan?.meals?.length) {
+    lines.push(`- Plano de Dieta ATIVO ("${dietPlan.name || 'sem nome'}"):`);
+    for (const meal of dietPlan.meals) {
+      lines.push(`    ${meal.time} ${meal.name}: ${(meal.items || []).join(', ')}`);
+    }
+  }
+
+  if (lines.length === 0) return '';
+
+  return `
+[PLANOS ATIVOS DO USUÁRIO AGORA]:
+${lines.join('\n')}
+
+Se o usuário pedir pra ajustar/trocar/modificar algo, parta do que já está listado acima -- não recrie do zero nem peça pra ele descrever o plano que já existe.`;
+}
+
+/**
+ * Consumo real de água dos últimos 7 dias (aba Água), comparado com a
+ * meta declarada na Avaliação de Corpo & Dieta -- diferente da meta em
+ * si (que já é coberta por buildBodyDietContext), isso mostra se a
+ * pessoa REALMENTE está batendo a meta ou não.
+ */
+function buildWaterContext(waterIntake: Record<string, number> | undefined): string {
+  if (!waterIntake) return '';
+  const entries = Object.entries(waterIntake);
+  if (entries.length === 0) return '';
+
+  const sorted = entries.sort(([a], [b]) => a.localeCompare(b)).slice(-7);
+  const media = sorted.reduce((s, [, v]) => s + v, 0) / sorted.length;
+
+  return `
+[CONSUMO REAL DE ÁGUA (últimos ${sorted.length} dia(s) registrados)]:
+  - Média: ${media.toFixed(1)} copo(s)/dia
+  - Detalhe: ${sorted.map(([data, v]) => `${data.slice(5)}: ${v}`).join(', ')}`;
 }
 
 
