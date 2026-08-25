@@ -1,4 +1,6 @@
-import { apiUrl, apiHeaders } from '../services/apiBase';
+import { apiUrl } from '../services/apiBase';
+import { doc, updateDoc, deleteField } from 'firebase/firestore';
+import { getFirestoreInstance } from '../lib/firebase';
 
 /** Base64 URL-safe -> Uint8Array, formato exigido pela chave VAPID
  *  pelo pushManager.subscribe() nativo do navegador. */
@@ -30,7 +32,20 @@ export async function getPushStatus(): Promise<PushStatus> {
 /**
  * Fluxo completo: pede permissão (se ainda não deu/negou), busca a
  * chave pública VAPID do backend, inscreve no push do navegador, e
- * manda a inscrição pro backend salvar junto do perfil do usuário.
+ * salva a inscrição DIRETO no Firestore -- não via backend.
+ *
+ * Por quê direto: as regras de segurança do Firestore só permitem
+ * escrever em users/{userId} quando a requisição vem de um usuário
+ * de verdade autenticado pelo Firebase (request.auth.uid == userId).
+ * O backend, escrevendo via API REST + chave, nunca satisfaz essa
+ * condição (chave de API não é a mesma coisa que estar logado) -- por
+ * isso sempre dava 403. O jeito certo de resolver isso pelo lado do
+ * servidor seria o SDK de administrador do Firebase com uma chave de
+ * conta de serviço, mas a organização do Google Cloud deste projeto
+ * bloqueia a criação de novas chaves desse tipo. Como o app já está
+ * logado de verdade no Firebase bem aqui, é muito mais simples (e
+ * mais seguro, inclusive) escrever direto -- as mesmas regras que
+ * bloqueavam o backend permitem isso aqui sem nenhuma mudança.
  */
 export async function subscribeToPush(userId: string): Promise<{ ok: boolean; reason?: string }> {
   if (!getPushSupport()) return { ok: false, reason: 'Navegador não suporta notificações push.' };
@@ -56,13 +71,9 @@ export async function subscribeToPush(userId: string): Promise<{ ok: boolean; re
       });
     }
 
-    const res = await fetch(apiUrl('/api/push/subscribe'), {
-      method: 'POST',
-      headers: await apiHeaders(),
-      body: JSON.stringify({ userId, subscription: sub.toJSON() }),
-    });
-    const data = await res.json();
-    return { ok: !!data.success, reason: data.success ? undefined : (data.reason || 'Falha ao salvar no servidor.') };
+    const db = getFirestoreInstance();
+    await updateDoc(doc(db, 'users', userId), { pushSubscription: JSON.stringify(sub.toJSON()) });
+    return { ok: true };
   } catch (e: any) {
     console.warn('Falha ao inscrever em push notifications:', e);
     return { ok: false, reason: e?.message || 'Erro inesperado.' };
@@ -78,12 +89,9 @@ export async function unsubscribeFromPush(userId: string): Promise<void> {
     console.warn('Falha ao cancelar inscrição local de push:', e);
   }
   try {
-    await fetch(apiUrl('/api/push/unsubscribe'), {
-      method: 'POST',
-      headers: await apiHeaders(),
-      body: JSON.stringify({ userId }),
-    });
+    const db = getFirestoreInstance();
+    await updateDoc(doc(db, 'users', userId), { pushSubscription: deleteField() });
   } catch (e) {
-    console.warn('Falha ao avisar o servidor do cancelamento de push:', e);
+    console.warn('Falha ao remover inscrição de push no Firestore:', e);
   }
 }
