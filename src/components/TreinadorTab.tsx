@@ -3,7 +3,7 @@ import { Send, Check, Loader2, Trash2, ShieldCheck, ShieldAlert, Cpu, X, Sparkle
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ChatMessage, TrainingPlan, DietPlan, AppProfile, MeasurementEntry } from '../types';
+import { ChatMessage, TrainingPlan, DietPlan, AppProfile, MeasurementEntry, CheckinEntry, LoadEntry } from '../types';
 import { chatWithCoach, generateProposal, diagnoseNeuralLink } from '../services/geminiService';
 import { checkAIHealth } from '../services/aiManagerService';
 import { useSpeechInput } from '../hooks/useSpeechInput';
@@ -20,6 +20,8 @@ interface TreinadorTabProps {
     profile: AppProfile | null;
     weight: number | null;
     measurements: MeasurementEntry[];
+    checkinHistory?: CheckinEntry[];
+    loadHistory?: LoadEntry[];
   };
 }
 
@@ -146,6 +148,21 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
   const [aiStatus, setAiStatus] = useState<{status: string, message: string} | null>(null);
   const [neuralLinkOnline, setNeuralLinkOnline] = useState<boolean | null>(null);
   const [showDiagnostic, setShowDiagnostic] = useState(false);
+
+  // Perfil "enriquecido": junta o perfil base com peso mais recente,
+  // medidas, check-ins e progressão de carga -- tudo isso é coletado em
+  // partes separadas do app (HistoryTab, CheckinTab), mas o Treinador
+  // IA precisa ver tudo junto pra gerar/ajustar treino e dieta de
+  // verdade personalizados. Antes só o perfil base ia pra IA -- peso,
+  // medidas, check-ins e carga ficavam coletados só na tela, sem nunca
+  // chegar na geração de treino/dieta.
+  const enrichedProfile = userContext ? {
+    ...userContext.profile,
+    weight: userContext.weight ?? userContext.profile?.weight,
+    measurements: userContext.measurements,
+    checkinHistory: userContext.checkinHistory,
+    loadHistory: userContext.loadHistory,
+  } : userContext?.profile;
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const [showQuotaInfo, setShowQuotaInfo] = useState(false);
@@ -207,7 +224,7 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
           setLoadingMessage('Conectando ao Motor Neural... aguarde.');
         }
 
-        response = await chatWithCoach(history, messageToSend, userContext?.profile, userContext?.profile?.uid, forceFallback);
+        response = await chatWithCoach(history, messageToSend, enrichedProfile, userContext?.profile?.uid, forceFallback);
         // Se chegou aqui, deu certo
         break;
       } catch (error: any) {
@@ -303,7 +320,7 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
 
       if (isTrainingProposal && !hasProposal) {
         try {
-          const proposal = await generateProposal('training', cleanText, userContext?.profile, userContext?.profile?.uid, forceFallback);
+          const proposal = await generateProposal('training', cleanText, enrichedProfile, userContext?.profile?.uid, forceFallback);
           if (proposal) {
             cleanResponse = {
               ...cleanResponse,
@@ -321,7 +338,7 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
 
       if (isDietProposal && !hasProposal) {
         try {
-           const proposal = await generateProposal('diet', cleanText, userContext?.profile, userContext?.profile?.uid, forceFallback);
+           const proposal = await generateProposal('diet', cleanText, enrichedProfile, userContext?.profile?.uid, forceFallback);
            if (proposal) {
              cleanResponse = {
                ...cleanResponse,

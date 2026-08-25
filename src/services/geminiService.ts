@@ -145,6 +145,8 @@ function getProfileContext(userProfileFromParams?: any): { profileObj: any, cont
 - Lesões/Dores/Limitações Coorporais: ${injuries}
 - Restrições Alimentares/Dieta: ${dietRestrictions}
 ${buildBodyDietContext(profileData.bodyDietProfile)}
+${buildLoadHistoryContext(profileData.loadHistory)}
+${buildMeasurementsContext(profileData.measurements)}
 ${buildCheckinContext(profileData.checkinHistory)}
 
 Você DEVE usar rigorosamente essas informações para gerar os treinos e dietas altamente personalizados, adaptados para o peso, objetivo, limitações físicas e nível especificados. Não proponha exercícios conflitantes com as lesões listadas ou alimentos conflitantes com as restrições alimentares.`;
@@ -153,9 +155,52 @@ Você DEVE usar rigorosamente essas informações para gerar os treinos e dietas
 }
 
 const REGION_LABELS: Record<string, string> = {
-  abdomen: 'Abdômen', bracos: 'Braços', pernas: 'Pernas', gluteos: 'Glúteos', peito_ombros: 'Peito/Ombros',
+  costas: 'Ombros e Costas', torso: 'Peito/Abdômen', gluteos: 'Quadril e Glúteos', pernas: 'Pernas',
+  // Ids antigos (formato anterior à atualização das fotos) -- mantidos
+  // só de precaução, caso algum perfil salvo ainda tenha isso.
+  abdomen: 'Abdômen', bracos: 'Braços', peito_ombros: 'Peito/Ombros',
 };
-const LEVEL_LABELS: Record<number, string> = { 1: 'baixo/pouco definido', 2: 'médio', 3: 'alto/bem definido' };
+
+const BODY_TYPE_LABELS: Record<string, string> = {
+  gordo: 'Gordo/Endomorfa', quadrado: 'Quadrado/Retangular', triangular: 'Triangular/Pera', vshape: 'Ombros Largos',
+};
+
+const GLUTEOS_LEVEL_TEXT = ['Plano/sem volume', 'Leve volume', 'Firme e definido', 'Bem definido', 'Hipertrofiado/volume acentuado'];
+// Linha 1 das fotos de Costas/Torso é a referência "como está hoje" (sem
+// legenda no material original); linhas 2-4 são níveis de meta,
+// progressivamente mais definidos -- ver bodyDietIcons.tsx no app.
+const COSTAS_TORSO_ROW_TEXT: Record<number, string> = {
+  1: 'referência do estado atual', 2: 'meta leve (levemente mais definido)', 3: 'meta moderada (moderadamente definido)', 4: 'meta alta (bem definido/hipertrofiado)',
+};
+
+/**
+ * Traduz o id de uma foto escolhida (ex: "gluteos_nivel_4",
+ * "costas_3_2", "pernas_7") pra uma descrição legível pra IA. Os ids
+ * codificam região/linha/coluna ou nível conforme a região -- ver
+ * BODY_REGIONS em bodyDietIcons.tsx do app pra a estrutura exata.
+ */
+function describeBodyOption(regionId: string, optionId: string): string {
+  if (regionId === 'gluteos') {
+    const m = optionId.match(/gluteos_nivel_(\d+)/);
+    if (m) return GLUTEOS_LEVEL_TEXT[Number(m[1]) - 1] || optionId;
+  }
+  if (regionId === 'costas' || regionId === 'torso') {
+    const m = optionId.match(/_(\d+)_(\d+)$/);
+    if (m) return COSTAS_TORSO_ROW_TEXT[Number(m[1])] || optionId;
+  }
+  if (regionId === 'pernas') {
+    const m = optionId.match(/pernas_(\d+)/);
+    if (m) {
+      const n = Number(m[1]);
+      return n <= 5 ? `referência visual atual (opção ${n} de 5)` : `referência visual de meta (opção ${n - 5} de 5)`;
+    }
+  }
+  // Formato antigo (nível numérico 1/2/3 direto) -- fallback de precaução.
+  if (optionId === '1' || optionId === '2' || optionId === '3') {
+    return ['baixo/pouco definido', 'médio', 'alto/bem definido'][Number(optionId) - 1];
+  }
+  return optionId;
+}
 
 /**
  * Monta o bloco de contexto da Avaliação de Corpo & Dieta (aba Perfil ->
@@ -181,18 +226,18 @@ function buildBodyDietContext(bd: any): string {
     if (parts.length) lines.push(`- Medidas: ${parts.join(', ')}`);
   }
 
-  if (bd.tipoCorpoAtual) lines.push(`- Tipo de corpo (autopercepção): ${bd.tipoCorpoAtual}`);
+  if (bd.tipoCorpoAtual) lines.push(`- Tipo de corpo (autopercepção): ${BODY_TYPE_LABELS[bd.tipoCorpoAtual] || bd.tipoCorpoAtual}`);
 
   if (bd.autopercepcaoAtual) {
-    const parts = Object.entries(bd.autopercepcaoAtual).map(([regiao, lvl]) =>
-      `${REGION_LABELS[regiao] || regiao}: ${LEVEL_LABELS[lvl as number] || lvl}`
+    const parts = Object.entries(bd.autopercepcaoAtual).map(([regiao, optionId]) =>
+      `${REGION_LABELS[regiao] || regiao}: ${describeBodyOption(regiao, optionId as string)}`
     );
     if (parts.length) lines.push(`- Como se vê hoje, por região: ${parts.join('; ')}`);
   }
 
   if (bd.metaCorpo) {
-    const parts = Object.entries(bd.metaCorpo).map(([regiao, lvl]) =>
-      `${REGION_LABELS[regiao] || regiao}: ${LEVEL_LABELS[lvl as number] || lvl}`
+    const parts = Object.entries(bd.metaCorpo).map(([regiao, optionId]) =>
+      `${REGION_LABELS[regiao] || regiao}: ${describeBodyOption(regiao, optionId as string)}`
     );
     if (parts.length) lines.push(`- Meta de corpo, por região (PRIORIZE exercícios pra essas regiões): ${parts.join('; ')}`);
   }
@@ -250,6 +295,66 @@ function buildCheckinContext(checkinHistory: any[] | undefined): string {
 ${linhas.join('\n')}
 
 Observe a TENDÊNCIA ao longo dessas semanas (energia subindo/caindo, adesão piorando/melhorando, dor recorrente na mesma região) -- não só o check-in mais recente isolado -- e ajuste sua recomendação considerando essa evolução.`;
+}
+
+/**
+ * Progressão de carga por exercício (aba Histórico -> Cargas), pra o
+ * treinador saber o nível de força ATUAL antes de prescrever séries/
+ * repetições/carga inicial -- sem isso, cada treino novo partia do
+ * zero sem noção nenhuma do que o usuário já levanta.
+ */
+function buildLoadHistoryContext(loadHistory: any[] | undefined): string {
+  if (!loadHistory || loadHistory.length === 0) return '';
+
+  const byExercise = new Map<string, any[]>();
+  for (const entry of loadHistory) {
+    const list = byExercise.get(entry.exercise) || [];
+    list.push(entry);
+    byExercise.set(entry.exercise, list);
+  }
+
+  const linhas: string[] = [];
+  for (const [exercise, entries] of byExercise) {
+    const sorted = [...entries].sort((a, b) => a.date - b.date);
+    const first = sorted[0], last = sorted[sorted.length - 1];
+    const tendencia = sorted.length >= 2 ? (last.weight > first.weight ? 'subindo' : last.weight < first.weight ? 'caindo' : 'estável') : 'único registro';
+    linhas.push(`  - ${exercise}: carga mais recente ${last.weight}kg (${sorted.length} registro(s), tendência ${tendencia})`);
+  }
+
+  return `
+[PROGRESSÃO DE CARGA POR EXERCÍCIO (aba Histórico)]:
+${linhas.join('\n')}
+
+Use essas cargas como ponto de partida real pra prescrever séries/repetições/carga -- não sugira carga genérica pra exercícios que já têm histórico aqui.`;
+}
+
+/**
+ * Medidas corporais (aba Histórico -> Medidas: cintura, braço, peito,
+ * etc, ao longo do tempo) -- diferente da avaliação Corpo & Dieta
+ * (que é uma foto única do momento do cadastro), isso mostra evolução
+ * real medida em centímetro.
+ */
+function buildMeasurementsContext(measurements: any[] | undefined): string {
+  if (!measurements || measurements.length === 0) return '';
+
+  const byLabel = new Map<string, any[]>();
+  for (const entry of measurements) {
+    const list = byLabel.get(entry.label) || [];
+    list.push(entry);
+    byLabel.set(entry.label, list);
+  }
+
+  const linhas: string[] = [];
+  for (const [label, entries] of byLabel) {
+    const sorted = [...entries].sort((a, b) => a.date - b.date);
+    const last = sorted[sorted.length - 1];
+    const delta = sorted.length >= 2 ? last.value - sorted[0].value : null;
+    linhas.push(`  - ${label}: ${last.value}${last.unit}${delta !== null ? ` (variação de ${delta >= 0 ? '+' : ''}${delta.toFixed(1)}${last.unit} desde o primeiro registro)` : ''}`);
+  }
+
+  return `
+[MEDIDAS CORPORAIS REGISTRADAS (aba Histórico)]:
+${linhas.join('\n')}`;
 }
 
 
