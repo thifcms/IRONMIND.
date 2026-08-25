@@ -1029,6 +1029,7 @@ export default function App() {
                   loadHistory={loadHistory}
                   setLoadHistory={setLoadHistory}
                   checkinHistory={checkinHistory}
+                  cardioSessionHistory={cardioSessionHistory}
                   userProfile={profile}
                   setUserProfile={setProfile}
                   onClearHistory={() => setShowConfirmClearHistory(true)}

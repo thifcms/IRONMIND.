@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { Calendar, TrendingUp, Award, Clock, Scale, Ruler, Plus, Dumbbell, Activity, AlertCircle, Sparkles } from 'lucide-react';
-import { WeightEntry, MeasurementEntry, LoadEntry, CheckinEntry, AppProfile } from '../types';
+import { Calendar, TrendingUp, Award, Clock, Scale, Ruler, Plus, Dumbbell, Activity, AlertCircle, Sparkles, Bike } from 'lucide-react';
+import { WeightEntry, MeasurementEntry, LoadEntry, CheckinEntry, AppProfile, CardioSession } from '../types';
 import WeeklyInsights from './WeeklyInsights';
 
 interface HistoryTabProps {
@@ -13,6 +13,7 @@ interface HistoryTabProps {
   loadHistory: LoadEntry[];
   setLoadHistory: React.Dispatch<React.SetStateAction<LoadEntry[]>>;
   checkinHistory: CheckinEntry[];
+  cardioSessionHistory: CardioSession[];
   userProfile: AppProfile;
   setUserProfile: React.Dispatch<React.SetStateAction<AppProfile>>;
   onClearHistory: () => void;
@@ -30,6 +31,7 @@ export default function HistoryTab({
   loadHistory,
   setLoadHistory,
   checkinHistory,
+  cardioSessionHistory,
   userProfile, 
   setUserProfile,
   onClearHistory,
@@ -450,6 +452,36 @@ export default function HistoryTab({
               ))
             )}
           </div>
+        </div>
+      </section>
+
+      {/* Histórico de Cardio */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Bike className="w-4 h-4 text-blue-600" />
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-900">Histórico de Cardio</h3>
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+          {(!cardioSessionHistory || cardioSessionHistory.length === 0) ? (
+            <p className="text-center py-4 text-[10px] text-slate-400 font-bold uppercase">Nenhuma sessão de cardio registrada</p>
+          ) : (
+            (cardioSessionHistory.slice(-5).reverse()).map((s, idx) => (
+              <div key={idx} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-black uppercase text-slate-900 leading-none capitalize">{s.type}</span>
+                  <span className="text-[8px] text-slate-400 mt-1 font-bold">{new Date(s.date).toLocaleDateString()}</span>
+                </div>
+                <div className="flex items-center gap-3 text-right">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-black text-blue-600">{s.distance}km</span>
+                    <span className="text-[8px] text-slate-400 font-bold">{s.time}min</span>
+                  </div>
+                  <span className="text-[9px] font-bold text-slate-500">{s.calories}kcal</span>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </section>
 
