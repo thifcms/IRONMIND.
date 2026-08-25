@@ -146,6 +146,7 @@ function getProfileContext(userProfileFromParams?: any): { profileObj: any, cont
 - Restrições Alimentares/Dieta: ${dietRestrictions}
 ${buildBodyDietContext(profileData.bodyDietProfile)}
 ${buildLoadHistoryContext(profileData.loadHistory)}
+${buildCardioHistoryContext(profileData.cardioSessionHistory)}
 ${buildMeasurementsContext(profileData.measurements)}
 ${buildConsistencyContext(profileData.streak, profileData.totalWorkoutsCompleted)}
 ${buildCurrentPlansContext(profileData.trainingPlan, profileData.warmupPlan, profileData.cardioPlan, profileData.dietPlan)}
@@ -422,6 +423,37 @@ function buildCurrentPlansContext(trainingPlan: any, warmupPlan: any, cardioPlan
 ${lines.join('\n')}
 
 Se o usuário pedir pra ajustar/trocar/modificar algo, parta do que já está listado acima -- não recrie do zero nem peça pra ele descrever o plano que já existe.`;
+}
+
+/**
+ * Histórico de sessões de cardio livre (aba Cardio -> Clássico:
+ * corrida/esteira/bike), pra a IA saber a frequência/volume real de
+ * cardio -- antes disso não existia esse dado nenhum, sessões
+ * terminadas não deixavam rastro.
+ */
+function buildCardioHistoryContext(cardioSessionHistory: any[] | undefined): string {
+  if (!cardioSessionHistory || cardioSessionHistory.length === 0) return '';
+
+  const now = Date.now();
+  const last30Days = cardioSessionHistory.filter(s => now - s.date < 30 * 24 * 60 * 60 * 1000);
+  if (last30Days.length === 0) return '';
+
+  const totalTime = last30Days.reduce((s, x) => s + x.time, 0);
+  const totalDistance = last30Days.reduce((s, x) => s + x.distance, 0);
+  const porTipo = new Map<string, number>();
+  for (const s of last30Days) porTipo.set(s.type, (porTipo.get(s.type) || 0) + 1);
+
+  const recentes = [...last30Days].slice(-5).map(s => {
+    const data = new Date(s.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    return `  - ${data}: ${s.type}, ${s.time}min, ${s.distance}km, ${s.calories}kcal`;
+  });
+
+  return `
+[HISTÓRICO DE CARDIO LIVRE (últimos 30 dias)]:
+  - ${last30Days.length} sessão(ões), ${totalTime}min total, ${totalDistance.toFixed(1)}km total
+  - Por tipo: ${[...porTipo.entries()].map(([t, c]) => `${t} (${c}x)`).join(', ')}
+Últimas sessões:
+${recentes.join('\n')}`;
 }
 
 /**

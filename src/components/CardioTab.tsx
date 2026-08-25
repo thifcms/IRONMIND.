@@ -10,7 +10,11 @@ import { useHeartRateMonitor } from '../hooks/useHeartRateMonitor';
 
 type CardioMode = 'corrida' | 'esteira' | 'bicicleta';
 
-export default function CardioTab() {
+interface CardioTabProps {
+  onSessionComplete?: (session: { type: CardioMode; distance: number; time: number; calories: number }) => void;
+}
+
+export default function CardioTab({ onSessionComplete }: CardioTabProps) {
   const [mode, setMode] = useState<CardioMode>('esteira');
   const [isActive, setIsActive] = useState(false);
   const [time, setTime] = useState(0);
@@ -293,6 +297,30 @@ export default function CardioTab() {
     return { distance, calories };
   };
 
+  /**
+   * Salva a sessão de cardio concluída (histórico real -- antes disso o
+   * CardioTab não persistia nada, o progresso só existia enquanto a tela
+   * ficava aberta). Exige pelo menos 1 minuto pra evitar salvar toques
+   * acidentais no play sem treino de verdade.
+   */
+  const handleFinishSession = () => {
+    if (time < 60) {
+      setIsActive(false);
+      setTime(0);
+      return;
+    }
+    const stats = getStats();
+    onSessionComplete?.({
+      type: mode,
+      distance: parseFloat(stats.distance),
+      time: Math.round(time / 60),
+      calories: parseFloat(stats.calories),
+    });
+    clearProgressNotification();
+    setIsActive(false);
+    setTime(0);
+  };
+
   const handleMediaClick = (url: string) => {
     if (!isActive) setIsActive(true);
     setPipDebug(null);
@@ -530,6 +558,15 @@ export default function CardioTab() {
         >
             {isActive ? 'PONTUALIZAR / PAUSAR' : 'INICIAR TREINO'}
         </button>
+
+        {time > 0 && (
+          <button
+            onClick={handleFinishSession}
+            className="w-full py-3 rounded-xl font-black uppercase tracking-[0.2em] text-[9px] bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/20 transition-all active:scale-95"
+          >
+            Finalizar treino
+          </button>
+        )}
 
         {notifPermission !== 'unsupported' && notifPermission !== 'granted' && (
           <button

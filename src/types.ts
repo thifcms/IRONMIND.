@@ -77,6 +77,7 @@ export interface ChatMessage {
 }
 
 export interface CardioSession {
+  date: number;
   type: 'corrida' | 'esteira' | 'bicicleta';
   distance: number; // km
   time: number; // minutes

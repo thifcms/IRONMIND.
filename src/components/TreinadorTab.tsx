@@ -3,7 +3,7 @@ import { Send, Check, Loader2, Trash2, ShieldCheck, ShieldAlert, Cpu, X, Sparkle
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ChatMessage, TrainingPlan, DietPlan, AppProfile, MeasurementEntry, CheckinEntry, LoadEntry } from '../types';
+import { ChatMessage, TrainingPlan, DietPlan, AppProfile, MeasurementEntry, CheckinEntry, LoadEntry, CardioSession } from '../types';
 import { chatWithCoach, generateProposal, diagnoseNeuralLink } from '../services/geminiService';
 import { checkAIHealth } from '../services/aiManagerService';
 import { useSpeechInput } from '../hooks/useSpeechInput';
@@ -22,6 +22,7 @@ interface TreinadorTabProps {
     measurements: MeasurementEntry[];
     checkinHistory?: CheckinEntry[];
     loadHistory?: LoadEntry[];
+    cardioSessionHistory?: CardioSession[];
     trainingPlan?: TrainingPlan | null;
     warmupPlan?: TrainingPlan | null;
     cardioPlan?: TrainingPlan | null;
@@ -166,6 +167,7 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
     measurements: userContext.measurements,
     checkinHistory: userContext.checkinHistory,
     loadHistory: userContext.loadHistory,
+    cardioSessionHistory: userContext.cardioSessionHistory,
     trainingPlan: userContext.trainingPlan,
     warmupPlan: userContext.warmupPlan,
     cardioPlan: userContext.cardioPlan,

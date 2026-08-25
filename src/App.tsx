@@ -26,7 +26,7 @@ import {
   ClipboardCheck,
   Droplets
 } from 'lucide-react';
-import { Tab, TrainingPlan, DietPlan, ChatMessage, WeightEntry, UserProfile, MeasurementEntry, LoadEntry, CheckinEntry } from './types';
+import { Tab, TrainingPlan, DietPlan, ChatMessage, WeightEntry, UserProfile, MeasurementEntry, LoadEntry, CheckinEntry, CardioSession } from './types';
 import { loadChatHistory, saveChatHistory, chatWithCoach } from './services/geminiService';
 import { safeLocalStorageSet } from './lib/safeStorage';
 import { recordActivity } from './lib/streak';
@@ -82,6 +82,18 @@ export default function App() {
       return after;
     });
   }, [setProfile]);
+
+  /**
+   * Salva a sessão de cardio livre (aba Cardio -> Clássico) no
+   * histórico -- antes disso, terminar uma corrida/esteira/bike não
+   * deixava rastro nenhum. Conta pra sequência de dias igual um
+   * treino de plano normal (handleWorkoutComplete).
+   */
+  const handleCardioSessionComplete = useCallback((session: { type: 'corrida' | 'esteira' | 'bicicleta'; distance: number; time: number; calories: number }) => {
+    setCardioSessionHistory(prev => [...prev, { ...session, date: Date.now() }]);
+    const modeLabel = session.type === 'corrida' ? 'Corrida' : session.type === 'esteira' ? 'Esteira' : 'Bicicleta';
+    handleWorkoutComplete(`Cardio (${modeLabel})`, 1);
+  }, [handleWorkoutComplete]);
 
   const [biometricLocked, setBiometricLocked] = useState(() => isBiometricEnabledOnThisDevice());
   const [aquecimentoSubTab, setAquecimentoSubTab] = useState<'classico' | 'sugestao'>('classico');
@@ -142,6 +154,7 @@ export default function App() {
   const [checkinHistory, setCheckinHistory] = useState<CheckinEntry[]>([]);
   const [measurementHistory, setMeasurementHistory] = useState<MeasurementEntry[]>([]);
   const [loadHistory, setLoadHistory] = useState<LoadEntry[]>([]);
+  const [cardioSessionHistory, setCardioSessionHistory] = useState<CardioSession[]>([]);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => {
     try {
       const saved = localStorage.getItem('ironmind_chat');
@@ -232,6 +245,7 @@ export default function App() {
         if (data.checkinHistory) setCheckinHistory(data.checkinHistory);
         if (data.measurementHistory) setMeasurementHistory(data.measurementHistory);
         if (data.loadHistory) setLoadHistory(data.loadHistory);
+        if (data.cardioSessionHistory) setCardioSessionHistory(data.cardioSessionHistory);
       }
     };
     loadData();
@@ -322,6 +336,15 @@ export default function App() {
     }, 2000);
     return () => clearTimeout(handler);
   }, [loadHistory, user]);
+
+  useEffect(() => {
+    if (!user || cardioSessionHistory.length === 0) return;
+    const handler = setTimeout(() => {
+      updateDoc(doc(db, 'users', user.uid), { cardioSessionHistory })
+        .catch(err => console.warn("Failsafe: error syncing cardio session history:", err));
+    }, 2000);
+    return () => clearTimeout(handler);
+  }, [cardioSessionHistory, user]);
 
   useEffect(() => {
     localStorage.removeItem('darkMode');
@@ -893,6 +916,7 @@ export default function App() {
                   measurements: measurementHistory,
                   checkinHistory: checkinHistory,
                   loadHistory: loadHistory,
+                  cardioSessionHistory: cardioSessionHistory,
                   trainingPlan: trainingPlan,
                   warmupPlan: warmupPlan,
                   cardioPlan: cardioPlan,
@@ -972,7 +996,7 @@ export default function App() {
                 </div>
                 <div className="flex-1 overflow-hidden flex flex-col">
                   {cardioSubTab === 'classico' ? (
-                    <CardioTab />
+                    <CardioTab onSessionComplete={handleCardioSessionComplete} />
                   ) : (
                     <>
                       <div className="flex-1 overflow-hidden">
