@@ -62,7 +62,7 @@ export async function subscribeToPush(userId: string): Promise<{ ok: boolean; re
       body: JSON.stringify({ userId, subscription: sub.toJSON() }),
     });
     const data = await res.json();
-    return { ok: !!data.success, reason: data.success ? undefined : 'Falha ao salvar no servidor.' };
+    return { ok: !!data.success, reason: data.success ? undefined : (data.reason || 'Falha ao salvar no servidor.') };
   } catch (e: any) {
     console.warn('Falha ao inscrever em push notifications:', e);
     return { ok: false, reason: e?.message || 'Erro inesperado.' };
