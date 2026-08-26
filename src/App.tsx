@@ -1048,7 +1048,7 @@ export default function App() {
               />
             )}
             {activeTab === Tab.PERFIL && (
-              <ProfileTab profile={profile} setProfile={setProfile} />
+              <ProfileTab profile={profile} setProfile={setProfile} userId={user?.uid} />
             )}
             </motion.div>
           </AnimatePresence>

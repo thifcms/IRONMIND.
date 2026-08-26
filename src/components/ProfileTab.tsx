@@ -17,6 +17,7 @@ import type { AppProfile } from '../types';
 interface ProfileTabProps {
   profile: AppProfile | null;
   setProfile: (profile: AppProfile) => void;
+  userId?: string;
 }
 
 const toScalar = (val: any, fallback: string): string => {
@@ -25,7 +26,7 @@ const toScalar = (val: any, fallback: string): string => {
   return String(val);
 };
 
-export default function ProfileTab({ profile, setProfile }: ProfileTabProps) {
+export default function ProfileTab({ profile, setProfile, userId: userIdProp }: ProfileTabProps) {
   const db = getFirestoreInstance();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -44,12 +45,13 @@ export default function ProfileTab({ profile, setProfile }: ProfileTabProps) {
   const handleToggleBiometric = async () => {
     setBiometricError('');
     setBiometricLoading(true);
+    const uid = userIdProp || profile?.uid;
     try {
       if (biometricEnabled) {
-        await disableBiometric(profile.uid, getLocalCredentialId() || undefined);
+        await disableBiometric(uid, getLocalCredentialId() || undefined);
         setBiometricEnabled(false);
       } else {
-        await registerBiometric(profile.uid, profile.email);
+        await registerBiometric(uid, profile?.email);
         setBiometricEnabled(true);
       }
     } catch (err: any) {
@@ -134,7 +136,7 @@ export default function ProfileTab({ profile, setProfile }: ProfileTabProps) {
     setError('');
 
     try {
-      let userId = profile?.uid;
+      let userId = userIdProp || profile?.uid;
       if (!userId) {
          const savedUser = localStorage.getItem('user');
          if (savedUser) {
@@ -213,7 +215,7 @@ export default function ProfileTab({ profile, setProfile }: ProfileTabProps) {
         </div>
       )}
 
-      <PushNotificationToggle userId={profile?.uid} />
+      <PushNotificationToggle userId={userIdProp || profile?.uid} />
 
       {/* Sub-abas */}
       <div className="flex gap-2 p-3 pb-0 shrink-0 bg-slate-50">
