@@ -1,0 +1,18 @@
+name: Enviar lembretes de treino (push)
+
+on:
+  schedule:
+    # 19:00 horário de Brasília (UTC-3) = 22:00 UTC, todo dia
+    - cron: '0 22 * * *'
+  workflow_dispatch:
+
+jobs:
+  send-reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chamar /api/push/send-reminders
+        run: |
+          curl -sf -X POST "${{ secrets.IRONMIND_AI_URL }}/api/push/send-reminders" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"minDaysInactive": 3}'

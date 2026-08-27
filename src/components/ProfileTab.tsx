@@ -5,11 +5,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Calendar, Weight, Ruler, Dumbbell, Target, Info, AlertTriangle, Apple, Save, LogOut, Trash2, AlertCircle, Fingerprint, HeartPulse, Flame } from 'lucide-react';
+import { User, Calendar, Weight, Ruler, Dumbbell, Target, Info, AlertTriangle, Apple, Save, LogOut, Trash2, AlertCircle, Fingerprint, HeartPulse, Flame, Bell } from 'lucide-react';
 import { getFirestoreInstance, auth } from '../lib/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { signOut, deleteUser } from 'firebase/auth';
 import { isBiometricAvailable, isBiometricEnabledOnThisDevice, registerBiometric, disableBiometric, getLocalCredentialId } from '../services/biometricAuth';
+import { isPushSupported, getExistingPushSubscription, enablePushNotifications, disablePushNotifications } from '../services/pushNotifications';
 import BodyDietProfileTab, { BodyDietProfile } from './BodyDietProfileTab';
 import type { AppProfile } from '../types';
 
@@ -37,9 +38,17 @@ export default function ProfileTab({ profile, setProfile, userId: userIdProp, on
   const [biometricEnabled, setBiometricEnabled] = useState(() => isBiometricEnabledOnThisDevice());
   const [biometricLoading, setBiometricLoading] = useState(false);
   const [biometricError, setBiometricError] = useState('');
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushError, setPushError] = useState('');
 
   useEffect(() => {
     isBiometricAvailable().then(setBiometricSupported);
+    if (isPushSupported()) {
+      setPushSupported(true);
+      getExistingPushSubscription().then(sub => setPushEnabled(!!sub));
+    }
   }, []);
 
   const handleToggleBiometric = async () => {
@@ -58,6 +67,29 @@ export default function ProfileTab({ profile, setProfile, userId: userIdProp, on
       setBiometricError(err.message || 'Não foi possível concluir. Tente novamente.');
     } finally {
       setBiometricLoading(false);
+    }
+  };
+
+  const handleTogglePush = async () => {
+    setPushError('');
+    setPushLoading(true);
+    const uid = userIdProp || profile?.uid;
+    try {
+      if (pushEnabled) {
+        await disablePushNotifications(uid);
+        setPushEnabled(false);
+      } else {
+        const result = await enablePushNotifications(uid);
+        if (result.ok) {
+          setPushEnabled(true);
+        } else {
+          setPushError(result.reason || 'Não foi possível ativar.');
+        }
+      }
+    } catch (err: any) {
+      setPushError(err.message || 'Não foi possível concluir. Tente novamente.');
+    } finally {
+      setPushLoading(false);
     }
   };
   const [formData, setFormData] = useState({
@@ -266,6 +298,31 @@ export default function ProfileTab({ profile, setProfile, userId: userIdProp, on
               }`}
             >
               {biometricLoading ? '...' : biometricEnabled ? 'Desativar' : 'Ativar'}
+            </button>
+          </div>
+        )}
+
+        {pushSupported && (
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 bg-blue-600/10 rounded-2xl flex items-center justify-center shrink-0">
+                <Bell className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-[11px] font-black text-slate-900 uppercase tracking-widest leading-tight">Lembretes de treino</p>
+                <p className="text-[10px] text-slate-500 leading-tight mt-0.5">Um toque quando você ficar alguns dias sem treinar</p>
+                {pushError && <p className="text-[10px] text-red-500 font-bold mt-1">{pushError}</p>}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleTogglePush}
+              disabled={pushLoading}
+              className={`shrink-0 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50 ${
+                pushEnabled ? 'bg-rose-600/10 text-rose-600 border border-rose-600/20' : 'bg-blue-600 text-white'
+              }`}
+            >
+              {pushLoading ? '...' : pushEnabled ? 'Desativar' : 'Ativar'}
             </button>
           </div>
         )}
