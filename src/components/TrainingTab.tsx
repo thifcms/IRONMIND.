@@ -21,7 +21,6 @@ export default function TrainingTab({
   onWorkoutComplete?: (dayLabel: string, exerciseCount: number) => void;
   onOpenPoseCounter?: () => void;
 }) {
-  console.log('TrainingTab rendering with plan:', plan);
   const [activeDayIdx, setActiveDayIdx] = useState(0);
   const [addingToDayIdx, setAddingToDayIdx] = useState<number | null>(null);
   const [completedSets, setCompletedSets] = useState<Record<string, boolean[]>>({});

@@ -85,20 +85,27 @@ export default function MediaQuickLaunchLegacy() {
   // virado "dispara e não espera").
   const togglePiP = async () => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video) {
+      console.error('[TESTE 14/06] video ref é null -- elemento de vídeo não montou ainda.');
+      return;
+    }
 
     try {
       if (document.pictureInPictureElement) {
+        console.log('[TESTE 14/06] Já em PiP, saindo...');
         await document.exitPictureInPicture();
       } else {
+        console.log('[TESTE 14/06] video.paused?', video.paused, '| video.srcObject?', !!video.srcObject, '| document.pictureInPictureEnabled?', document.pictureInPictureEnabled);
         if (video.paused) {
           await video.play();
         }
+        console.log('[TESTE 14/06] Chamando requestPictureInPicture()...');
         await video.requestPictureInPicture();
+        console.log('[TESTE 14/06] requestPictureInPicture() resolveu!');
         mediaMaestro.duckVolume(0.5);
       }
     } catch (error) {
-      console.error("Picture-in-Picture error:", error);
+      console.error('[TESTE 14/06] Picture-in-Picture error:', error);
     }
   };
 
