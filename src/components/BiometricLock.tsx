@@ -5,11 +5,12 @@ import { unlockWithBiometric } from '../services/biometricAuth';
 
 interface BiometricLockProps {
   userId: string;
+  accountLabel?: string;
   onUnlocked: () => void;
   onUseLoginInstead: () => void;
 }
 
-export default function BiometricLock({ userId, onUnlocked, onUseLoginInstead }: BiometricLockProps) {
+export default function BiometricLock({ userId, accountLabel, onUnlocked, onUseLoginInstead }: BiometricLockProps) {
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(false);
 
@@ -46,7 +47,14 @@ export default function BiometricLock({ userId, onUnlocked, onUseLoginInstead }:
         <h1 className="text-2xl font-[1000] uppercase tracking-tighter italic mb-2">
           <span className="text-slate-100">Iron</span><span className="text-blue-500">Mind</span>
         </h1>
-        <p className="text-slate-500 text-[10px] uppercase font-bold tracking-[0.4em] mb-12">Acesso Protegido</p>
+        <p className="text-slate-500 text-[10px] uppercase font-bold tracking-[0.4em] mb-4">Acesso Protegido</p>
+
+        {accountLabel && (
+          <div className="inline-block bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 mb-8">
+            <p className="text-slate-500 text-[8px] uppercase font-bold tracking-widest mb-0.5">Entrando como</p>
+            <p className="text-slate-100 text-sm font-bold truncate max-w-[240px]">{accountLabel}</p>
+          </div>
+        )}
 
         <button
           onClick={handleUnlock}
@@ -56,9 +64,15 @@ export default function BiometricLock({ userId, onUnlocked, onUseLoginInstead }:
           <Fingerprint className={`w-10 h-10 text-blue-500 ${checking ? 'animate-pulse' : ''}`} />
         </button>
 
-        <p className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-8">
+        <p className="text-slate-400 text-[11px] font-bold uppercase tracking-widest mb-3">
           {checking ? 'Verificando...' : 'Toque para desbloquear'}
         </p>
+
+        {accountLabel && (
+          <p className="text-slate-600 text-[9px] font-medium mb-5 max-w-[260px] mx-auto leading-relaxed">
+            Aparelho compartilhado? Se essa conta não é sua, toque em "Entrar com senha" abaixo em vez de usar a biometria.
+          </p>
+        )}
 
         {error && (
           <p className="text-red-500 text-[10px] font-bold uppercase tracking-widest text-center bg-red-500/10 p-3 rounded-xl border border-red-500/20 mb-6">

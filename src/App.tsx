@@ -479,6 +479,7 @@ export default function App() {
     return (
       <BiometricLock
         userId={user.uid}
+        accountLabel={profile?.name || profile?.email || user.email || undefined}
         onUnlocked={() => setBiometricLocked(false)}
         onUseLoginInstead={() => { signOut(auth).catch(() => {}); localStorage.clear(); window.location.reload(); }}
       />
