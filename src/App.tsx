@@ -51,7 +51,7 @@ import { useAuth } from './components/AuthProvider';
 import Login from './components/Login';
 import Register from './components/Register';
 import BiometricLock from './components/BiometricLock';
-import { isBiometricEnabledOnThisDevice, isBiometricAvailable, registerBiometric } from './services/biometricAuth';
+import { isBiometricEnabledOnThisDevice, isBiometricAvailable, registerBiometric, getLocalBiometricUserId } from './services/biometricAuth';
 import { getFirestoreInstance, auth } from './lib/firebase';
 import { doc, getDoc, setDoc, updateDoc, collection, query, orderBy, limit, getDocs, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
@@ -101,6 +101,7 @@ export default function App() {
   }, [handleWorkoutComplete]);
 
   const [biometricLocked, setBiometricLocked] = useState(() => isBiometricEnabledOnThisDevice());
+  const [skipPreLoginBiometric, setSkipPreLoginBiometric] = useState(false);
   const [aquecimentoSubTab, setAquecimentoSubTab] = useState<'classico' | 'sugestao'>('classico');
   const [cardioSubTab, setCardioSubTab] = useState<'classico' | 'sugestao'>('classico');
 
@@ -506,6 +507,19 @@ export default function App() {
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white font-black text-sm uppercase tracking-widest">Carregando...</div>;
   if (!user) {
     if (showRegister) return <Register onBack={() => setShowRegister(false)} />;
+    // Se a biometria já estiver configurada neste aparelho (pra algum
+    // usuário), oferece ela ANTES da tela de senha -- é assim que a
+    // maioria dos apps do mercado funciona: a biometria substitui o
+    // login, não é só um extra depois dele.
+    if (!skipPreLoginBiometric && isBiometricEnabledOnThisDevice() && getLocalBiometricUserId()) {
+      return (
+        <BiometricLock
+          preLogin
+          onUnlocked={() => setBiometricLocked(false)}
+          onUseLoginInstead={() => setSkipPreLoginBiometric(true)}
+        />
+      );
+    }
     return <Login onRegister={() => setShowRegister(true)} />;
   }
   if (!profile) return <Register onBack={() => { signOut(auth).catch(() => {}); localStorage.clear(); window.location.reload(); }} />; 

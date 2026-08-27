@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Fingerprint, Dumbbell, LogOut } from 'lucide-react';
-import { unlockWithBiometric } from '../services/biometricAuth';
+import { unlockWithBiometric, loginWithBiometricOnly } from '../services/biometricAuth';
 
 interface BiometricLockProps {
-  userId: string;
+  userId?: string;
   accountLabel?: string;
+  // Quando true, não existe sessão nenhuma ainda -- a biometria PRECISA
+  // criar uma sessão nova (loginWithBiometricOnly), em vez de só
+  // reconfirmar uma que já existe (unlockWithBiometric).
+  preLogin?: boolean;
   onUnlocked: () => void;
   onUseLoginInstead: () => void;
 }
 
-export default function BiometricLock({ userId, accountLabel, onUnlocked, onUseLoginInstead }: BiometricLockProps) {
+export default function BiometricLock({ userId, accountLabel, preLogin, onUnlocked, onUseLoginInstead }: BiometricLockProps) {
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(false);
 
@@ -18,7 +22,7 @@ export default function BiometricLock({ userId, accountLabel, onUnlocked, onUseL
     setChecking(true);
     setError('');
     try {
-      const ok = await unlockWithBiometric(userId);
+      const ok = preLogin ? await loginWithBiometricOnly() : await unlockWithBiometric(userId!);
       if (ok) {
         onUnlocked();
       } else {
