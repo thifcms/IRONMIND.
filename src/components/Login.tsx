@@ -86,9 +86,24 @@ export default function Login({ onRegister }: LoginProps) {
       }
 
       // 2. Fallback legado: conta ainda não migrada pro Firebase Auth.
+      // Num projeto novo (sem contas antigas pré-Firebase-Auth), essa
+      // busca sem estar logado ainda é justamente recusada pelas regras
+      // de segurança normais (só permitem ler o próprio documento,
+      // sem exceção pra buscas por e-mail de quem ainda não logou) --
+      // isso é o esperado aqui, não uma falha de conexão de verdade.
       const usersRef = collection(db, 'users');
       const q = query(usersRef, where('email', '==', email));
-      const querySnapshot = await getDocs(q);
+      let querySnapshot;
+      try {
+        querySnapshot = await getDocs(q);
+      } catch (permErr: any) {
+        if (permErr?.code === 'permission-denied') {
+          setError('Usuário não encontrado.');
+          setLoading(false);
+          return;
+        }
+        throw permErr;
+      }
 
       if (querySnapshot.empty) {
         setError('Usuário não encontrado.');
