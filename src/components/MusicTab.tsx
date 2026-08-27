@@ -1,27 +1,28 @@
 import { Music2, Play, ExternalLink, Disc } from 'lucide-react';
-import { usePiPLauncher } from '../hooks/usePiPLauncher';
 
 export default function MusicTab() {
-  const { launch } = usePiPLauncher();
-
   const openApp = (app: typeof apps[0]) => {
-    launch(() => {
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      const storeLink = isIOS ? app.appStore : app.playStore;
-      const deepLink = app.deepLink;
+    // Sem PiP aqui de propósito -- apps de áudio (Spotify/Deezer/
+    // YouTube Music) não têm vídeo nenhum pra mostrar flutuando, e
+    // pedir PiP antes consome o "gesto de usuário" que o deep link
+    // (spotify:open, deezer://, etc) também precisa pra funcionar --
+    // isso estava fazendo o deep link falhar silenciosamente, sempre
+    // caindo direto na loja de apps mesmo com o app já instalado.
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const storeLink = isIOS ? app.appStore : app.playStore;
+    const deepLink = app.deepLink;
 
-      // Tentativa de abrir o app via Deep Link
-      const start = Date.now();
-      window.location.href = deepLink;
+    // Tentativa de abrir o app via Deep Link
+    const start = Date.now();
+    window.location.href = deepLink;
 
-      // Se em 2 segundos a página ainda estiver em foco, 
-      // assumimos que o app não abriu e redirecionamos para a loja
-      setTimeout(() => {
-        if (Date.now() - start < 2500) {
-          window.open(storeLink, '_blank');
-        }
-      }, 2000);
-    });
+    // Se em 2 segundos a página ainda estiver em foco,
+    // assumimos que o app não abriu e redirecionamos para a loja
+    setTimeout(() => {
+      if (Date.now() - start < 2500) {
+        window.open(storeLink, '_blank');
+      }
+    }, 2000);
   };
 
   const apps = [

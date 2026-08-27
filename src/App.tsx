@@ -289,7 +289,10 @@ export default function App() {
   const handleSetTodayWaterCount = useCallback((count: number) => {
     const d = new Date();
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    setProfile({ ...profile, waterIntake: { ...(profile?.waterIntake || {}), [key]: count } });
+    // lastWaterLogAt: usado pelo lembrete "faz tempo que você não bebe
+    // água" -- sem isso só sabíamos o total do dia, não HÁ QUANTAS HORAS
+    // desde o último copo registrado.
+    setProfile({ ...profile, waterIntake: { ...(profile?.waterIntake || {}), [key]: count }, lastWaterLogAt: Date.now() });
   }, [profile, setProfile]);
 
   const ADESAO_LABEL: Record<string, string> = { facil: 'fácil', medio: 'média', dificil: 'difícil' };
