@@ -927,6 +927,7 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
 
       <div 
         className="p-3 bg-white dark:bg-[#121212] border-t border-slate-200 dark:border-slate-800 flex-shrink-0"
+        style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
         onPointerDown={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}

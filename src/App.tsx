@@ -676,7 +676,7 @@ export default function App() {
 
         {/* Header & Navigation */}
         <div className={`bg-slate-50 border-b border-slate-200 shadow-sm z-20`}>
-          <header className={`px-4 py-3 flex justify-between items-center bg-slate-50`}>
+          <header className={`px-4 py-3 flex justify-between items-center bg-slate-50`} style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
             {/* Logo */}
             <div className="group relative flex items-center gap-2 bg-gradient-to-br from-slate-50 via-slate-200 to-slate-400 p-2 px-4 rounded-[2px] border-t border-l border-white border-r border-b border-slate-500 shadow-[2px_2px_0px_#0f172a,inset_1px_1px_1px_white] transition-all overflow-hidden shrink-0 scale-90 origin-left">
               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/concrete-wall.png')] opacity-20 pointer-events-none"></div>
@@ -1048,7 +1048,7 @@ export default function App() {
               />
             )}
             {activeTab === Tab.PERFIL && (
-              <ProfileTab profile={profile} setProfile={setProfile} userId={user?.uid} />
+              <ProfileTab profile={profile} setProfile={setProfile} userId={user?.uid} onNavigateToTreinador={() => setActiveTab(Tab.TREINADOR)} />
             )}
             </motion.div>
           </AnimatePresence>

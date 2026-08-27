@@ -37,6 +37,7 @@ interface Props {
   initial?: BodyDietProfile;
   onSave: (data: BodyDietProfile) => Promise<void>;
   onSkip?: () => void;
+  onComplete?: () => void;
 }
 
 const STEPS = ['sexo', 'medidas', 'tipoCorpo', 'atual', 'meta', 'dieta', 'agua', 'sono', 'preTreino'] as const;
@@ -44,7 +45,7 @@ type Step = typeof STEPS[number];
 
 const SUPLEMENTOS = ['Creatina', 'Whey Protein', 'BCAA', 'Multivitamínico', 'Nenhum'];
 
-export default function BodyDietProfileTab({ initial, onSave, onSkip }: Props) {
+export default function BodyDietProfileTab({ initial, onSave, onSkip, onComplete }: Props) {
   const [data, setData] = useState<BodyDietProfile>(initial || {});
   const [stepIndex, setStepIndex] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -61,7 +62,13 @@ export default function BodyDietProfileTab({ initial, onSave, onSkip }: Props) {
     try {
       await onSave({ ...data, updatedAt: new Date().toISOString() });
       setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      // Mostra a confirmação de "salvo" rapidinho antes de voltar pro
+      // Treinador -- antes disso a tela simplesmente ficava parada aqui
+      // pra sempre, sem nenhum caminho de volta.
+      setTimeout(() => {
+        setSaved(false);
+        onComplete?.();
+      }, 1200);
     } finally {
       setSaving(false);
     }

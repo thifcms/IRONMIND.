@@ -17,6 +17,7 @@ interface ProfileTabProps {
   profile: AppProfile | null;
   setProfile: (profile: AppProfile) => void;
   userId?: string;
+  onNavigateToTreinador?: () => void;
 }
 
 const toScalar = (val: any, fallback: string): string => {
@@ -25,7 +26,7 @@ const toScalar = (val: any, fallback: string): string => {
   return String(val);
 };
 
-export default function ProfileTab({ profile, setProfile, userId: userIdProp }: ProfileTabProps) {
+export default function ProfileTab({ profile, setProfile, userId: userIdProp, onNavigateToTreinador }: ProfileTabProps) {
   const db = getFirestoreInstance();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -240,6 +241,7 @@ export default function ProfileTab({ profile, setProfile, userId: userIdProp }: 
         <BodyDietProfileTab
           initial={profile?.bodyDietProfile}
           onSave={handleSaveBodyDiet}
+          onComplete={onNavigateToTreinador}
         />
       ) : (
       <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-4 pb-24 space-y-6 touch-pan-y">
