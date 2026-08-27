@@ -254,8 +254,24 @@ function buildBodyDietContext(bd: any): string {
 
   if (bd.sono) {
     const s = bd.sono;
-    const parts = [s.qualidade && `qualidade ${s.qualidade}`, s.horasPorNoite && `${s.horasPorNoite}h/noite`].filter(Boolean);
-    if (parts.length) lines.push(`- Sono: ${parts.join(', ')}`);
+    const parts = [s.qualidade && `qualidade ${s.qualidade}`];
+    if (s.horarioDormir) parts.push(`dorme por volta de ${s.horarioDormir}`);
+    if (s.horarioAcordar) parts.push(`acorda por volta de ${s.horarioAcordar}`);
+
+    if (s.horarioDormir && s.horarioAcordar) {
+      const [dh, dm] = s.horarioDormir.split(':').map(Number);
+      const [ah, am] = s.horarioAcordar.split(':').map(Number);
+      let minutosDormindo = (ah * 60 + am) - (dh * 60 + dm);
+      if (minutosDormindo <= 0) minutosDormindo += 24 * 60; // passou da meia-noite
+      const horasDormindo = (minutosDormindo / 60).toFixed(1);
+      parts.push(`~${horasDormindo}h de sono/noite`);
+    }
+
+    if (parts.filter(Boolean).length) lines.push(`- Sono: ${parts.filter(Boolean).join(', ')}`);
+
+    if (s.horarioDormir) {
+      lines.push(`  IMPORTANTE: ao sugerir suplementos ou horário de pré-treino/cafeína, NÃO recomende estimulantes (cafeína, pré-treino, termogênicos) muito próximo do horário de dormir (${s.horarioDormir}) -- isso pode prejudicar o sono do usuário.`);
+    }
   }
 
   if (bd.preTreino?.quer) {

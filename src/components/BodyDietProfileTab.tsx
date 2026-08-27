@@ -24,7 +24,8 @@ export interface BodyDietProfile {
   };
   sono?: {
     qualidade?: 'ruim' | 'regular' | 'boa' | 'otima';
-    horasPorNoite?: string;
+    horarioDormir?: string;
+    horarioAcordar?: string;
   };
   preTreino?: {
     quer?: boolean;
@@ -354,18 +355,29 @@ export default function BodyDietProfileTab({ initial, onSave, onSkip, onComplete
                       ))}
                     </div>
                   </div>
-                  <div>
-                    <label className={labelCls}>Horas de sono por noite</label>
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      step="0.5"
-                      placeholder="Ex: 7"
-                      className={inputCls}
-                      value={data.sono?.horasPorNoite || ''}
-                      onChange={(e) => update({ sono: { ...data.sono, horasPorNoite: e.target.value } })}
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={labelCls}>Costuma dormir que horas?</label>
+                      <input
+                        type="time"
+                        className={inputCls}
+                        value={data.sono?.horarioDormir || ''}
+                        onChange={(e) => update({ sono: { ...data.sono, horarioDormir: e.target.value } })}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Costuma acordar que horas?</label>
+                      <input
+                        type="time"
+                        className={inputCls}
+                        value={data.sono?.horarioAcordar || ''}
+                        onChange={(e) => update({ sono: { ...data.sono, horarioAcordar: e.target.value } })}
+                      />
+                    </div>
                   </div>
+                  <p className="text-[9px] text-slate-400 leading-relaxed px-1">
+                    Isso ajuda o treinador a não sugerir estimulantes (cafeína, pré-treino, etc) perto da hora de você dormir.
+                  </p>
                 </div>
               </div>
             )}
