@@ -1,6 +1,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700;800&family=Share+Tech+Mono&display=swap');
 @import "tailwindcss";
 
+/* Por padrão, o Tailwind v4 segue o modo escuro/claro do SISTEMA
+   OPERACIONAL automaticamente (@media prefers-color-scheme), ignorando
+   qualquer classe .dark no HTML. O app já tenta forçar modo claro
+   removendo a classe 'dark' do <html> (ver App.tsx), mas isso não
+   tinha efeito nenhum -- o Tailwind nem olhava pra essa classe, só pro
+   celular estar em modo noite ou não. Essa linha muda a variante
+   "dark:" pra reagir à classe em vez do sistema -- como a classe nunca
+   é adicionada de volta em lugar nenhum do app, o resultado é o app
+   sempre abrir no modo dia, não importa a configuração do celular. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
