@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { mediaMaestro } from '../services/mediaMaestro';
 import { logPiP } from '../lib/pipDebugLog';
-import { forceOpenInChrome } from '../lib/forceOpenInChrome';
 
 /**
  * Visor flutuante (Picture-in-Picture) reutilizável: mostra um cronômetro
@@ -170,7 +169,11 @@ export function usePiPLauncher() {
   const launch = (target: string | (() => void), onDebug?: (msg: string) => void) => {
     activeRef.current = true;
 
-    const opener = typeof target === 'function' ? target : () => window.open(forceOpenInChrome(target), '_blank');
+    // forceOpenInChrome() removido -- não comprovado que resolve o
+    // visor fechando (logs mostram que fecha mesmo com ela), e causava
+    // tela branca no app instalado como PWA. Ver comentário igual em
+    // CardioTab.tsx.
+    const opener = typeof target === 'function' ? target : () => window.open(target, '_blank');
 
     logPiP(`launch() chamado.`);
 

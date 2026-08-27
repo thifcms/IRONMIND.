@@ -5,7 +5,6 @@ import { bioMonitor } from '../services/bioMonitor';
 import { mediaMaestro } from '../services/mediaMaestro';
 import { logPiP } from '../lib/pipDebugLog';
 import PipDebugPanel from './PipDebugPanel';
-import { forceOpenInChrome } from '../lib/forceOpenInChrome';
 import { useHeartRateMonitor } from '../hooks/useHeartRateMonitor';
 
 type CardioMode = 'corrida' | 'esteira' | 'bicicleta';
@@ -326,7 +325,12 @@ export default function CardioTab({ onSessionComplete }: CardioTabProps) {
     if (!isActive) setIsActive(true);
     setPipDebug(null);
     logPiP(`[Cardio] handleMediaClick chamado para ${url}.`);
-    const openUrl = forceOpenInChrome(url);
+    // forceOpenInChrome() removido -- os próprios logs de diagnóstico já
+    // confirmaram que ela NÃO evita o visor fechar sozinho (continuava
+    // fechando mesmo com ela), e causava tela branca no app instalado
+    // como PWA (ícone na tela inicial). Sem benefício comprovado + com
+    // um bug confirmado = melhor não usar.
+    const openUrl = url;
 
     // ================================================================
     // PADRÃO SIMPLES -- É O QUE ESTÁ CONFIRMADO FUNCIONANDO DE VERDADE.
