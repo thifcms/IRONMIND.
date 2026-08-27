@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Mail, Lock, Dumbbell, ArrowRight, X } from 'lucide-react';
 import { getFirestoreInstance, auth } from '../lib/firebase';
-import { collection, query, where, getDocs, setDoc, doc, updateDoc, deleteField } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, setDoc, doc, updateDoc, deleteField } from 'firebase/firestore';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { useAuth } from './AuthProvider';
 import emailjs from '@emailjs/browser';
@@ -40,9 +40,26 @@ export default function Login({ onRegister }: LoginProps) {
         const credential = await signInWithEmailAndPassword(auth, email, password);
         const fbUid = credential.user.uid;
 
-        // O documento do perfil pode ter um ID diferente do uid do Firebase Auth
-        // (contas antigas migradas mantêm o ID original) — por isso buscamos
-        // pelo campo authUid, que sempre aponta pro uid correto do Auth.
+        // Busca DIRETO pelo ID do documento primeiro -- é o caminho que
+        // as regras de segurança novas permitem sem exceção nenhuma
+        // (allow ... if request.auth.uid == userId, onde userId é
+        // literalmente o ID do documento). Cadastros novos (Register.tsx)
+        // sempre criam o documento com ID = uid do Firebase Auth, então
+        // isso cobre o caso comum sem precisar de nenhuma regra especial.
+        const directDoc = await getDoc(doc(db, 'users', fbUid));
+        if (directDoc.exists()) {
+          setProfile(directDoc.data());
+          setUser({ uid: directDoc.id, ...directDoc.data() });
+          setLoading(false);
+          return;
+        }
+
+        // Fallback: contas antigas migradas podem ter o documento com um
+        // ID diferente do uid do Auth, só vinculado pelo campo authUid.
+        // Essa busca por campo (não por ID) só funciona se as regras do
+        // projeto tiverem uma exceção pra isso -- se não tiverem (caso
+        // de um projeto novo, sem contas assim), ela é recusada e cai
+        // no catch abaixo, seguindo pro fallback legado normalmente.
         const linkedQuery = query(collection(db, 'users'), where('authUid', '==', fbUid));
         const linkedSnap = await getDocs(linkedQuery);
 
