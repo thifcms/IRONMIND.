@@ -1,0 +1,20 @@
+name: Enviar lembretes de água (push)
+
+on:
+  schedule:
+    # A cada 3 horas, das 9h às 21h horário de Brasília (UTC-3) --
+    # 12h, 15h, 18h, 21h, 00h UTC. O próprio backend só manda pra quem
+    # já passou de 5h sem registrar, então não incomoda a cada disparo.
+    - cron: '0 12,15,18,21,0 * * *'
+  workflow_dispatch:
+
+jobs:
+  send-water-reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chamar /api/push/send-water-reminders
+        run: |
+          curl -sf -X POST "${{ secrets.IRONMIND_AI_URL }}/api/push/send-water-reminders" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"minHoursInactive": 5}'
