@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bike, Footprints, Timer, Zap, MapPin, Youtube, Gauge, TrendingUp, Weight, Pause, Play, MonitorPlay, Activity, Heart, AlertTriangle } from 'lucide-react';
+import { Bike, Footprints, Timer, Zap, MapPin, Youtube, Gauge, TrendingUp, Weight, Pause, Play, MonitorPlay, Activity, Heart, AlertTriangle, Rows3, X } from 'lucide-react';
 import { bioMonitor } from '../services/bioMonitor';
-import { mediaMaestro } from '../services/mediaMaestro';
-import { logPiP } from '../lib/pipDebugLog';
-import PipDebugPanel from './PipDebugPanel';
 import { useHeartRateMonitor } from '../hooks/useHeartRateMonitor';
 
 type CardioMode = 'corrida' | 'esteira' | 'bicicleta';
@@ -16,12 +13,12 @@ interface CardioTabProps {
 export default function CardioTab({ onSessionComplete }: CardioTabProps) {
   const [mode, setMode] = useState<CardioMode>('esteira');
   const [isActive, setIsActive] = useState(false);
+  const [showSplitTip, setShowSplitTip] = useState(() => localStorage.getItem('ironmind_split_tip_dismissed') !== 'true');
+  const dismissSplitTip = () => {
+    localStorage.setItem('ironmind_split_tip_dismissed', 'true');
+    setShowSplitTip(false);
+  };
   const [time, setTime] = useState(0);
-  const [pipDebug, setPipDebug] = useState<string | null>(null);
-  
-  // PiP Refs
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   // Input states
   const [speed, setSpeed] = useState(6.0); // km/h
@@ -156,124 +153,6 @@ export default function CardioTab({ onSessionComplete }: CardioTabProps) {
     }
   }, [heartRate, isActive]);
 
-  // Update PiP Canvas
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const stats = getStats();
-    
-    // Clear and draw background (Deep Black)
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw circular main frame
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const radius = (canvas.width / 2) - 10;
-
-    // Background circle
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-    ctx.fillStyle = '#111827'; // Darker blue-gray
-    ctx.fill();
-    
-    // 1. BRANDING (Top, small but sharp)
-    ctx.fillStyle = '#3b82f6';
-    ctx.font = 'bold 30px Inter, sans-serif'; 
-    ctx.textAlign = 'center';
-    ctx.fillText('IRONMIND CARDIO', centerX, centerY - 250);
-
-    // 2. MAIN TIMER (MASSIVE & CENTERED)
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    ctx.font = '900 230px monospace'; // Slightly reduced size
-    ctx.fillText(formatTime(time), centerX, centerY + 80);
-
-    // 3. STATS (Below Timer, high contrast)
-    ctx.fillStyle = '#60a5fa'; // Brighter blue
-    ctx.font = 'bold 38px monospace';
-    const distText = `${stats.distance} KM`;
-    const speedText = `${speed.toFixed(1)} KM/H`;
-    ctx.fillText(distText, centerX - 120, centerY + 180);
-    ctx.fillText(speedText, centerX + 120, centerY + 180);
-
-    ctx.fillStyle = '#94a3b8';
-    let variantLabel = mode === 'bicicleta' ? `L:${load}` : `I:${incline}%`;
-    const footerText = `${variantLabel} • ${heartRate} BPM`;
-    ctx.font = 'bold 32px monospace';
-    ctx.fillText(footerText.toUpperCase(), centerX, centerY + 240);
-
-    // Status Indicator (Blinking at very bottom)
-    if (isActive) {
-      ctx.fillStyle = (Math.floor(Date.now() / 500) % 2 === 0) ? '#10b981' : '#064e3b';
-      ctx.beginPath();
-      ctx.arc(centerX, centerY + 300, 15, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }, [time, speed, incline, load, mode, isActive, heartRate]);
-
-  // Handle PiP stream initialization
-  useEffect(() => {
-    const initializeStream = async () => {
-      if (canvasRef.current && videoRef.current && !videoRef.current.srcObject) {
-        try {
-          const stream = (canvasRef.current as any).captureStream(30);
-          videoRef.current.srcObject = stream;
-          // Pre-play muted video to have it ready for PiP
-          await videoRef.current.play().catch(() => {});
-          logPiP('[Cardio] Visor inicializado (stream do canvas pronta).');
-        } catch (e) {
-          console.error("Failed to initialize PiP stream", e);
-          logPiP(`[Cardio] Falha ao iniciar stream do visor: ${e}`);
-        }
-      }
-    };
-    initializeStream();
-
-    const video = videoRef.current;
-    const onLeave = () => {
-      logPiP(`[Cardio] Visor SAIU do PiP (evento leavepictureinpicture). Aba oculta agora? ${document.hidden ? 'sim' : 'não'}.`);
-    };
-    const onVisibility = () => {
-      logPiP(`[Cardio] Visibilidade da aba mudou: ${document.hidden ? 'ocultada' : 'visível'}. PiP ativo nesse instante? ${document.pictureInPictureElement ? 'sim' : 'não'}.`);
-    };
-    video?.addEventListener('leavepictureinpicture', onLeave);
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      video?.removeEventListener('leavepictureinpicture', onLeave);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, []);
-
-  const togglePiP = async () => {
-    const video = videoRef.current;
-    if (!video) throw new Error('Elemento de vídeo do visor não está pronto ainda.');
-
-    if (document.pictureInPictureElement) {
-      logPiP('[Cardio] Saindo do PiP (togglePiP chamado com PiP já ativo).');
-      await document.exitPictureInPicture();
-    } else {
-      if (!document.pictureInPictureEnabled) {
-        logPiP('[Cardio] document.pictureInPictureEnabled = false -- navegador/OS bloqueou PiP antes mesmo de tentar.');
-        throw new Error('document.pictureInPictureEnabled = false (navegador/página bloqueou PiP).');
-      }
-      // NÃO usa await aqui -- consome a janela de "gesto do usuário" que
-      // window.open() precisa logo depois pra abrir sem tela branca (já
-      // tentado e revertido: causou de volta o problema do commit
-      // 31e3077). Ver comentário completo em usePiPLauncher.ts.
-      if (video.paused) {
-        video.play().catch(() => {});
-      }
-      logPiP('[Cardio] Chamando requestPictureInPicture()...');
-      await video.requestPictureInPicture();
-      logPiP('[Cardio] requestPictureInPicture() resolveu (Promise aceita).');
-      mediaMaestro.duckVolume(0.5);
-    }
-  };
-
   const formatTime = (s: number) => {
     const mins = Math.floor(s / 60);
     const secs = s % 60;
@@ -323,58 +202,13 @@ export default function CardioTab({ onSessionComplete }: CardioTabProps) {
 
   const handleMediaClick = (url: string) => {
     if (!isActive) setIsActive(true);
-    setPipDebug(null);
-    logPiP(`[Cardio] handleMediaClick chamado para ${url}.`);
-    // forceOpenInChrome() removido -- os próprios logs de diagnóstico já
-    // confirmaram que ela NÃO evita o visor fechar sozinho (continuava
-    // fechando mesmo com ela), e causava tela branca no app instalado
-    // como PWA (ícone na tela inicial). Sem benefício comprovado + com
-    // um bug confirmado = melhor não usar.
-    const openUrl = url;
-
-    // ================================================================
-    // PADRÃO SIMPLES -- É O QUE ESTÁ CONFIRMADO FUNCIONANDO DE VERDADE.
-    //
-    // Isso já foi reescrito e revertido MAIS DE UMA VEZ (ver commits
-    // da09120/77bdcfc, depois be24e78, depois 768b072/c54fdb2/31e3077).
-    // Toda vez que alguém tenta "sincronizar direito" com o evento
-    // enterpictureinpicture (esperar confirmação antes de abrir a URL,
-    // usar aba em branco pra evitar bloqueio de pop-up, navegar só
-    // depois) o resultado é IDÊNTICO ao problema original: o log
-    // mostra leavepictureinpicture disparando sozinho, com a aba
-    // oculta, e o visor some. A complexidade extra não resolve nada --
-    // só introduz bugs novos (bloqueio de pop-up, tela branca, etc).
-    //
-    // NÃO REINTRODUZA a espera pelo evento nem a técnica da aba em
-    // branco sem antes confirmar com o usuário, testando ESTA versão
-    // exata, que o problema realmente persiste.
-    // ================================================================
-    togglePiP().then(() => {
-      logPiP('[Cardio] togglePiP resolveu, abrindo (travado no Chrome) agora.');
-      window.open(openUrl, '_blank');
-    }).catch(err => {
-      const msg = `Erro no PiP: ${err?.name || ''} ${err?.message || err}`;
-      console.error(msg);
-      logPiP(`[Cardio] ${msg} -- abrindo mesmo assim.`);
-      setPipDebug(msg);
-      window.open(openUrl, '_blank');
-    });
+    window.open(url, '_blank');
   };
 
   const stats = getStats();
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0a0a0a] overflow-hidden relative transition-colors duration-300">
-      {/* Contêiner 1x1px invisível -- é o tamanho confirmado funcionando de
-          verdade no Render (commit 77bdcfc). Uma tentativa posterior de
-          "melhoria" mudou pra 300x300px por teoria (não testada) de que
-          1px causaria problema no PiP -- não há confirmação de que esse
-          tamanho realmente importe; o que importa é opacity-0 +
-          pointer-events-none escondendo o elemento visualmente. */}
-      <div className="opacity-0 pointer-events-none absolute -z-50 overflow-hidden w-px h-px">
-        <canvas ref={canvasRef} width={720} height={720} />
-        <video ref={videoRef} playsInline muted className="w-full h-full" />
-      </div>
 
       {/* Bio-Monitor Floating Hud */}
       <AnimatePresence>
@@ -597,12 +431,17 @@ export default function CardioTab({ onSessionComplete }: CardioTabProps) {
               <Youtube className="w-3 h-3 text-[#FF0000]" /> YOUTUBE
             </button>
         </div>
-        {pipDebug && (
-          <p className="text-[9px] font-mono text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-lg p-2 break-words mb-2">
-            {pipDebug}
-          </p>
+        {showSplitTip && (
+          <div className="mt-2 flex items-start gap-2 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-lg p-2.5">
+            <Rows3 className="w-4 h-4 text-blue-500 flex-none mt-0.5" />
+            <p className="text-[9px] text-blue-700 dark:text-blue-300 leading-relaxed flex-1">
+              Pra assistir e treinar ao mesmo tempo, use a <strong>Tela Dividida</strong> do seu celular (segura o botão de apps recentes ou desliza com 2 dedos).
+            </p>
+            <button onClick={dismissSplitTip} className="flex-none text-blue-400">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
         )}
-        <PipDebugPanel />
       </div>
     </div>
   );
