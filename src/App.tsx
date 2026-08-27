@@ -59,6 +59,7 @@ export default function App() {
   const db = getFirestoreInstance();
   const { user, profile, loading, setProfile } = useAuth();
   const [workoutCompleteInfo, setWorkoutCompleteInfo] = useState<{ dayLabel: string; exerciseCount: number; streakCount: number; newAchievements: Achievement[] } | null>(null);
+  const [showPlanChoice, setShowPlanChoice] = useState(false);
   const [showPoseCounter, setShowPoseCounter] = useState(false);
 
   const handleWorkoutComplete = useCallback((dayLabel: string, exerciseCount: number) => {
@@ -611,13 +612,23 @@ export default function App() {
       }).catch(err => console.error("Erro ao salvar treino no Firestore:", err));
     }
 
-    console.log("Training plan updated, setting active tab to TREINO");
-    setActiveTab(Tab.TREINO);
+    // Não navega mais sozinho pra aba Treino -- a pessoa continua no
+    // chat, pra poder ver (e aceitar) a dieta que normalmente vem logo
+    // em seguida na mesma conversa, em vez de ser tirada da tela antes
+    // disso. Só oferece a escolha "Ir para Treino/Dieta" quando os dois
+    // já existirem (a dieta é aceita depois, então isso normalmente
+    // dispara em saveDiet -- mas cobre o caso de aceitar treino de novo
+    // com a dieta já pronta de antes).
+    console.log("Training plan updated, staying in chat");
+    if (dietPlan) setShowPlanChoice(true);
   };
 
   const saveDiet = (plan: DietPlan) => {
     updateDietPlan(plan);
-    setActiveTab(Tab.DIETA);
+    // Mesma lógica: só oferece a escolha quando o treino também já
+    // existe -- normalmente é aqui que isso dispara, já que a dieta
+    // costuma ser aceita logo depois do treino na mesma conversa.
+    if (trainingPlan) setShowPlanChoice(true);
   };
 
   const buildManualTraining = (split: string) => {
@@ -1207,6 +1218,51 @@ export default function App() {
           <PoseRepCounter onClose={() => setShowPoseCounter(false)} />
         </Suspense>
       )}
+
+      <AnimatePresence>
+        {showPlanChoice && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowPlanChoice(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm bg-white rounded-3xl p-6 text-center"
+            >
+              <h2 className="text-lg font-black uppercase italic tracking-tight text-slate-800 mb-1">Tudo pronto!</h2>
+              <p className="text-sm text-slate-500 mb-6">Seu treino e sua dieta já estão salvos. Pra onde você quer ir agora?</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => { setActiveTab(Tab.TREINO); setShowPlanChoice(false); }}
+                  className="flex flex-col items-center gap-2 bg-blue-600 text-white rounded-2xl py-4 active:scale-95 transition-transform"
+                >
+                  <Dumbbell className="w-6 h-6" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Treino</span>
+                </button>
+                <button
+                  onClick={() => { setActiveTab(Tab.DIETA); setShowPlanChoice(false); }}
+                  className="flex flex-col items-center gap-2 bg-emerald-600 text-white rounded-2xl py-4 active:scale-95 transition-transform"
+                >
+                  <Utensils className="w-6 h-6" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Dieta</span>
+                </button>
+              </div>
+              <button
+                onClick={() => setShowPlanChoice(false)}
+                className="mt-4 text-[10px] font-black uppercase tracking-widest text-slate-400"
+              >
+                Continuar no chat
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
