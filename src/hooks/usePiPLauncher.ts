@@ -150,15 +150,16 @@ export function usePiPLauncher() {
       // (mesmo a checagem de vídeo pronto) pode consumir a janela de
       // "gesto do usuário" que o navegador exige pra liberar o PiP sem
       // bloquear, o mesmo problema que já vimos com o window.open().
-      // Espera o play() de verdade resolver antes de pedir o PiP -- é o
-      // que a versão confirmada funcionando (14/06, commit d96f0ed) fazia.
-      // Isso é DIFERENTE da "espera de frame pronto" (readyState/
-      // videoWidth) que foi tentada e revertida essa semana (commits
-      // 7341690/6142128) -- aquela esperava o CANVAS ter conteúdo
-      // desenhado, o que podia demorar o suficiente pra estourar a janela
-      // de gesto do usuário. Aqui só esperamos o play() em si (quase
-      // instantâneo pra um vídeo já carregado e mudo), sem essa demora.
-      if (video.paused) await video.play().catch(() => {});
+      // NÃO usa await aqui -- essa espera consome a janela de "gesto do
+      // usuário" que window.open() precisa logo depois (em opener(), no
+      // launch()) pra abrir o Netflix/YouTube sem ficar com tela branca.
+      // Já tentei "await video.play()" achando que resolveria o visor
+      // fechando sozinho (comparação com versão de 14/06) -- resultado
+      // real: quebrou a abertura do Netflix/YouTube (tela branca),
+      // problema JÁ CONHECIDO e corrigido antes (commit 31e3077) por
+      // esse EXATO motivo. Não reintroduza sem testar os dois cenários
+      // (visor sobrevivendo E Netflix/YouTube abrindo) ao mesmo tempo.
+      if (video.paused) video.play().catch(() => {});
       logPiP('Chamando requestPictureInPicture()...');
       await video.requestPictureInPicture();
       logPiP('requestPictureInPicture() resolveu (Promise aceita).');
