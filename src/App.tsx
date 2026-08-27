@@ -39,6 +39,7 @@ import TrainingTab from './components/TrainingTab';
 import WarmupTab from './components/WarmupTab';
 import CardioTab from './components/CardioTab';
 import MediaQuickLaunch from './components/MediaQuickLaunch';
+import MediaQuickLaunchLegacy from './components/MediaQuickLaunchLegacy';
 import DietTab from './components/DietTab';
 import MusicTab from './components/MusicTab';
 import VideosTab from './components/VideosTab';
@@ -1013,7 +1014,7 @@ export default function App() {
                           ? <TrainingTab plan={warmupPlan} onUpdatePlan={updateWarmupPlan} onClearPlan={() => setShowConfirmClearWarmup(true)} onOpenSplitSelector={() => setActiveTab(Tab.TREINADOR)} onWorkoutComplete={handleWorkoutComplete} onOpenPoseCounter={() => setShowPoseCounter(true)} />
                           : <EmptyState type="aquecimento" onClick={() => setActiveTab(Tab.TREINADOR)} />}
                       </div>
-                      <MediaQuickLaunch />
+                      <MediaQuickLaunchLegacy />
                     </>
                   )}
                 </div>
