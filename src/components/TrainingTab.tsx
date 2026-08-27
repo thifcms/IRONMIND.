@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { TrainingPlan, Exercise } from '../types';
-import { Play, Dumbbell, Clock, Check, Plus, Trash2, StickyNote, X, TrendingUp, Target, Search, ChevronRight, Filter, AlertCircle, ChevronDown, Timer, Pause, RotateCcw, PlusCircle, MinusCircle, Camera } from 'lucide-react';
+import { Play, Dumbbell, Clock, Check, Plus, Trash2, StickyNote, X, TrendingUp, Target, Search, ChevronRight, Filter, AlertCircle, ChevronDown, Timer, Pause, RotateCcw, PlusCircle, MinusCircle, Camera, Loader2, Sparkles, Lightbulb } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { EXERCISE_LIBRARY, LibraryExercise, MUSCLE_GROUPS } from '../constants/exercises';
-import { resolveVideoUrl, getYouTubeSearchUrl } from '../lib/videoUtils';
+import { resolveVideoUrl, getYouTubeSearchUrl, formatVideoUrl, isSearchUrl } from '../lib/videoUtils';
+import { resolveVideoDirectly, getExerciseGuide } from '../services/geminiService';
 
 export default function TrainingTab({ 
   plan, 
@@ -58,6 +59,58 @@ export default function TrainingTab({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMuscle, setFilterMuscle] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
+
+  // Vídeo de demonstração + guia técnico inline, dentro da própria tela
+  // de Treino (antes só existia numa aba separada "Vídeos"). Só um
+  // aberto por vez, pra não carregar vários iframes ao mesmo tempo.
+  const [activeVideoExId, setActiveVideoExId] = useState<string | null>(null);
+  const [resolvedVideos, setResolvedVideos] = useState<Record<string, string>>({});
+  const [resolvingVideo, setResolvingVideo] = useState<string | null>(null);
+  const [guideCache, setGuideCache] = useState<Record<string, string>>({});
+  const [guideLoading, setGuideLoading] = useState<string | null>(null);
+
+  const handleToggleVideo = async (ex: Exercise) => {
+    if (activeVideoExId === ex.id) {
+      setActiveVideoExId(null);
+      return;
+    }
+    setActiveVideoExId(ex.id);
+
+    const videoUrl = resolveVideoUrl(ex);
+    const inLibrary = !!videoUrl && !isSearchUrl(videoUrl);
+
+    // Só consulta a IA pra resolver o vídeo se não achou nada na
+    // biblioteca local nem já tinha resolvido antes -- economiza chamada.
+    if (!inLibrary && !resolvedVideos[ex.name]) {
+      setResolvingVideo(ex.name);
+      try {
+        const result = await resolveVideoDirectly(ex.name);
+        if (result.videoId) {
+          setResolvedVideos(prev => ({ ...prev, [ex.name]: result.videoId }));
+        }
+      } catch (e) {
+        console.warn('Falha ao resolver vídeo direto:', e);
+      } finally {
+        setResolvingVideo(null);
+      }
+    }
+
+    // Guia técnico ("Foco Técnico") -- também só busca uma vez por
+    // exercício, guarda em cache local no componente.
+    if (!guideCache[ex.name]) {
+      setGuideLoading(ex.name);
+      try {
+        const guide = await getExerciseGuide(ex.name);
+        if (guide?.proTip) {
+          setGuideCache(prev => ({ ...prev, [ex.name]: guide.proTip }));
+        }
+      } catch (e) {
+        console.warn('Falha ao gerar guia técnico:', e);
+      } finally {
+        setGuideLoading(null);
+      }
+    }
+  };
 
   const progress = useMemo(() => {
     if (!plan.days || plan.days.length === 0) return 0;
@@ -557,17 +610,73 @@ export default function TrainingTab({
                             <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           </button>
                         </div>
-                        <a 
-                          href={getYouTubeSearchUrl(ex.name)} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="w-full h-8 sm:h-9 border border-[#1a66ff] bg-[#1a66ff] text-white hover:bg-[#0052eb] transition-all rounded-xl flex items-center justify-center shadow-sm"
-                          title={`Ver tutorial de ${ex.name} no YouTube`}
+                        <button 
+                          onClick={() => handleToggleVideo(ex)}
+                          className={`w-full h-8 sm:h-9 border transition-all rounded-xl flex items-center justify-center shadow-sm ${
+                            activeVideoExId === ex.id
+                              ? 'border-red-500 bg-red-500 text-white hover:bg-red-600'
+                              : 'border-[#1a66ff] bg-[#1a66ff] text-white hover:bg-[#0052eb]'
+                          }`}
+                          title={activeVideoExId === ex.id ? 'Fechar vídeo' : `Ver demonstração de ${ex.name}`}
                         >
-                          <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
-                        </a>
+                          {activeVideoExId === ex.id ? <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />}
+                        </button>
                       </div>
                     </div>
+
+                    {activeVideoExId === ex.id && (() => {
+                      let videoUrl = resolveVideoUrl(ex);
+                      if (resolvedVideos[ex.name]) videoUrl = `https://www.youtube.com/watch?v=${resolvedVideos[ex.name]}`;
+                      const isResolving = resolvingVideo === ex.name;
+                      const playable = videoUrl && (!isSearchUrl(videoUrl) || resolvedVideos[ex.name]);
+
+                      return (
+                        <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in fade-in slide-in-from-top-2">
+                          <div className="aspect-video bg-slate-900 flex items-center justify-center">
+                            {isResolving ? (
+                              <div className="flex flex-col items-center gap-2 text-white">
+                                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                                <p className="text-[9px] font-black uppercase tracking-widest">Buscando demonstração...</p>
+                              </div>
+                            ) : playable ? (
+                              <iframe
+                                src={formatVideoUrl(videoUrl) ?? undefined}
+                                className="w-full h-full"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                              />
+                            ) : (
+                              <div className="flex flex-col items-center gap-3 text-center p-4">
+                                <Sparkles className="w-8 h-8 text-blue-400" />
+                                <p className="text-white text-[10px] font-bold uppercase">Vídeo não encontrado no acervo</p>
+                                <a
+                                  href={videoUrl || getYouTubeSearchUrl(ex.name)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-black text-[9px] uppercase tracking-widest"
+                                >
+                                  Buscar no YouTube
+                                </a>
+                              </div>
+                            )}
+                          </div>
+
+                          {(guideLoading === ex.name || guideCache[ex.name]) && (
+                            <div className="p-3 bg-blue-50 dark:bg-blue-900/10 flex gap-2 items-start">
+                              <Lightbulb className="w-4 h-4 text-blue-500 flex-none mt-0.5" />
+                              <div>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-1">Foco Técnico</p>
+                                {guideLoading === ex.name ? (
+                                  <p className="text-[10px] text-blue-400 italic">Gerando dica...</p>
+                                ) : (
+                                  <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed">{guideCache[ex.name]}</p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {editingNotes === ex.id && (
                       <div className="p-3 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-100 dark:border-amber-900/20 animate-in fade-in slide-in-from-top-2">
