@@ -40,20 +40,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const db = getFirestoreInstance();
           if (db) {
-            // O documento do perfil pode ter um ID diferente do uid do Auth
-            // (contas migradas mantêm o ID original do Firestore) — busca
-            // sempre pelo campo authUid, que é a ligação confiável entre os dois.
-            const q = query(collection(db, 'users'), where('authUid', '==', fbUser.uid));
-            const snap = await getDocs(q);
-            if (!snap.empty) {
-              const docSnap = snap.docs[0];
-              const data = docSnap.data();
-              const fullUser = { uid: docSnap.id, ...data };
+            // Busca DIRETO pelo ID do documento primeiro -- é o caminho
+            // que as regras de segurança novas permitem sem exceção
+            // nenhuma (allow ... if request.auth.uid == userId, o ID
+            // literal do documento). Cadastros novos sempre criam o
+            // documento com ID = uid do Firebase Auth, então cobre o
+            // caso comum -- inclusive o login por biometria (via
+            // signInWithCustomToken), que dependia SÓ deste handler pra
+            // carregar o perfil e ficava preso em loop sem isso.
+            const directSnap = await getDoc(doc(db, 'users', fbUser.uid));
+            if (directSnap.exists()) {
+              const data = directSnap.data();
+              const fullUser = { uid: directSnap.id, ...data };
               setUser(fullUser);
               setProfile(data);
               localStorage.setItem('user', JSON.stringify(fullUser));
               localStorage.setItem('profile', JSON.stringify(data));
               localStorage.setItem('ironmind_user', JSON.stringify(data));
+            } else {
+              // Fallback: contas antigas migradas podem ter o documento
+              // com um ID diferente do uid do Auth, só vinculado pelo
+              // campo authUid. Só funciona se as regras do projeto
+              // tiverem uma exceção pra isso -- se não tiverem (projeto
+              // novo, sem contas assim), essa busca falha graciosamente
+              // (capturada pelo catch abaixo) sem travar o app.
+              const q = query(collection(db, 'users'), where('authUid', '==', fbUser.uid));
+              const snap = await getDocs(q);
+              if (!snap.empty) {
+                const docSnap = snap.docs[0];
+                const data = docSnap.data();
+                const fullUser = { uid: docSnap.id, ...data };
+                setUser(fullUser);
+                setProfile(data);
+                localStorage.setItem('user', JSON.stringify(fullUser));
+                localStorage.setItem('profile', JSON.stringify(data));
+                localStorage.setItem('ironmind_user', JSON.stringify(data));
+              }
             }
           }
         } catch (error) {
