@@ -725,11 +725,13 @@ export async function getExerciseGuide(name: string) {
 }
 
 export async function resolveVideoDirectly(name: string) {
-  const prompt = `Encontre o videoID do YouTube para o exercício: ${name}. Retorne JSON { "videoId": "..." }.`;
-  const res = await fetch(apiUrl("/api/generate-proposal"), {
+  // Busca real na API do YouTube (vídeo de verdade, existente) em vez
+  // de pedir pra IA adivinhar um videoId -- isso resultava em vídeos
+  // inexistentes na maior parte das vezes.
+  const res = await fetch(apiUrl("/api/resolve-exercise-video"), {
     method: "POST",
     headers: await apiHeaders(),
-    body: JSON.stringify({ prompt, systemInstruction: "Retorne apenas JSON." })
+    body: JSON.stringify({ exerciseName: name })
   });
   return await res.json();
 }

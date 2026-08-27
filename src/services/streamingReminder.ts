@@ -19,8 +19,9 @@ let visibilityListenerAttached = false;
 function formatElapsed(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
   if (h > 0) return `${h}h${m.toString().padStart(2, '0')}min`;
-  return `${m}min`;
+  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 async function updateNotification() {
@@ -89,7 +90,7 @@ export async function startStreamingReminder() {
   attachVisibilityListenerOnce();
   await updateNotification();
 
-  const workerCode = `setInterval(() => postMessage('tick'), 60000);`;
+  const workerCode = `setInterval(() => postMessage('tick'), 15000);`;
   const blob = new Blob([workerCode], { type: 'application/javascript' });
   const workerUrl = URL.createObjectURL(blob);
   worker = new Worker(workerUrl);

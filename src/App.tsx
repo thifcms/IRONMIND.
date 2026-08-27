@@ -216,6 +216,21 @@ export default function App() {
         if (msgs.length > 0) {
           setChatHistory(msgs);
         } else {
+          // Antes disso, um Firestore vazio (mesmo que só temporariamente,
+          // ou por uma gravação anterior ter falhado silenciosamente)
+          // resetava a conversa pra saudação inicial na hora -- perdendo
+          // o que só estava salvo localmente. Agora só reseta se
+          // realmente não sobrar nada nem no cache local também.
+          try {
+            const cached = localStorage.getItem('ironmind_chat');
+            const cachedMsgs = cached ? JSON.parse(cached) : [];
+            if (Array.isArray(cachedMsgs) && cachedMsgs.length > 0) {
+              setChatHistory(cachedMsgs);
+              return;
+            }
+          } catch {
+            // cache corrompido/inexistente -- segue pro fallback normal
+          }
           setChatHistory([
             { role: 'model', text: 'Saudações. Eu sou o IronMind Neural. Sou o núcleo de inteligência deste ecossistema. Como posso otimizar sua performance hoje?' }
           ]);
@@ -277,7 +292,7 @@ export default function App() {
       await setDoc(doc(chatCol), { ...response, timestamp: new Date().toISOString() });
       setChatHistory(prev => [...prev, response]);
     } catch (e) {
-      console.error("Handshake Link Error:", e);
+      console.error("Handshake Link Error -- falha ao conversar ou salvar mensagem no Firestore:", e);
     }
   }, [chatHistory, user, profile, checkinHistory]);
 
