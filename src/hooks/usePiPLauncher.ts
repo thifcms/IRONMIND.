@@ -150,7 +150,15 @@ export function usePiPLauncher() {
       // (mesmo a checagem de vídeo pronto) pode consumir a janela de
       // "gesto do usuário" que o navegador exige pra liberar o PiP sem
       // bloquear, o mesmo problema que já vimos com o window.open().
-      if (video.paused) video.play().catch(() => {});
+      // Espera o play() de verdade resolver antes de pedir o PiP -- é o
+      // que a versão confirmada funcionando (14/06, commit d96f0ed) fazia.
+      // Isso é DIFERENTE da "espera de frame pronto" (readyState/
+      // videoWidth) que foi tentada e revertida essa semana (commits
+      // 7341690/6142128) -- aquela esperava o CANVAS ter conteúdo
+      // desenhado, o que podia demorar o suficiente pra estourar a janela
+      // de gesto do usuário. Aqui só esperamos o play() em si (quase
+      // instantâneo pra um vídeo já carregado e mudo), sem essa demora.
+      if (video.paused) await video.play().catch(() => {});
       logPiP('Chamando requestPictureInPicture()...');
       await video.requestPictureInPicture();
       logPiP('requestPictureInPicture() resolveu (Promise aceita).');

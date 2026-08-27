@@ -261,11 +261,12 @@ export default function CardioTab({ onSessionComplete }: CardioTabProps) {
         logPiP('[Cardio] document.pictureInPictureEnabled = false -- navegador/OS bloqueou PiP antes mesmo de tentar.');
         throw new Error('document.pictureInPictureEnabled = false (navegador/página bloqueou PiP).');
       }
-      // Sem await antes do requestPictureInPicture -- qualquer espera aqui
-      // pode consumir a janela de "gesto do usuário" que o navegador
-      // exige pra liberar o PiP sem bloquear.
+      // Espera o play() de verdade resolver antes de pedir o PiP -- é o
+      // que a versão confirmada funcionando (14/06, commit d96f0ed) fazia.
+      // Diferente da "espera de frame pronto" já tentada e revertida essa
+      // semana -- aqui só esperamos o play() em si (quase instantâneo).
       if (video.paused) {
-        video.play().catch(() => {});
+        await video.play().catch(() => {});
       }
       logPiP('[Cardio] Chamando requestPictureInPicture()...');
       await video.requestPictureInPicture();
