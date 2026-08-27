@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Youtube, Rows3, X } from 'lucide-react';
+import { startStreamingReminder } from '../services/streamingReminder';
 
 const SPLIT_TIP_DISMISSED_KEY = 'ironmind_split_tip_dismissed';
 
@@ -16,6 +17,7 @@ export default function MediaQuickLaunch() {
   const [showSplitTip, setShowSplitTip] = useState(() => localStorage.getItem(SPLIT_TIP_DISMISSED_KEY) !== 'true');
 
   const open = (url: string) => {
+    startStreamingReminder();
     window.open(url, '_blank');
   };
 
