@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Dumbbell, 
+  Fingerprint, 
   Flame, 
   Play, 
   Utensils, 
@@ -50,7 +51,7 @@ import { useAuth } from './components/AuthProvider';
 import Login from './components/Login';
 import Register from './components/Register';
 import BiometricLock from './components/BiometricLock';
-import { isBiometricEnabledOnThisDevice } from './services/biometricAuth';
+import { isBiometricEnabledOnThisDevice, isBiometricAvailable, registerBiometric } from './services/biometricAuth';
 import { getFirestoreInstance, auth } from './lib/firebase';
 import { doc, getDoc, setDoc, updateDoc, collection, query, orderBy, limit, getDocs, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
@@ -60,6 +61,9 @@ export default function App() {
   const { user, profile, loading, setProfile } = useAuth();
   const [workoutCompleteInfo, setWorkoutCompleteInfo] = useState<{ dayLabel: string; exerciseCount: number; streakCount: number; newAchievements: Achievement[] } | null>(null);
   const [showPlanChoice, setShowPlanChoice] = useState(false);
+  const [showBiometricOffer, setShowBiometricOffer] = useState(false);
+  const [biometricOfferLoading, setBiometricOfferLoading] = useState(false);
+  const biometricOfferCheckedRef = useRef(false);
   const [showPoseCounter, setShowPoseCounter] = useState(false);
 
   const handleWorkoutComplete = useCallback((dayLabel: string, exerciseCount: number) => {
@@ -469,6 +473,35 @@ export default function App() {
   useEffect(() => {
       console.log("AuthProvider AuthGuard state:", { loading, user: !!user, profile: !!profile });
   }, [loading, user, profile]);
+
+  // Oferece ativar a biometria logo depois de logar com senha (se o
+  // aparelho suportar e ainda não estiver ativada) -- antes só dava pra
+  // ativar indo no Perfil manualmente. Só checa/oferece UMA vez por
+  // sessão (o ref evita perguntar de novo a cada re-render), e nunca
+  // interrompe quem já está com a trava biométrica ativa (isso já é
+  // outro fluxo, não faz sentido oferecer de novo nesse caso).
+  useEffect(() => {
+    if (!user || !profile || biometricLocked || biometricOfferCheckedRef.current) return;
+    biometricOfferCheckedRef.current = true;
+    if (isBiometricEnabledOnThisDevice()) return;
+
+    isBiometricAvailable().then(available => {
+      if (available) setShowBiometricOffer(true);
+    });
+  }, [user, profile, biometricLocked]);
+
+  const handleAcceptBiometricOffer = async () => {
+    if (!user) return;
+    setBiometricOfferLoading(true);
+    try {
+      await registerBiometric(user.uid, profile?.email || user.email || '');
+    } catch (e) {
+      console.warn('Falha ao ativar biometria pelo convite pós-login:', e);
+    } finally {
+      setBiometricOfferLoading(false);
+      setShowBiometricOffer(false);
+    }
+  };
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-950 text-white font-black text-sm uppercase tracking-widest">Carregando...</div>;
   if (!user) {
@@ -1218,6 +1251,46 @@ export default function App() {
           <PoseRepCounter onClose={() => setShowPoseCounter(false)} />
         </Suspense>
       )}
+
+      <AnimatePresence>
+        {showBiometricOffer && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="w-full max-w-sm bg-white rounded-3xl p-6 text-center"
+            >
+              <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-blue-50 flex items-center justify-center">
+                <Fingerprint className="w-7 h-7 text-blue-600" />
+              </div>
+              <h2 className="text-lg font-black uppercase italic tracking-tight text-slate-800 mb-1">Ativar biometria?</h2>
+              <p className="text-sm text-slate-500 mb-6">Destrave o app com digital ou rosto da próxima vez, sem precisar digitar a senha.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowBiometricOffer(false)}
+                  disabled={biometricOfferLoading}
+                  className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                >
+                  Agora não
+                </button>
+                <button
+                  onClick={handleAcceptBiometricOffer}
+                  disabled={biometricOfferLoading}
+                  className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+                >
+                  {biometricOfferLoading ? '...' : 'Ativar'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showPlanChoice && (
