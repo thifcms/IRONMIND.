@@ -690,7 +690,11 @@ export async function analyzeFoodImage(imageBase64: string, userProfile?: any, u
   } catch (error: any) {
     console.error("Vision Error:", error);
     if (error.code === 'PRIMARY_ENGINE_OFFLINE') throw error;
-    throw new Error("Não foi possível analisar esta imagem.");
+    // Preserva o motivo real do erro (ex: "Unauthorized", detalhe de
+    // rede, etc) em vez de sempre trocar por uma mensagem genérica --
+    // isso escondia a causa de verdade sempre que algo dava errado
+    // aqui, mesmo quando o servidor já mandava um detalhe útil.
+    throw new Error(error?.message || "Não foi possível analisar esta imagem.");
   }
 }
 
