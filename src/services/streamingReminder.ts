@@ -10,11 +10,18 @@
  * fica bem mais lento quando o app vai pro segundo plano (que é
  * exatamente quando o Netflix está em primeiro plano), mas o Chrome
  * não limita Workers da mesma forma.
+ *
+ * LIMITAÇÃO REAL (sem solução via web): não dá pra mostrar o número
+ * "exposto" direto na barra de status, do lado do relógio, sem
+ * precisar puxar a barra de notificações -- isso é um recurso
+ * exclusivo de apps nativos do Android (tipo o cronômetro de ligação),
+ * não disponível pra nenhum app baseado em navegador/PWA.
  */
 
 let worker: Worker | null = null;
 let startedAt = 0;
-let visibilityListenerAttached = false;
+let listenersAttached = false;
+let getExtraInfo: (() => string | null) | null = null;
 
 function formatElapsed(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
@@ -29,8 +36,10 @@ async function updateNotification() {
   try {
     const reg = await navigator.serviceWorker.ready;
     const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+    const extra = getExtraInfo?.();
+    const extraText = extra ? ` (${extra})` : '';
     await reg.showNotification('IronMind', {
-      body: `Você está no streaming há ${formatElapsed(elapsedSeconds)}. Bora voltar pro treino?`,
+      body: `Você está no streaming há ${formatElapsed(elapsedSeconds)}${extraText}. Bora voltar pro treino?`,
       icon: './icon.svg',
       badge: './icon.svg',
       tag: 'ironmind-streaming-time', // substitui a anterior, não empilha
@@ -47,6 +56,7 @@ export async function clearStreamingReminder() {
     worker.terminate();
     worker = null;
   }
+  getExtraInfo = null;
   if (typeof navigator === 'undefined' || !navigator.serviceWorker) return;
   try {
     const reg = await navigator.serviceWorker.ready;
@@ -57,17 +67,22 @@ export async function clearStreamingReminder() {
   }
 }
 
-// Assim que a pessoa volta pro app (aba fica visível de novo), encerra
-// o lembrete sozinho -- o objetivo era avisar enquanto ela estava fora,
-// não continuar contando depois que ela já voltou.
-function attachVisibilityListenerOnce() {
-  if (visibilityListenerAttached || typeof document === 'undefined') return;
-  visibilityListenerAttached = true;
-  document.addEventListener('visibilitychange', () => {
+// Assim que a pessoa volta pro app, encerra o lembrete sozinho -- o
+// objetivo era avisar enquanto ela estava fora, não continuar contando
+// depois que ela já voltou. Usa DOIS eventos como reforço
+// (visibilitychange E focus) -- em alguns celulares/PWAs instalados,
+// trocar pra um app nativo (Netflix) e voltar não dispara
+// visibilitychange de forma confiável sozinho.
+function attachListenersOnce() {
+  if (listenersAttached || typeof document === 'undefined') return;
+  listenersAttached = true;
+  const tryClear = () => {
     if (!document.hidden && worker) {
       clearStreamingReminder();
     }
-  });
+  };
+  document.addEventListener('visibilitychange', tryClear);
+  window.addEventListener('focus', tryClear);
 }
 
 /**
@@ -75,8 +90,12 @@ function attachVisibilityListenerOnce() {
  * permissão de notificação na hora, se ainda não tiver sido concedida
  * nem negada -- silenciosamente não faz nada se for negada (não deixa
  * o app insistindo).
+ *
+ * @param extraInfoFn Opcional -- função chamada a cada atualização pra
+ * incluir informação extra na notificação (ex: distância percorrida
+ * no cardio). Retorna null/undefined pra não incluir nada.
  */
-export async function startStreamingReminder() {
+export async function startStreamingReminder(extraInfoFn?: () => string | null) {
   if (typeof Notification === 'undefined') return;
 
   let permission = Notification.permission;
@@ -87,10 +106,11 @@ export async function startStreamingReminder() {
 
   await clearStreamingReminder(); // encerra um lembrete anterior, se tinha
   startedAt = Date.now();
-  attachVisibilityListenerOnce();
+  getExtraInfo = extraInfoFn || null;
+  attachListenersOnce();
   await updateNotification();
 
-  const workerCode = `setInterval(() => postMessage('tick'), 15000);`;
+  const workerCode = `setInterval(() => postMessage('tick'), 8000);`;
   const blob = new Blob([workerCode], { type: 'application/javascript' });
   const workerUrl = URL.createObjectURL(blob);
   worker = new Worker(workerUrl);

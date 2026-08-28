@@ -203,7 +203,12 @@ export default function CardioTab({ onSessionComplete }: CardioTabProps) {
 
   const handleMediaClick = (url: string) => {
     if (!isActive) setIsActive(true);
-    startStreamingReminder();
+    // Snapshot da distância no momento do clique -- não atualiza "ao
+    // vivo" durante o streaming porque o cronômetro do cardio roda no
+    // JS principal da aba, que fica mais lento/pausado em segundo
+    // plano (mesma limitação que afeta o app inteiro nesse estado).
+    const distanceAtClick = getStats().distance;
+    startStreamingReminder(() => `${distanceAtClick}km percorridos até sair`);
     window.open(url, '_blank');
   };
 
