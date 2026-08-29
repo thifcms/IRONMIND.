@@ -147,7 +147,7 @@ ${buildMeasurementsContext(profileData.measurements)}
 ${buildConsistencyContext(profileData.streak, profileData.totalWorkoutsCompleted)}
 ${buildCurrentPlansContext(profileData.trainingPlan, profileData.warmupPlan, profileData.cardioPlan, profileData.dietPlan)}
 ${buildWaterContext(profileData.waterIntake)}
-${buildCheckinContext(profileData.checkinHistory)}
+${buildCheckinContext(profileData.checkinHistory, profileData.lastCheckinAt)}
 
 Você DEVE usar rigorosamente essas informações para gerar os treinos e dietas altamente personalizados, adaptados para o peso, objetivo, limitações físicas e nível especificados. Não proponha exercícios conflitantes com as lesões listadas ou alimentos conflitantes com as restrições alimentares.`;
 
@@ -290,8 +290,17 @@ function buildBodyDietContext(bd: any): string {
  * piorando) mesmo que essas mensagens já tenham "rolado pra fora" do
  * histórico de chat bruto (que só guarda as últimas ~50 mensagens).
  */
-function buildCheckinContext(checkinHistory: any[] | undefined): string {
-  if (!checkinHistory || checkinHistory.length === 0) return '';
+function buildCheckinContext(checkinHistory: any[] | undefined, lastCheckinAt?: number): string {
+  const partesFinais: string[] = [];
+
+  if (lastCheckinAt) {
+    const diasSemCheckin = Math.floor((Date.now() - lastCheckinAt) / 86400000);
+    if (diasSemCheckin >= 7) {
+      partesFinais.push(`[LEMBRETE PARA VOCÊ, TREINADOR]: já se passaram ${diasSemCheckin} dias desde o último check-in semanal do usuário. Aproveite esta conversa para perguntar proativamente como foi a semana dele (adesão ao treino/dieta, energia, alguma dor ou dificuldade) -- não espere ele perguntar primeiro. Pode ser algo natural tipo "Antes de continuarmos, como foi sua semana de treino?".`);
+    }
+  }
+
+  if (!checkinHistory || checkinHistory.length === 0) return partesFinais.join('\n');
 
   const recentes = [...checkinHistory].slice(-6); // últimos 6 check-ins
   const linhas = recentes.map((c) => {
@@ -307,11 +316,13 @@ function buildCheckinContext(checkinHistory: any[] | undefined): string {
     return `  - ${partes.join(', ')}`;
   });
 
-  return `
+  partesFinais.push(`
 [HISTÓRICO DE CHECK-INS SEMANAIS (mais recentes primeiro no chat, mas listados aqui em ordem cronológica)]:
 ${linhas.join('\n')}
 
-Observe a TENDÊNCIA ao longo dessas semanas (energia subindo/caindo, adesão piorando/melhorando, dor recorrente na mesma região) -- não só o check-in mais recente isolado -- e ajuste sua recomendação considerando essa evolução.`;
+Observe a TENDÊNCIA ao longo dessas semanas (energia subindo/caindo, adesão piorando/melhorando, dor recorrente na mesma região) -- não só o check-in mais recente isolado -- e ajuste sua recomendação considerando essa evolução.`);
+
+  return partesFinais.join('\n');
 }
 
 /**

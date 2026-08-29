@@ -293,7 +293,10 @@ export default function App() {
 
   const handleAddCheckin = useCallback((entry: CheckinEntry) => {
     setCheckinHistory(prev => [...prev, entry]);
-  }, []);
+    // lastCheckinAt: usado pelo lembrete semanal de check-in (push) e
+    // pelo Treinador pra saber se já faz tempo e perguntar no chat.
+    setProfile({ ...profile, lastCheckinAt: Date.now() });
+  }, [profile, setProfile]);
 
   const handleSetTodayWaterCount = useCallback((count: number) => {
     const d = new Date();
