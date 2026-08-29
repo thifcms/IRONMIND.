@@ -488,11 +488,6 @@ export default function App() {
     return `${hrs > 0 ? hrs.toString().padStart(2, '0') + ':' : ''}${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Auth Guard
-  useEffect(() => {
-      console.log("AuthProvider AuthGuard state:", { loading, user: !!user, profile: !!profile });
-  }, [loading, user, profile]);
-
   // Oferece ativar a biometria logo depois de logar com senha (se o
   // aparelho suportar e ainda não estiver ativada) -- antes só dava pra
   // ativar indo no Perfil manualmente. Só checa/oferece UMA vez por
@@ -667,7 +662,6 @@ export default function App() {
   };
 
   const saveTraining = (plan: TrainingPlan) => {
-    console.log("saveTraining called with plan:", plan);
     setTrainingPlan(plan);
           safeLocalStorageSet('ironmind_training', JSON.stringify(plan));
 
@@ -684,7 +678,6 @@ export default function App() {
     // já existirem (a dieta é aceita depois, então isso normalmente
     // dispara em saveDiet -- mas cobre o caso de aceitar treino de novo
     // com a dieta já pronta de antes).
-    console.log("Training plan updated, staying in chat");
     if (dietPlan) setShowPlanChoice(true);
   };
 
@@ -1373,14 +1366,11 @@ export default function App() {
 }
 
 function TrainingPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan, onOpenSplitSelector, onWorkoutComplete, onOpenPoseCounter }: { plan: TrainingPlan | null, setActiveTab: (t: Tab) => void, onUpdatePlan: (p: TrainingPlan) => void, onClearPlan: () => void, onOpenSplitSelector: () => void, onWorkoutComplete?: (dayLabel: string, exerciseCount: number) => void, onOpenPoseCounter?: () => void }) {
-  console.log('TrainingPlanView rendering, plan:', plan);
-
   if (!plan) return <EmptyState type="treino" onClick={() => setActiveTab(Tab.TREINADOR)} onManualBuild={onOpenSplitSelector} />;
   return <TrainingTab plan={plan} onUpdatePlan={onUpdatePlan} onClearPlan={onClearPlan} onOpenSplitSelector={onOpenSplitSelector} onWorkoutComplete={onWorkoutComplete} onOpenPoseCounter={onOpenPoseCounter} />;
 }
 
 function DietPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan, userProfile, userId }: { plan: DietPlan | null, setActiveTab: (t: Tab) => void, onUpdatePlan: (p: DietPlan) => void, onClearPlan: () => void, userProfile?: AppProfile | null, userId?: string }) {
-  console.log('DietPlanView rendering, plan:', plan);
   return <DietTab plan={plan} onClearPlan={onClearPlan} onRequestNew={() => setActiveTab(Tab.TREINADOR)} userProfile={userProfile} userId={userId} />;
 }
 
