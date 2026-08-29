@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { TrainingPlan, Exercise } from '../types';
-import { Play, Dumbbell, Clock, Check, Plus, Trash2, StickyNote, X, TrendingUp, Target, Search, ChevronRight, Filter, AlertCircle, ChevronDown, Timer, Pause, RotateCcw, PlusCircle, MinusCircle, Camera, Loader2, Sparkles, Lightbulb } from 'lucide-react';
+import { Play, Dumbbell, Check, Plus, Trash2, StickyNote, X, Target, Search, ChevronRight, AlertCircle, Timer, PlusCircle, MinusCircle, Camera, Loader2, Sparkles, Lightbulb } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { EXERCISE_LIBRARY, LibraryExercise, MUSCLE_GROUPS } from '../constants/exercises';
 import { resolveVideoUrl, getYouTubeSearchUrl, formatVideoUrl, isSearchUrl } from '../lib/videoUtils';
@@ -159,7 +159,7 @@ export default function TrainingTab({
     onWorkoutComplete?.(activeDay.label || `Treino ${String.fromCharCode(65 + activeDayIdx)}`, (activeDay.exercises || []).length);
   }, [dayProgress, activeDay, activeDayIdx, plan.id, onWorkoutComplete]);
 
-  const removeExercise = (id: string, name: string) => {
+  const removeExercise = (id: string) => {
     const newDays = plan.days.map((day) => ({
       ...day,
       exercises: day.exercises.filter(ex => ex.id !== id)
@@ -601,7 +601,7 @@ export default function TrainingTab({
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              removeExercise(ex.id, ex.name);
+                              removeExercise(ex.id);
                             }}
                             className="w-8 h-8 sm:w-9 sm:h-9 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-xl flex items-center justify-center text-red-500 hover:bg-red-100 transition-all active:scale-95 z-20"
                             title="Remover exercício"

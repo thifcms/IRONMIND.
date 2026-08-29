@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ClipboardCheck, Zap, TrendingUp, MessageSquareText, Calendar } from 'lucide-react';
 import { CheckinEntry } from '../types';
 

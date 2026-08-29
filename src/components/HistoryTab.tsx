@@ -1,7 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useState, useMemo, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { Calendar, TrendingUp, Award, Clock, Scale, Ruler, Plus, Dumbbell, Activity, AlertCircle, Sparkles, Bike } from 'lucide-react';
+import { Calendar, TrendingUp, Award, Clock, Scale, Ruler, Plus, Dumbbell, Activity, Sparkles, Bike } from 'lucide-react';
 import { WeightEntry, MeasurementEntry, LoadEntry, CheckinEntry, AppProfile, CardioSession } from '../types';
 import WeeklyInsights from './WeeklyInsights';
 
@@ -89,7 +88,7 @@ export default function HistoryTab({
       }));
   }, [loadHistory, selectedChartExercise]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!selectedChartExercise && exerciseNames.length > 0) {
       setSelectedChartExercise(exerciseNames[exerciseNames.length - 1]);
     }

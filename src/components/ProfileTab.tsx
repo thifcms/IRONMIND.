@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Calendar, Weight, Ruler, Dumbbell, Target, Info, AlertTriangle, Apple, Save, LogOut, Trash2, AlertCircle, Fingerprint, HeartPulse, Flame, Bell } from 'lucide-react';
+import { User, Calendar, Weight, Ruler, Target, Info, AlertTriangle, Apple, Save, LogOut, Trash2, AlertCircle, Fingerprint, HeartPulse, Flame, Bell } from 'lucide-react';
 import { getFirestoreInstance, auth } from '../lib/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { signOut, deleteUser } from 'firebase/auth';

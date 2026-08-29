@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, Check, Droplets, Moon, Utensils, Pill, Zap } from 'lucide-react';
 import { BODY_TYPES, BODY_REGIONS } from './bodyDietIcons';
@@ -42,7 +42,6 @@ interface Props {
 }
 
 const STEPS = ['sexo', 'medidas', 'tipoCorpo', 'atual', 'meta', 'dieta', 'agua', 'sono', 'preTreino'] as const;
-type Step = typeof STEPS[number];
 
 const SUPLEMENTOS = ['Creatina', 'Whey Protein', 'BCAA', 'Multivitamínico', 'Nenhum'];
 

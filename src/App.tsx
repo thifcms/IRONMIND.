@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Dumbbell, 
@@ -17,18 +17,13 @@ import {
   TrendingUp,
   Heart,
   X,
-  ExternalLink,
-  Menu,
   ChevronRight,
-  LogOut,
-  LayoutDashboard,
-  Cpu,
   HeartPulse,
   ClipboardCheck,
   Droplets
 } from 'lucide-react';
-import { Tab, TrainingPlan, DietPlan, ChatMessage, WeightEntry, UserProfile, MeasurementEntry, LoadEntry, CheckinEntry, CardioSession, AppProfile } from './types';
-import { loadChatHistory, saveChatHistory, chatWithCoach } from './services/geminiService';
+import { Tab, TrainingPlan, DietPlan, ChatMessage, WeightEntry, MeasurementEntry, LoadEntry, CheckinEntry, CardioSession, AppProfile } from './types';
+import { chatWithCoach } from './services/geminiService';
 import { safeLocalStorageSet } from './lib/safeStorage';
 import { recordActivity } from './lib/streak';
 import WorkoutCompleteModal, { diffNewAchievements } from './components/WorkoutCompleteModal';
@@ -1370,7 +1365,7 @@ function TrainingPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan, onOpe
   return <TrainingTab plan={plan} onUpdatePlan={onUpdatePlan} onClearPlan={onClearPlan} onOpenSplitSelector={onOpenSplitSelector} onWorkoutComplete={onWorkoutComplete} onOpenPoseCounter={onOpenPoseCounter} />;
 }
 
-function DietPlanView({ plan, setActiveTab, onUpdatePlan, onClearPlan, userProfile, userId }: { plan: DietPlan | null, setActiveTab: (t: Tab) => void, onUpdatePlan: (p: DietPlan) => void, onClearPlan: () => void, userProfile?: AppProfile | null, userId?: string }) {
+function DietPlanView({ plan, setActiveTab, onClearPlan, userProfile, userId }: { plan: DietPlan | null, setActiveTab: (t: Tab) => void, onUpdatePlan: (p: DietPlan) => void, onClearPlan: () => void, userProfile?: AppProfile | null, userId?: string }) {
   return <DietTab plan={plan} onClearPlan={onClearPlan} onRequestNew={() => setActiveTab(Tab.TREINADOR)} userProfile={userProfile} userId={userId} />;
 }
 

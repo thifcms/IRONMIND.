@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Fingerprint, Dumbbell, LogOut } from 'lucide-react';
 import { unlockWithBiometric, loginWithBiometricOnly } from '../services/biometricAuth';

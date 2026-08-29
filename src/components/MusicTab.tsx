@@ -1,4 +1,4 @@
-import { Music2, Play, ExternalLink, Disc } from 'lucide-react';
+import { Music2, Play, Disc } from 'lucide-react';
 
 export default function MusicTab() {
   const openApp = (app: typeof apps[0]) => {

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Mail, Lock, Dumbbell, ArrowRight, X } from 'lucide-react';
 import { getFirestoreInstance, auth } from '../lib/firebase';
-import { collection, query, where, getDocs, getDoc, setDoc, doc, updateDoc, deleteField } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc, updateDoc, deleteField } from 'firebase/firestore';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { useAuth } from './AuthProvider';
 import emailjs from '@emailjs/browser';

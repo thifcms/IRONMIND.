@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Droplets, RotateCcw, Bell, Clock } from 'lucide-react';
 import { getReminderSchedule, getExpectedGlassesByNow, checkDueReminder, markReminderFired, WAKE_HOUR, SLEEP_HOUR } from '../services/waterSchedule';

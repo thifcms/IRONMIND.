@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { DietPlan, AppProfile } from '../types';
-import { Clock, CheckCircle2, Camera, Loader2, Info, AlertTriangle, Utensils, ShieldCheck, ShieldAlert, Droplets, Pill } from 'lucide-react';
+import { Clock, CheckCircle2, Camera, Loader2, Info, Utensils, ShieldCheck, ShieldAlert, Droplets, Pill } from 'lucide-react';
 import { analyzeFoodImage } from '../services/geminiService';
 import { compressImage } from '../lib/imageUtils';
 import { motion, AnimatePresence } from 'motion/react';

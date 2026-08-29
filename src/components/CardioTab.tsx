@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bike, Footprints, Timer, Zap, MapPin, Youtube, Gauge, TrendingUp, Weight, Pause, Play, MonitorPlay, Activity, Heart, AlertTriangle, Rows3, X } from 'lucide-react';
+import { Bike, Footprints, Zap, MapPin, Youtube, Gauge, TrendingUp, Weight, Heart, AlertTriangle, Rows3, X } from 'lucide-react';
 import { bioMonitor } from '../services/bioMonitor';
 import { useHeartRateMonitor } from '../hooks/useHeartRateMonitor';
 import { startStreamingReminder } from '../services/streamingReminder';

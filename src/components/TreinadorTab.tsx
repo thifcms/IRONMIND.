@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, Dispatch, SetStateAction } from 'react';
-import { Send, Check, Loader2, Trash2, ShieldCheck, ShieldAlert, Cpu, X, Sparkles, Activity, Globe, Zap, AlertCircle, Copy, Mic, MicOff } from 'lucide-react';
+import { Send, Check, Loader2, Trash2, ShieldCheck, ShieldAlert, Cpu, X, Globe, Zap, AlertCircle, Copy, Mic, MicOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -383,7 +383,6 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
     } catch (error: any) {
       console.error(error);
       const technicalError = error?.message || String(error);
-      const errorData = error?.rawResponse || error;
       
       if (error.code === 'PRIMARY_ENGINE_OFFLINE' || error.message.includes('Failed to fetch') || !navigator.onLine) {
         setNeuralLinkOnline(false);
