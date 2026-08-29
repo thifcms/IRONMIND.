@@ -548,16 +548,17 @@ export default function App() {
   const clearTrainingPlan = async () => {
     setTrainingPlan(null);
     localStorage.removeItem('ironmind_training');
-    // Suspende o ciclo de check-in junto -- sem protocolo ativo, não
-    // faz sentido continuar cobrando check-in sobre um treino que não
-    // existe mais. Volta a contar quando um treino novo for aceito
-    // (ver saveTraining).
-    setProfile({ ...profile, lastCheckinAt: undefined });
+    // Suspende o ciclo de check-in E o lembrete de água junto -- sem
+    // protocolo ativo, não faz sentido continuar cobrando nenhum dos
+    // dois sobre um treino que não existe mais. Voltam a contar quando
+    // um treino novo for aceito (ver saveTraining).
+    setProfile({ ...profile, lastCheckinAt: undefined, lastWaterLogAt: undefined });
     if (user) {
       try {
         await updateDoc(doc(db, 'users', user.uid), {
           trainingPlan: null,
-          lastCheckinAt: null
+          lastCheckinAt: null,
+          lastWaterLogAt: null
         });
       } catch (err) {
         console.error("Erro ao limpar treino no Firestore:", err);
@@ -678,7 +679,10 @@ export default function App() {
     // Ao aceitar um treino novo, começa a contar o ciclo de 7 dias do
     // check-in a partir de agora -- é suspenso de volta (ver
     // clearTrainingPlan) se o protocolo for apagado antes disso.
-    setProfile({ ...profile, lastCheckinAt: Date.now() });
+    // Mesma coisa pro lembrete de água (lastWaterLogAt) -- sem isso,
+    // quem nunca abriu a aba Água sozinho nunca teria o lembrete
+    // ativado, mesmo já treinando.
+    setProfile({ ...profile, lastCheckinAt: Date.now(), lastWaterLogAt: profile?.lastWaterLogAt || Date.now() });
 
     // Não navega mais sozinho pra aba Treino -- a pessoa continua no
     // chat, pra poder ver (e aceitar) a dieta que normalmente vem logo
