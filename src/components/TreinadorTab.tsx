@@ -301,9 +301,10 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
         try {
           const parsed = JSON.parse(jsonCandidate.trim());
           if (parsed && typeof parsed === 'object') {
-            // Fuzzy detection of type based on structure
-            const dietKeys = ['meals', 'refeicoes', 'dieta', 'itens', 'alimentos', 'cardapio', 'menu'];
-            const trainingKeys = ['days', 'dias', 'treinos', 'exercicios', 'protocolo', 'rotina', 'split'];
+            // Fuzzy detection de tipo baseada na estrutura (lista ampliada
+            // de sinônimos, mas mesmo assim é só um fallback -- ver abaixo).
+            const dietKeys = ['meals', 'refeicoes', 'refeições', 'dieta', 'itens', 'alimentos', 'cardapio', 'cardápio', 'menu', 'planoalimentar', 'dietasemanal'];
+            const trainingKeys = ['days', 'dias', 'treinos', 'exercicios', 'exercícios', 'protocolo', 'rotina', 'split'];
             
             const hasDietKeys = Object.keys(parsed).some(k => dietKeys.includes(k.toLowerCase())) || 
                                (parsed.dietPlan && Object.keys(parsed.dietPlan).some(k => dietKeys.includes(k.toLowerCase()))) ||
@@ -313,7 +314,18 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
                                    (parsed.trainingPlan && Object.keys(parsed.trainingPlan).some(k => trainingKeys.includes(k.toLowerCase()))) ||
                                    (parsed.training && Object.keys(parsed.training).some(k => trainingKeys.includes(k.toLowerCase())));
 
-            if (hasTrainingKeys || lowerText.includes('[proposta_treino]')) {
+            // A tag explícita ([PROPOSTA_DIETA]/[PROPOSTA_TREINO]) é um
+            // sinal muito mais confiável que adivinhar por nome de campo --
+            // a IA é fortemente instruída a sempre incluí-la. Por isso ela
+            // vence a detecção por chave: antes, se um JSON de dieta
+            // tivesse por acaso algum campo parecido com os de treino, a
+            // proposta inteira era classificada errado (ou perdida) mesmo
+            // com a tag de dieta presente. Isso também explica dietas que
+            // "não entravam na aba" -- a detecção simplesmente falhava.
+            const taggedAsDiet = lowerText.includes('[proposta_dieta]');
+            const taggedAsTraining = lowerText.includes('[proposta_treino]');
+
+            if (taggedAsTraining || (!taggedAsDiet && hasTrainingKeys)) {
               const trainingData = parsed.days || parsed.trainingPlan || parsed.training || parsed;
               cleanResponse = {
                 ...cleanResponse,
@@ -321,7 +333,10 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
                 proposal: { type: 'training', data: trainingData }
               };
               hasProposal = true;
-            } else if (hasDietKeys || lowerText.includes('[proposta_dieta]')) {
+            } else if (taggedAsDiet || hasDietKeys) {
+              // Sem correspondência de nenhuma chave conhecida, mas a tag
+              // de dieta está presente -- usa o objeto inteiro como
+              // último recurso, em vez de descartar a proposta.
               const dietData = parsed.meals || parsed.refeicoes || parsed.dietPlan || parsed.diet || parsed;
               cleanResponse = {
                 ...cleanResponse,

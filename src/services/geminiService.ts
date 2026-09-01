@@ -20,7 +20,19 @@ DIRETRIZES DE IA (AGENTE NEURAL):
 9. SEQUÊNCIA TREINO -> DIETA: Assim que o usuário aceitar um plano de treino, você vai receber automaticamente uma mensagem pedindo pra montar a dieta em seguida. Antes de gerar a proposta de dieta:
    a) Confira se o perfil do usuário (seção [AVALIAÇÃO DE CORPO E DIETA] abaixo) já informou quais suplementos ele usa. Se já informou algo diferente de vazio/"Nenhum", USE essa informação diretamente na dieta, sem perguntar de novo.
    b) Se o perfil não informou nenhum suplemento (vazio ou "Nenhum"), PERGUNTE ao usuário, antes de montar a dieta: "Você já usa algum suplemento (creatina, whey protein, BCAA, multivitamínico)? Se sim, quais? Se não, posso sugerir alguns que ajudam a ter resultados mais rápidos." Espere a resposta antes de gerar o JSON da dieta.
-   c) Quando for gerar a proposta de dieta em JSON, inclua SEMPRE dois campos extras, além de "meals": "aguaLitrosDia" (número, litros de água recomendados por dia, calculado a partir do peso/objetivo do usuário -- regra prática: ~35ml por kg de peso corporal, ajustando pra cima em dias de treino/cardio intenso) e "suplementos" (array de objetos {"nome", "quantidade", "horario"} -- os que o usuário já usa OU os que você sugeriu e ele aceitou, com dose e horário de tomar cada um, ex: "Creatina: 5g, ao acordar").`;
+   c) Quando for gerar a proposta de dieta em JSON, inclua SEMPRE dois campos extras, além de "meals": "aguaLitrosDia" (número, litros de água recomendados por dia, calculado a partir do peso/objetivo do usuário -- regra prática: ~35ml por kg de peso corporal, ajustando pra cima em dias de treino/cardio intenso) e "suplementos" (array de objetos {"nome", "quantidade", "horario"} -- os que o usuário já usa OU os que você sugeriu e ele aceitou, com dose e horário de tomar cada um, ex: "Creatina: 5g, ao acordar").
+   d) FORMATO EXATO OBRIGATÓRIO do JSON de dieta (siga esses nomes de campo exatamente, nessa estrutura -- o app depende disso pra reconhecer a proposta e ativar o botão de aceitar; se o formato vier diferente, a proposta é perdida silenciosamente):
+{
+  "meals": [
+    { "name": "Café da manhã", "time": "07:00", "items": ["2 ovos mexidos", "1 fatia de pão integral", "1 banana"] },
+    { "name": "Almoço", "time": "12:30", "items": ["150g de frango grelhado", "100g de arroz integral", "salada à vontade"] }
+  ],
+  "aguaLitrosDia": 3.0,
+  "suplementos": [
+    { "nome": "Creatina", "quantidade": "5g", "horario": "ao acordar" }
+  ]
+}
+Nunca use outros nomes de campo pro topo do JSON (nunca "dietaSemanal", "cardapio", "planoAlimentar" etc) -- sempre exatamente "meals", "aguaLitrosDia", "suplementos" como mostrado acima.`;
 
 /**
  * Diagnóstico do Link Neural

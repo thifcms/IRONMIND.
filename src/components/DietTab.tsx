@@ -235,63 +235,98 @@ export default function DietTab({
 
         {plan ? (
           <div className="space-y-4 relative before:absolute before:left-[1rem] before:top-4 before:bottom-4 before:w-px before:bg-slate-200 dark:before:bg-slate-800 pt-4">
-            {(plan.aguaLitrosDia || (plan.suplementos && plan.suplementos.length > 0)) && (
+            {plan.aguaLitrosDia ? (
               <div className="relative pl-8">
                 <div className="absolute left-0 top-1 w-8 h-8 bg-sky-500 border-4 border-white dark:border-[#0a0a0a] rounded-full flex items-center justify-center z-10 text-white shadow-sm">
                   <Droplets className="w-4 h-4" />
                 </div>
-                <div className="bg-white dark:bg-[#121212] rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-                  {plan.aguaLitrosDia ? (
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Água recomendada</span>
-                      <span className="text-sm font-black text-sky-600">{plan.aguaLitrosDia}L/dia</span>
-                    </div>
-                  ) : null}
-                  {plan.suplementos && plan.suplementos.length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <Pill className="w-3.5 h-3.5 text-blue-600" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Suplementos</span>
+                <div className="bg-white dark:bg-[#121212] rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Água recomendada</span>
+                  <span className="text-sm font-black text-sky-600">{plan.aguaLitrosDia}L/dia</span>
+                </div>
+              </div>
+            ) : null}
+            {(() => {
+              // Suplementos entram na MESMA linha do tempo das refeições
+              // (não mais num bloco separado à parte) -- ordenados por
+              // horário junto com as refeições sempre que o campo
+              // "horario" tiver um horário reconhecível (ex: "07:00" ou
+              // "antes das 08:00"); sem horário reconhecível (ex: "ao
+              // acordar", "pré-treino"), aparecem primeiro na linha do
+              // tempo, já que costumam ser tomados no início do dia ou
+              // em torno do treino.
+              const extractTime = (s?: string): number => {
+                const m = s?.match(/(\d{1,2}):(\d{2})/);
+                if (!m) return -1;
+                return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+              };
+
+              type TimelineEntry =
+                | { kind: 'meal'; sortKey: number; meal: NonNullable<DietPlan['meals']>[number] }
+                | { kind: 'supplement'; sortKey: number; supplement: NonNullable<DietPlan['suplementos']>[number] };
+
+              const entries: TimelineEntry[] = [
+                ...(plan.meals || []).map(meal => ({ kind: 'meal' as const, sortKey: extractTime(meal.time), meal })),
+                ...(plan.suplementos || []).map(supplement => ({ kind: 'supplement' as const, sortKey: extractTime(supplement.horario), supplement })),
+              ].sort((a, b) => {
+                // Sem horário reconhecível (-1) vai pro início da lista.
+                if (a.sortKey === -1 && b.sortKey === -1) return 0;
+                if (a.sortKey === -1) return -1;
+                if (b.sortKey === -1) return 1;
+                return a.sortKey - b.sortKey;
+              });
+
+              return entries.map((entry, i) => {
+                if (entry.kind === 'supplement') {
+                  const s = entry.supplement;
+                  return (
+                    <div key={`s-${i}`} className="relative pl-8">
+                      <div className="absolute left-0 top-1 w-8 h-8 bg-blue-600 border-4 border-white dark:border-[#0a0a0a] rounded-full flex items-center justify-center z-10 text-white shadow-sm">
+                        <Pill className="w-4 h-4" />
                       </div>
-                      <ul className="space-y-1.5">
-                        {plan.suplementos.map((s, i) => (
-                          <li key={i} className="text-[11px] bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                            <span className="font-black text-slate-800 dark:text-slate-200">{s.nome}</span>
-                            {s.quantidade && <span className="text-slate-500 dark:text-slate-400"> — {s.quantidade}</span>}
-                            {s.horario && <span className="block text-[9px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider mt-0.5">{s.horario}</span>}
+                      <div className="bg-white dark:bg-[#121212] rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <div className="flex justify-between items-center">
+                          <h3 className="font-black text-base text-slate-900 dark:text-slate-100 leading-tight uppercase italic">{s.nome}</h3>
+                          {s.horario && (
+                            <span className="text-[9px] font-black text-blue-600 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 px-2 py-0.5 rounded-md uppercase tracking-widest">
+                              {s.horario}
+                            </span>
+                          )}
+                        </div>
+                        {s.quantidade && <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mt-1">{s.quantidade}</p>}
+                      </div>
+                    </div>
+                  );
+                }
+
+                const meal = entry.meal;
+                return (
+                  <div key={`m-${i}`} className="relative pl-8">
+                    <div className="absolute left-0 top-1 w-8 h-8 bg-blue-600 border-4 border-white dark:border-[#0a0a0a] rounded-full flex items-center justify-center z-10 text-white shadow-sm">
+                      <Clock className="w-4 h-4" />
+                    </div>
+
+                    <div className="bg-white dark:bg-[#121212] rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-blue-200 dark:hover:border-blue-900 transition-colors">
+                      <div className="flex justify-between items-center mb-3">
+                        <h3 className="font-black text-base text-slate-900 dark:text-slate-100 leading-tight uppercase italic">{meal.name}</h3>
+                        <span className="text-[9px] font-black text-blue-600 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 px-2 py-0.5 rounded-md uppercase tracking-widest texture-dots">
+                          {meal.time}
+                        </span>
+                      </div>
+
+                      <ul className="space-y-2">
+                        {meal.items.map((item, j) => (
+                          <li key={j} className="text-[11px] text-slate-600 dark:text-slate-400 flex items-start gap-2 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                            <span className="font-semibold">{item}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
-                  )}
-                </div>
-              </div>
-            )}
-            {(plan.meals || []).map((meal, i) => (
-              <div key={i} className="relative pl-8">
-                <div className="absolute left-0 top-1 w-8 h-8 bg-blue-600 border-4 border-white dark:border-[#0a0a0a] rounded-full flex items-center justify-center z-10 text-white shadow-sm">
-                  <Clock className="w-4 h-4" />
-                </div>
-                
-                <div className="bg-white dark:bg-[#121212] rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-blue-200 dark:hover:border-blue-900 transition-colors">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="font-black text-base text-slate-900 dark:text-slate-100 leading-tight uppercase italic">{meal.name}</h3>
-                    <span className="text-[9px] font-black text-blue-600 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 px-2 py-0.5 rounded-md uppercase tracking-widest texture-dots">
-                      {meal.time}
-                    </span>
                   </div>
-                  
-                  <ul className="space-y-2">
-                    {meal.items.map((item, j) => (
-                      <li key={j} className="text-[11px] text-slate-600 dark:text-slate-400 flex items-start gap-2 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                        <span className="font-semibold">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            ))}
+                );
+              });
+            })()}
           </div>
         ) : (
           !analyzing && (
