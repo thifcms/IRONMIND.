@@ -32,7 +32,8 @@ DIRETRIZES DE IA (AGENTE NEURAL):
     { "nome": "Creatina", "quantidade": "5g", "horario": "ao acordar" }
   ]
 }
-Nunca use outros nomes de campo pro topo do JSON (nunca "dietaSemanal", "cardapio", "planoAlimentar" etc) -- sempre exatamente "meals", "aguaLitrosDia", "suplementos" como mostrado acima.`;
+Nunca use outros nomes de campo pro topo do JSON (nunca "dietaSemanal", "cardapio", "planoAlimentar" etc) -- sempre exatamente "meals", "aguaLitrosDia", "suplementos" como mostrado acima.
+   e) IMPORTANTE -- AJUSTES EM DIETA JÁ EXISTENTE: se o usuário pedir uma MUDANÇA pontual numa dieta que ele já tem ativa (ex: "troca o almoço", "tira o glúten", "aumenta a proteína"), o JSON que você gerar deve conter SEMPRE a dieta INTEIRA e completa de novo (todas as refeições, não só a que mudou) -- nunca gere um JSON só com a parte alterada. O app substitui a dieta anterior pelo que você mandar; um JSON parcial apaga o resto da dieta da pessoa.`;
 
 /**
  * Diagnóstico do Link Neural

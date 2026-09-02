@@ -836,6 +836,17 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
                               createdAt: planData?.createdAt || Date.now()
                             };
                             localStorage.setItem('ironmind_diet', JSON.stringify(dietPlan));
+                            // Proteção final: nunca aceita uma dieta sem
+                            // nenhuma refeição -- isso normalmente indica
+                            // que a IA respondeu só com a parte alterada
+                            // (ex: "trocar o almoço") em vez da dieta
+                            // inteira, e aceitar isso apagaria o resto da
+                            // dieta que a pessoa já tinha, deixando a aba
+                            // em branco.
+                            if (!dietPlan.meals || dietPlan.meals.length === 0) {
+                              alert('A dieta recebida veio sem nenhuma refeição -- isso pode acontecer quando a IA responde só com a parte alterada. Pede pro Treinador mandar a dieta completa de novo.');
+                              return;
+                            }
                             onAcceptDiet(dietPlan);
 
                             const newHistory = history.map((m, idx) => {
