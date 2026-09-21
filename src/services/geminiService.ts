@@ -633,7 +633,7 @@ export async function generateProposal(type: 'training' | 'diet', context: strin
 
     const schemaRef = isTraining 
       ? `{"name": "Treino ABC", "days": [{"label": "Treino A - Peito e Tríceps", "exercises": [{"name": "Mobilidade de ombro", "sets": 1, "reps": "8", "category": "aquecimento"}, {"name": "Supino", "sets": 3, "reps": "12", "rest": "60", "category": "treino"}, {"name": "Esteira", "sets": 1, "reps": "15", "notes": "esteira, ritmo moderado", "category": "cardio"}]}, {"label": "Treino B - Costas e Bíceps", "exercises": [{"name": "Remada", "sets": 3, "reps": "12", "rest": "60", "category": "treino"}]}]}`
-      : `{"name": "Dieta Bulking", "meals": [{"name": "Café", "time": "08:00", "items": ["Aveia", "Ovos"]}]}`;
+      : `{"name": "Dieta Bulking", "meals": [{"name": "Café", "time": "08:00", "items": ["Aveia", "Ovos"]}], "aguaLitrosDia": 3.0, "suplementos": [{"nome": "Creatina", "quantidade": "5g", "horario": "ao acordar"}]}`;
 
     const prompt = `Com base neste contexto: "${context}", gere uma proposta estruturada de ${isTraining ? 'treino' : 'dieta'} seguindo estritamente este formato JSON: ${schemaRef}`;
     

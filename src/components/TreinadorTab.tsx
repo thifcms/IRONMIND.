@@ -334,10 +334,15 @@ export default function TreinadorTab({ history, setHistory, onAcceptTraining, on
               };
               hasProposal = true;
             } else if (taggedAsDiet || hasDietKeys) {
-              // Sem correspondência de nenhuma chave conhecida, mas a tag
-              // de dieta está presente -- usa o objeto inteiro como
-              // último recurso, em vez de descartar a proposta.
-              const dietData = parsed.meals || parsed.refeicoes || parsed.dietPlan || parsed.diet || parsed;
+              // IMPORTANTE: mantém o objeto INTEIRO (não só o array de
+              // "meals") -- o botão de aceitar, mais abaixo, espera um
+              // objeto com .meals, .aguaLitrosDia e .suplementos como
+              // propriedades irmãs. Extrair só o array aqui perdia água
+              // e suplementos, e quebrava a extração de refeições no
+              // botão de aceitar (que faz planData.meals, esperando um
+              // objeto -- não um array solto).
+              const dietData = parsed.meals ? parsed
+                : (parsed.dietPlan || parsed.diet || parsed);
               cleanResponse = {
                 ...cleanResponse,
                 text: cleanText.replace(jsonCandidate, '').replace(/```json/gi, '').replace(/```/g, '').trim(),
